@@ -46,7 +46,7 @@ func (p *Printer) Banner() {
   ╚═╗│ ││  ││││  ╠═╣└┬┘│││ │ ├┤ ├┬┘
   ╚═╝└─┘┴─┘┴└┴┘  ╩ ╩ ┴ ┘└┘ ┴ └─┘┴└─
 `))
-	fmt.Println(p.color(dim, "  Outil de détection SQL injection — bug bounty"))
+	fmt.Println(p.color(dim, "  Scanner rapide de vulnérabilités web — bug bounty"))
 	fmt.Println()
 }
 
@@ -80,7 +80,7 @@ func (p *Printer) Finding(f models.Finding) {
 	fmt.Println()
 	fmt.Println(p.color(red+bold, "  ═══ VULNÉRABILITÉ DÉTECTÉE ═══"))
 	fmt.Printf("  %s %s\n", p.color(bold, "Paramètre:"), f.Parameter)
-	fmt.Printf("  %s %s\n", p.color(bold, "Type:"), f.InjectionType)
+	fmt.Printf("  %s %s\n", p.color(bold, "Type:"), vulnLabel(f.VulnType))
 	fmt.Printf("  %s %s\n", p.color(bold, "Confiance:"), confidenceColor(p, f.Confidence))
 	fmt.Printf("  %s %s\n", p.color(bold, "Payload:"), f.Payload)
 	if f.DBMS != "" {
@@ -115,8 +115,25 @@ func (p *Printer) Summary(result models.ScanResult) {
 	if len(result.Findings) > 0 {
 		p.Success(fmt.Sprintf("%d vulnérabilité(s) potentielle(s) détectée(s)", len(result.Findings)))
 	} else {
-		p.Info("Aucune injection SQL détectée avec les techniques configurées")
+		p.Info("Aucune vulnérabilité détectée avec le profil configuré")
 	}
+}
+
+func vulnLabel(v models.VulnType) string {
+	labels := map[models.VulnType]string{
+		models.SQLiError:    "SQL Injection (error-based)",
+		models.SQLiBoolean:  "SQL Injection (boolean-blind)",
+		models.SQLiTime:     "SQL Injection (time-blind)",
+		models.SQLiUnion:    "SQL Injection (union-based)",
+		models.XSS:          "XSS (réfléchi)",
+		models.OpenRedirect: "Open Redirect",
+		models.LFI:          "LFI / Path Traversal",
+		models.SSRF:         "SSRF",
+	}
+	if l, ok := labels[v]; ok {
+		return l
+	}
+	return string(v)
 }
 
 func confidenceColor(p *Printer, c models.Confidence) string {
@@ -139,13 +156,19 @@ func truncateURL(u string, n int) string {
 	return u[:n] + "..."
 }
 
-// PrintTechniques affiche les techniques actives.
-func (p *Printer) PrintTechniques(techniques []models.InjectionType, waf bool) {
-	names := make([]string, len(techniques))
-	for i, t := range techniques {
-		names[i] = string(t)
+// PrintScanConfig affiche la configuration du scan.
+func (p *Printer) PrintScanConfig(mode models.ScanMode, categories []models.VulnCategory, waf bool) {
+	modeLabel := "rapide"
+	if mode == models.ScanFull {
+		modeLabel = "complet"
 	}
-	p.Info("Techniques : " + strings.Join(names, ", "))
+	p.Info("Mode : " + modeLabel)
+
+	names := make([]string, len(categories))
+	for i, c := range categories {
+		names[i] = string(c)
+	}
+	p.Info("Vulnérabilités : " + strings.Join(names, ", "))
 	if waf {
 		p.Info("WAF bypass : activé")
 	}

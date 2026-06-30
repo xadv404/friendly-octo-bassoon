@@ -19,7 +19,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/scanner"
 )
 
-const version = "1.0.0"
+const version = "1.1.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -59,7 +59,7 @@ func main() {
 	opts := buildOptions(cfg)
 	printer.Info(fmt.Sprintf("Cible : %s", cfg.targetURL))
 	printer.Info(fmt.Sprintf("Méthode : %s", target.Method))
-	printer.PrintTechniques(opts.Techniques, opts.IncludeWAF)
+	printer.PrintScanConfig(opts.Mode, opts.Categories, opts.IncludeWAF)
 	printer.Info(fmt.Sprintf("Threads : %d | Timeout : %ds | Rate limit : %dms", opts.Threads, opts.TimeoutSec, opts.RateLimitMs))
 	fmt.Println()
 
@@ -96,8 +96,10 @@ type config struct {
 	headers        map[string]string
 	cookies        map[string]string
 	jsonBody       map[string]any
-	techniques     []models.InjectionType
+	categories     []models.VulnCategory
+	techniques     []models.VulnType
 	customPayloads []string
+	fullScan       bool
 	includeWAF     bool
 	timeDelay      int
 	timeThreshold  float64
@@ -113,10 +115,10 @@ type config struct {
 func parseArgs(args []string) (config, error) {
 	cfg := config{
 		method:    "GET",
-		timeDelay: 5,
+		timeDelay: 3,
 		timeout:   15,
-		threads:   5,
-		rateLimit: 200,
+		threads:   8,
+		rateLimit: 100,
 		params:    make(map[string]string),
 		data:      make(map[string]string),
 		headers:   make(map[string]string),
@@ -190,17 +192,20 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("format cookie : nom=valeur")
 			}
 			cfg.cookies[parts[0]] = parts[1]
-		case arg == "-t" || arg == "--technique":
+		case arg == "-t" || arg == "--test":
 			i++
 			if i >= len(args) {
 				return cfg, fmt.Errorf("-t nécessite une valeur")
 			}
 			for _, t := range strings.Split(args[i], ",") {
-				tech, err := parseTechnique(strings.TrimSpace(t))
+				cat, tech, err := payloads.ParseCategory(strings.TrimSpace(t))
 				if err != nil {
 					return cfg, err
 				}
-				cfg.techniques = append(cfg.techniques, tech)
+				cfg.categories = appendUniqueCategory(cfg.categories, cat)
+				if tech != "" {
+					cfg.techniques = append(cfg.techniques, tech)
+				}
 			}
 		case arg == "--payload":
 			i++
@@ -208,6 +213,8 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("--payload nécessite une valeur")
 			}
 			cfg.customPayloads = append(cfg.customPayloads, args[i])
+		case arg == "--full":
+			cfg.fullScan = true
 		case arg == "--waf":
 			cfg.includeWAF = true
 		case arg == "--time-delay":
@@ -272,19 +279,13 @@ func parseArgs(args []string) (config, error) {
 	return cfg, nil
 }
 
-func parseTechnique(s string) (models.InjectionType, error) {
-	switch strings.ToLower(s) {
-	case "error", "error_based", "e":
-		return models.ErrorBased, nil
-	case "boolean", "boolean_blind", "b":
-		return models.BooleanBlind, nil
-	case "time", "time_blind", "t":
-		return models.TimeBlind, nil
-	case "union", "union_based", "u":
-		return models.UnionBased, nil
-	default:
-		return "", fmt.Errorf("technique inconnue : %s (error, boolean, time, union)", s)
+func appendUniqueCategory(cats []models.VulnCategory, cat models.VulnCategory) []models.VulnCategory {
+	for _, c := range cats {
+		if c == cat {
+			return cats
+		}
 	}
+	return append(cats, cat)
 }
 
 func buildTarget(cfg config) (models.ScanTarget, error) {
@@ -293,7 +294,6 @@ func buildTarget(cfg config) (models.ScanTarget, error) {
 		return models.ScanTarget{}, fmt.Errorf("URL invalide : %w", err)
 	}
 
-	// Extraire les params de l'URL si non fournis
 	if len(cfg.params) == 0 && u.RawQuery != "" {
 		for k, vals := range u.Query() {
 			if len(vals) > 0 {
@@ -314,23 +314,28 @@ func buildTarget(cfg config) (models.ScanTarget, error) {
 	}
 
 	return models.ScanTarget{
-		URL:      cfg.targetURL,
-		Method:   method,
-		Params:   cfg.params,
-		Data:     cfg.data,
-		Headers:  cfg.headers,
-		Cookies:  cfg.cookies,
+		URL: cfg.targetURL, Method: method,
+		Params: cfg.params, Data: cfg.data,
+		Headers: cfg.headers, Cookies: cfg.cookies,
 		JSONBody: cfg.jsonBody,
 	}, nil
 }
 
 func buildOptions(cfg config) models.ScanOptions {
-	techniques := cfg.techniques
-	if len(techniques) == 0 {
-		techniques = payloads.AllTechniques()
+	mode := models.ScanFast
+	if cfg.fullScan {
+		mode = models.ScanFull
 	}
+
+	categories := cfg.categories
+	if len(categories) == 0 {
+		categories = payloads.DefaultCategories(mode)
+	}
+
 	return models.ScanOptions{
-		Techniques:      techniques,
+		Categories:      categories,
+		Techniques:      cfg.techniques,
+		Mode:            mode,
 		IncludeWAF:      cfg.includeWAF,
 		CustomPayloads:  cfg.customPayloads,
 		TimeDelaySec:    cfg.timeDelay,
@@ -339,11 +344,12 @@ func buildOptions(cfg config) models.ScanOptions {
 		TimeoutSec:      cfg.timeout,
 		Threads:         cfg.threads,
 		Verbose:         cfg.verbose,
+		EarlyExit:       true,
 	}
 }
 
 func printUsage() {
-	fmt.Print(`sqli-hunter — Détection SQL injection pour bug bounty
+	fmt.Print(`sqli-hunter — Scanner rapide de vulnérabilités web pour bug bounty
 
 Usage:
   sqli-hunter -u <URL> [options]
@@ -359,17 +365,19 @@ Requête:
   -H, --header <Nom: Val>   Header HTTP (répétable)
   -c, --cookie <nom=val>    Cookie (répétable)
 
-Techniques:
-  -t, --technique <liste>   Techniques : error,boolean,time,union [défaut: toutes]
-      --waf                 Inclure payloads bypass WAF
-      --payload <PAYLOAD>   Payload personnalisé (répétable)
+Vulnérabilités (mode rapide par défaut):
+  -t, --test <liste>        sqli,xss,redirect,lfi,ssrf [défaut: toutes]
+                            SQLi fin : error,boolean,time,union
+      --full                Scan complet (plus de payloads + time-based)
+      --waf                 Payloads bypass WAF (SQLi)
+      --payload <PAYLOAD>     Payload SQLi personnalisé (répétable)
 
 Timing:
-      --time-delay <sec>    Délai time-based [défaut: 5]
+      --time-delay <sec>    Délai time-based [défaut: 3]
       --time-threshold <ms> Seuil détection time-based
-      --rate-limit <ms>     Délai entre requêtes [défaut: 200]
+      --rate-limit <ms>     Délai entre requêtes [défaut: 100]
       --timeout <sec>       Timeout HTTP [défaut: 15]
-      --threads <n>         Goroutines parallèles [défaut: 5]
+      --threads <n>         Goroutines parallèles [défaut: 8]
 
 Affichage:
   -v, --verbose             Afficher chaque test
@@ -379,9 +387,15 @@ Affichage:
 
 Exemples:
   sqli-hunter -u "https://target.com/page?id=1"
-  sqli-hunter -u "https://target.com/login" -m POST -d "user=admin&pass=test" -t error,boolean
-  sqli-hunter -u "https://target.com/api" --json '{"id":1}' -t time --time-delay 3 --waf
-  sqli-hunter -u "https://target.com/search?q=test" -p "q=test" -H "Authorization: Bearer TOKEN" -v
+  sqli-hunter -u "https://target.com/search?q=test" -t sqli,xss
+  sqli-hunter -u "https://target.com/redirect?url=/" -t redirect
+  sqli-hunter -u "https://target.com/file?path=index" -t lfi,ssrf --full -v
+
+Mode rapide (défaut):
+  - SQLi error + union + boolean (pas de time-based)
+  - XSS, Open Redirect, LFI, SSRF
+  - Payloads les plus efficaces uniquement
+  - Arrêt anticipé par catégorie si vuln confirmée
 
 ⚠️  Utilisez uniquement sur des cibles autorisées (bug bounty, pentest contractuel).
 `)

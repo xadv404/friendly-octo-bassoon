@@ -1,13 +1,46 @@
 package models
 
-// InjectionType représente une technique de détection SQLi.
-type InjectionType string
+// VulnType représente le type de vulnérabilité testée.
+type VulnType string
 
 const (
-	ErrorBased   InjectionType = "error_based"
-	BooleanBlind InjectionType = "boolean_blind"
-	TimeBlind    InjectionType = "time_blind"
-	UnionBased   InjectionType = "union_based"
+	SQLiError      VulnType = "sqli_error"
+	SQLiBoolean    VulnType = "sqli_boolean"
+	SQLiTime       VulnType = "sqli_time"
+	SQLiUnion      VulnType = "sqli_union"
+	XSS            VulnType = "xss"
+	OpenRedirect   VulnType = "open_redirect"
+	LFI            VulnType = "lfi"
+	SSRF           VulnType = "ssrf"
+)
+
+// InjectionType est un alias rétrocompatible.
+type InjectionType = VulnType
+
+const (
+	ErrorBased   = SQLiError
+	BooleanBlind = SQLiBoolean
+	TimeBlind    = SQLiTime
+	UnionBased   = SQLiUnion
+)
+
+// VulnCategory regroupe les tests par famille.
+type VulnCategory string
+
+const (
+	CategorySQLi     VulnCategory = "sqli"
+	CategoryXSS      VulnCategory = "xss"
+	CategoryRedirect VulnCategory = "redirect"
+	CategoryLFI      VulnCategory = "lfi"
+	CategorySSRF     VulnCategory = "ssrf"
+)
+
+// ScanMode définit la profondeur du scan.
+type ScanMode string
+
+const (
+	ScanFast ScanMode = "fast"
+	ScanFull ScanMode = "full"
 )
 
 // Confidence indique le niveau de certitude d'une détection.
@@ -36,7 +69,7 @@ type Finding struct {
 	URL            string
 	Parameter      string
 	Payload        string
-	InjectionType  InjectionType
+	VulnType       VulnType
 	Confidence     Confidence
 	Evidence       string
 	DBMS           string
@@ -44,9 +77,14 @@ type Finding struct {
 	StatusCode     int
 }
 
+// InjectionType field alias for backward compat in output
+func (f Finding) InjectionType() VulnType { return f.VulnType }
+
 // ScanOptions configure le comportement du scanner.
 type ScanOptions struct {
-	Techniques      []InjectionType
+	Categories      []VulnCategory
+	Techniques      []VulnType // filtre fin SQLi si categories contient sqli
+	Mode            ScanMode
 	IncludeWAF      bool
 	CustomPayloads  []string
 	TimeDelaySec    int
@@ -55,13 +93,24 @@ type ScanOptions struct {
 	TimeoutSec      int
 	Threads         int
 	Verbose         bool
+	EarlyExit       bool
 }
 
 // ScanResult agrège les résultats d'un scan.
 type ScanResult struct {
-	Target          ScanTarget
-	Findings        []Finding
-	TestedParams    int
-	TestedPayloads  int
-	Errors          []string
+	Target         ScanTarget
+	Findings       []Finding
+	TestedParams   int
+	TestedPayloads int
+	Errors         []string
+}
+
+// TestJob décrit un test unitaire à exécuter.
+type TestJob struct {
+	Param      string
+	VulnType   VulnType
+	Category   VulnCategory
+	Payload    string
+	PayloadB   string // pour boolean blind (payload faux)
+	Priority   int
 }

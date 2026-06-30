@@ -12,25 +12,27 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/payloads"
 )
 
-// Scanner orchestre les tests SQL injection.
+// Scanner orchestre les tests de vulnérabilités.
 type Scanner struct {
-	httpClient *client.HTTPClient
-	opts       models.ScanOptions
-	onFinding  func(models.Finding)
-	onProgress func(string)
+	httpClient  *client.HTTPClient
+	noRedirect  *client.HTTPClient
+	opts        models.ScanOptions
+	onFinding   func(models.Finding)
+	onProgress  func(string)
 }
 
 // New crée un scanner.
 func New(httpClient *client.HTTPClient, opts models.ScanOptions, onFinding func(models.Finding), onProgress func(string)) *Scanner {
 	return &Scanner{
 		httpClient: httpClient,
+		noRedirect: httpClient.WithoutRedirects(),
 		opts:       opts,
 		onFinding:  onFinding,
 		onProgress: onProgress,
 	}
 }
 
-// Scan lance le scan complet sur la cible.
+// Scan lance le scan sur la cible.
 func (s *Scanner) Scan(ctx context.Context, target models.ScanTarget) models.ScanResult {
 	result := models.ScanResult{Target: target}
 
@@ -39,113 +41,75 @@ func (s *Scanner) Scan(ctx context.Context, target models.ScanTarget) models.Sca
 		result.Errors = append(result.Errors, "aucun paramètre à tester")
 		return result
 	}
-
 	result.TestedParams = len(paramNames)
 
-	// Baseline pour comparaison boolean/union
-	baseline := s.getBaseline(ctx, target, paramNames[0])
-	if baseline.err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("baseline: %v", baseline.err))
-	}
-
-	techniques := s.opts.Techniques
-	if len(techniques) == 0 {
-		techniques = payloads.AllTechniques()
-	}
-
-	payloadSets := payloads.GetPayloads(techniques, s.opts.IncludeWAF, s.opts.CustomPayloads)
-	booleanPairs := payloads.GetBooleanPairs()
-	timePayloads := payloads.FormatTimePayloads(s.opts.TimeDelaySec)
+	jobs := payloads.BuildJobs(s.opts)
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, max(1, s.opts.Threads))
 
 	for _, param := range paramNames {
-		for technique, plist := range payloadSets {
-			switch technique {
-			case models.BooleanBlind:
-				for _, pair := range booleanPairs {
-					if ctx.Err() != nil {
-						break
-					}
-					wg.Add(1)
-					sem <- struct{}{}
-					go func(p string, bp payloads.BooleanPair) {
-						defer wg.Done()
-						defer func() { <-sem }()
-						s.rateLimit()
-						finding, tested := s.testBoolean(ctx, target, p, bp, baseline)
-						mu.Lock()
-						result.TestedPayloads += tested
-						if finding != nil {
-							result.Findings = append(result.Findings, *finding)
-							if s.onFinding != nil {
-								s.onFinding(*finding)
-							}
-						}
-						mu.Unlock()
-					}(param, pair)
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(p string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			baseline := s.getBaseline(ctx, target, p)
+			foundCategories := make(map[models.VulnCategory]bool)
+
+			for _, job := range jobs {
+				if ctx.Err() != nil {
+					return
 				}
-			case models.TimeBlind:
-				for _, payload := range timePayloads {
-					if ctx.Err() != nil {
-						break
-					}
-					wg.Add(1)
-					sem <- struct{}{}
-					go func(p, pl string) {
-						defer wg.Done()
-						defer func() { <-sem }()
-						s.rateLimit()
-						finding, tested := s.testTime(ctx, target, p, pl, baseline)
-						mu.Lock()
-						result.TestedPayloads += tested
-						if finding != nil {
-							result.Findings = append(result.Findings, *finding)
-							if s.onFinding != nil {
-								s.onFinding(*finding)
-							}
-						}
-						mu.Unlock()
-					}(param, payload)
+				if s.opts.EarlyExit && foundCategories[job.Category] {
+					continue
 				}
-			default:
-				for _, payload := range plist {
-					if ctx.Err() != nil {
-						break
+
+				s.rateLimit()
+				finding, tested := s.runJob(ctx, target, p, job, baseline)
+				mu.Lock()
+				result.TestedPayloads += tested
+				if finding != nil {
+					result.Findings = append(result.Findings, *finding)
+					if s.onFinding != nil {
+						s.onFinding(*finding)
 					}
-					wg.Add(1)
-					sem <- struct{}{}
-					go func(p, pl string, tech models.InjectionType) {
-						defer wg.Done()
-						defer func() { <-sem }()
-						s.rateLimit()
-						var finding *models.Finding
-						var tested int
-						switch tech {
-						case models.ErrorBased:
-							finding, tested = s.testError(ctx, target, p, pl)
-						case models.UnionBased:
-							finding, tested = s.testUnion(ctx, target, p, pl, baseline)
-						}
-						mu.Lock()
-						result.TestedPayloads += tested
-						if finding != nil {
-							result.Findings = append(result.Findings, *finding)
-							if s.onFinding != nil {
-								s.onFinding(*finding)
-							}
-						}
-						mu.Unlock()
-					}(param, payload, technique)
+					if s.opts.EarlyExit && (finding.Confidence == models.Confirmed || finding.Confidence == models.High) {
+						foundCategories[job.Category] = true
+					}
 				}
+				mu.Unlock()
 			}
-		}
+		}(param)
 	}
 
 	wg.Wait()
 	return result
+}
+
+func (s *Scanner) runJob(ctx context.Context, target models.ScanTarget, param string, job models.TestJob, baseline baselineResp) (*models.Finding, int) {
+	switch job.VulnType {
+	case models.SQLiError:
+		return s.testError(ctx, target, param, job.Payload)
+	case models.SQLiUnion:
+		return s.testUnion(ctx, target, param, job.Payload, baseline)
+	case models.SQLiBoolean:
+		return s.testBoolean(ctx, target, param, job.Payload, job.PayloadB, baseline)
+	case models.SQLiTime:
+		return s.testTime(ctx, target, param, job.Payload, baseline)
+	case models.XSS:
+		return s.testXSS(ctx, target, param, job.Payload)
+	case models.OpenRedirect:
+		return s.testRedirect(ctx, target, param, job.Payload)
+	case models.LFI:
+		return s.testLFI(ctx, target, param, job.Payload)
+	case models.SSRF:
+		return s.testSSRF(ctx, target, param, job.Payload)
+	default:
+		return nil, 0
+	}
 }
 
 type baselineResp struct {
@@ -169,87 +133,63 @@ func (s *Scanner) getBaseline(ctx context.Context, target models.ScanTarget, par
 }
 
 func (s *Scanner) testError(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
-	s.progress(fmt.Sprintf("[%s] error-based → %s", param, truncate(payload, 50)))
-
+	s.progress(fmt.Sprintf("[%s] sqli:error → %s", param, truncate(payload, 50)))
 	resp, err := s.httpClient.Send(ctx, target, param, payload)
 	if err != nil {
 		return nil, 1
 	}
-
 	sqlErr := detector.DetectSQLError(resp.Body)
 	if !sqlErr.Found {
 		return nil, 1
 	}
-
 	confidence := models.High
 	if sqlErr.DBMS != "generic" {
 		confidence = models.Confirmed
 	}
-
 	return &models.Finding{
-		URL:            resp.URL,
-		Parameter:      param,
-		Payload:        payload,
-		InjectionType:  models.ErrorBased,
-		Confidence:     confidence,
-		Evidence:       sqlErr.Snippet,
-		DBMS:           sqlErr.DBMS,
-		ResponseTimeMs: float64(resp.Duration.Milliseconds()),
-		StatusCode:     resp.StatusCode,
+		URL: resp.URL, Parameter: param, Payload: payload,
+		VulnType: models.SQLiError, Confidence: confidence,
+		Evidence: sqlErr.Snippet, DBMS: sqlErr.DBMS,
+		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 	}, 1
 }
 
 func (s *Scanner) testUnion(ctx context.Context, target models.ScanTarget, param, payload string, baseline baselineResp) (*models.Finding, int) {
-	s.progress(fmt.Sprintf("[%s] union-based → %s", param, truncate(payload, 50)))
-
+	s.progress(fmt.Sprintf("[%s] sqli:union → %s", param, truncate(payload, 50)))
 	resp, err := s.httpClient.Send(ctx, target, param, payload)
 	if err != nil {
 		return nil, 1
 	}
-
 	sqlErr := detector.DetectSQLError(resp.Body)
 	if sqlErr.Found {
 		return &models.Finding{
-			URL:            resp.URL,
-			Parameter:      param,
-			Payload:        payload,
-			InjectionType:  models.UnionBased,
-			Confidence:     models.High,
-			Evidence:       "erreur SQL lors du test UNION: " + sqlErr.Snippet,
-			DBMS:           sqlErr.DBMS,
-			ResponseTimeMs: float64(resp.Duration.Milliseconds()),
-			StatusCode:     resp.StatusCode,
+			URL: resp.URL, Parameter: param, Payload: payload,
+			VulnType: models.SQLiUnion, Confidence: models.High,
+			Evidence: "erreur SQL UNION: " + sqlErr.Snippet, DBMS: sqlErr.DBMS,
+			ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 		}, 1
 	}
-
 	if baseline.err == nil && detector.DetectUnionSuccess(resp.Body, baseline.body) {
 		return &models.Finding{
-			URL:            resp.URL,
-			Parameter:      param,
-			Payload:        payload,
-			InjectionType:  models.UnionBased,
-			Confidence:     models.Medium,
-			Evidence:       "données DBMS détectées dans la réponse UNION",
-			ResponseTimeMs: float64(resp.Duration.Milliseconds()),
-			StatusCode:     resp.StatusCode,
+			URL: resp.URL, Parameter: param, Payload: payload,
+			VulnType: models.SQLiUnion, Confidence: models.Medium,
+			Evidence: "données DBMS dans réponse UNION",
+			ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 		}, 1
 	}
-
 	return nil, 1
 }
 
-func (s *Scanner) testBoolean(ctx context.Context, target models.ScanTarget, param string, pair payloads.BooleanPair, baseline baselineResp) (*models.Finding, int) {
-	s.progress(fmt.Sprintf("[%s] boolean-blind → %s / %s", param, truncate(pair.True, 25), truncate(pair.False, 25)))
-
-	trueResp, errT := s.httpClient.Send(ctx, target, param, pair.True)
+func (s *Scanner) testBoolean(ctx context.Context, target models.ScanTarget, param, trueP, falseP string, baseline baselineResp) (*models.Finding, int) {
+	s.progress(fmt.Sprintf("[%s] sqli:boolean → %s", param, truncate(trueP, 30)))
+	trueResp, errT := s.httpClient.Send(ctx, target, param, trueP)
 	if errT != nil {
 		return nil, 2
 	}
-	falseResp, errF := s.httpClient.Send(ctx, target, param, pair.False)
+	falseResp, errF := s.httpClient.Send(ctx, target, param, falseP)
 	if errF != nil {
 		return nil, 2
 	}
-
 	differs, evidence := detector.ResponsesDiffer(
 		trueResp.Body, falseResp.Body, baseline.body,
 		trueResp.StatusCode, falseResp.StatusCode, baseline.code,
@@ -257,38 +197,28 @@ func (s *Scanner) testBoolean(ctx context.Context, target models.ScanTarget, par
 	if !differs {
 		return nil, 2
 	}
-
 	return &models.Finding{
-		URL:            trueResp.URL,
-		Parameter:      param,
-		Payload:        pair.True + " | " + pair.False,
-		InjectionType:  models.BooleanBlind,
-		Confidence:     models.Medium,
-		Evidence:       evidence,
-		ResponseTimeMs: float64(trueResp.Duration.Milliseconds()),
-		StatusCode:     trueResp.StatusCode,
+		URL: trueResp.URL, Parameter: param, Payload: trueP + " | " + falseP,
+		VulnType: models.SQLiBoolean, Confidence: models.Medium, Evidence: evidence,
+		ResponseTimeMs: float64(trueResp.Duration.Milliseconds()), StatusCode: trueResp.StatusCode,
 	}, 2
 }
 
 func (s *Scanner) testTime(ctx context.Context, target models.ScanTarget, param, payload string, baseline baselineResp) (*models.Finding, int) {
-	s.progress(fmt.Sprintf("[%s] time-blind → %s", param, truncate(payload, 50)))
-
+	s.progress(fmt.Sprintf("[%s] sqli:time → %s", param, truncate(payload, 50)))
 	threshold := s.opts.TimeThresholdMs
 	if threshold == 0 {
-		threshold = float64(s.opts.TimeDelaySec)*1000*0.8
+		threshold = float64(s.opts.TimeDelaySec) * 1000 * 0.8
 	}
-
 	resp, err := s.httpClient.Send(ctx, target, param, payload)
 	if err != nil {
 		return nil, 1
 	}
-
 	ms := float64(resp.Duration.Milliseconds())
 	baseMs := baseline.ms
 	if baseMs == 0 {
 		baseMs = 500
 	}
-
 	delayMs := float64(s.opts.TimeDelaySec) * 1000
 	if ms >= delayMs*0.75 && ms > baseMs+threshold {
 		confidence := models.Medium
@@ -296,24 +226,90 @@ func (s *Scanner) testTime(ctx context.Context, target models.ScanTarget, param,
 			confidence = models.High
 		}
 		return &models.Finding{
-			URL:            resp.URL,
-			Parameter:      param,
-			Payload:        payload,
-			InjectionType:  models.TimeBlind,
-			Confidence:     confidence,
-			Evidence:       fmt.Sprintf("délai %.0fms (baseline: %.0fms, attendu: ~%.0fms)", ms, baseMs, delayMs),
-			ResponseTimeMs: ms,
-			StatusCode:     resp.StatusCode,
+			URL: resp.URL, Parameter: param, Payload: payload,
+			VulnType: models.SQLiTime, Confidence: confidence,
+			Evidence: fmt.Sprintf("délai %.0fms (baseline: %.0fms)", ms, baseMs),
+			ResponseTimeMs: ms, StatusCode: resp.StatusCode,
 		}, 1
 	}
-
 	return nil, 1
+}
+
+func (s *Scanner) testXSS(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
+	s.progress(fmt.Sprintf("[%s] xss → %s", param, truncate(payload, 50)))
+	resp, err := s.httpClient.Send(ctx, target, param, payload)
+	if err != nil {
+		return nil, 1
+	}
+	xss := detector.DetectXSS(resp.Body, payload)
+	if !xss.Found {
+		return nil, 1
+	}
+	return &models.Finding{
+		URL: resp.URL, Parameter: param, Payload: payload,
+		VulnType: models.XSS, Confidence: models.High,
+		Evidence: xss.Context + ": " + xss.Snippet,
+		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
+	}, 1
+}
+
+func (s *Scanner) testRedirect(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
+	s.progress(fmt.Sprintf("[%s] redirect → %s", param, truncate(payload, 50)))
+	resp, err := s.noRedirect.Send(ctx, target, param, payload)
+	if err != nil {
+		return nil, 1
+	}
+	redir := detector.DetectOpenRedirect(resp.StatusCode, resp.Headers, resp.Body, payload)
+	if !redir.Found {
+		return nil, 1
+	}
+	return &models.Finding{
+		URL: resp.URL, Parameter: param, Payload: payload,
+		VulnType: models.OpenRedirect, Confidence: models.High,
+		Evidence: redir.Evidence,
+		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
+	}, 1
+}
+
+func (s *Scanner) testLFI(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
+	s.progress(fmt.Sprintf("[%s] lfi → %s", param, truncate(payload, 50)))
+	resp, err := s.httpClient.Send(ctx, target, param, payload)
+	if err != nil {
+		return nil, 1
+	}
+	lfi := detector.DetectLFI(resp.Body)
+	if !lfi.Found {
+		return nil, 1
+	}
+	return &models.Finding{
+		URL: resp.URL, Parameter: param, Payload: payload,
+		VulnType: models.LFI, Confidence: models.Confirmed,
+		Evidence: lfi.Evidence + ": " + lfi.Snippet,
+		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
+	}, 1
+}
+
+func (s *Scanner) testSSRF(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
+	s.progress(fmt.Sprintf("[%s] ssrf → %s", param, truncate(payload, 50)))
+	resp, err := s.httpClient.Send(ctx, target, param, payload)
+	if err != nil {
+		return nil, 1
+	}
+	ssrf := detector.DetectSSRF(resp.Body, payload)
+	if !ssrf.Found {
+		return nil, 1
+	}
+	return &models.Finding{
+		URL: resp.URL, Parameter: param, Payload: payload,
+		VulnType: models.SSRF, Confidence: models.Medium,
+		Evidence: ssrf.Evidence + ": " + ssrf.Snippet,
+		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
+	}, 1
 }
 
 func (s *Scanner) collectParams(target models.ScanTarget) []string {
 	seen := make(map[string]bool)
 	var names []string
-
 	for k := range target.Params {
 		if !seen[k] {
 			seen[k] = true
@@ -334,7 +330,6 @@ func (s *Scanner) collectParams(target models.ScanTarget) []string {
 			}
 		}
 	}
-
 	return names
 }
 
@@ -406,7 +401,7 @@ func containsDot(s string) bool {
 
 func splitFirst(s, sep string) [2]string {
 	for i := 0; i < len(s); i++ {
-		if s[i] == sep[0] && i+len(sep) <= len(s) {
+		if s[i] == sep[0] {
 			return [2]string{s[:i], s[i+1:]}
 		}
 	}

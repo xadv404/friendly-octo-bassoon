@@ -18,32 +18,52 @@ import (
 type Response struct {
 	StatusCode int
 	Body       string
+	Headers    http.Header
 	Duration   time.Duration
 	URL        string
 }
 
 // HTTPClient envoie des requêtes HTTP configurables.
 type HTTPClient struct {
-	client  *http.Client
-	headers map[string]string
-	cookies map[string]string
+	client          *http.Client
+	headers         map[string]string
+	cookies         map[string]string
+	followRedirects bool
 }
 
 // New crée un client HTTP.
 func New(timeoutSec int, headers, cookies map[string]string) *HTTPClient {
-	return &HTTPClient{
-		client: &http.Client{
-			Timeout: time.Duration(timeoutSec) * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				if len(via) >= 10 {
-					return fmt.Errorf("trop de redirections")
-				}
-				return nil
-			},
-		},
-		headers: headers,
-		cookies: cookies,
+	c := &HTTPClient{
+		headers:         headers,
+		cookies:         cookies,
+		followRedirects: true,
 	}
+	c.client = &http.Client{
+		Timeout: time.Duration(timeoutSec) * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if !c.followRedirects {
+				return http.ErrUseLastResponse
+			}
+			if len(via) >= 10 {
+				return fmt.Errorf("trop de redirections")
+			}
+			return nil
+		},
+	}
+	return c
+}
+
+// WithoutRedirects retourne une copie qui ne suit pas les redirections.
+func (c *HTTPClient) WithoutRedirects() *HTTPClient {
+	clone := *c
+	clone.followRedirects = false
+	clone.client = &http.Client{
+		Timeout: c.client.Timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	return &clone
 }
 
 // Send envoie une requête avec un paramètre injecté.
@@ -95,6 +115,7 @@ func (c *HTTPClient) Send(ctx context.Context, target models.ScanTarget, paramNa
 	return Response{
 		StatusCode: resp.StatusCode,
 		Body:       string(raw),
+		Headers:    resp.Header.Clone(),
 		Duration:   time.Since(start),
 		URL:        reqURL,
 	}, nil
