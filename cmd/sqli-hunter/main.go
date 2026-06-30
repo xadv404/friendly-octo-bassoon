@@ -18,7 +18,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
 )
 
-const version = "1.6.0"
+const version = "1.7.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -49,34 +49,53 @@ func main() {
 	printer := output.New(cfg.noColor, cfg.verbose)
 	printer.Header(version)
 
-	targetList, skipped, err := resolveTargets(cfg)
-	if err != nil {
-		printer.Error(err.Error())
-		os.Exit(1)
-	}
-	if len(skipped) > 0 {
-		printer.Warning(fmt.Sprintf("%d URL(s) ignorée(s) (pas de paramètres)", len(skipped)))
-	}
-	if len(targetList) == 0 {
-		printer.Error("aucune cible valide")
-		os.Exit(1)
-	}
-
 	opts := buildOptions(cfg)
+	listDefaults := targets.Defaults{
+		Method:  cfg.method,
+		Headers: cfg.headers,
+		Cookies: cfg.cookies,
+		Params:  cfg.params,
+		Data:    cfg.data,
+		JSON:    cfg.jsonBody,
+	}
 
-	if len(targetList) == 1 {
-		printer.KV("target", truncate(targetList[0].URL, 70))
-	} else {
-		src := cfg.listFile
-		if src == "" {
-			src = "stdin"
+	runCfg := runner.Config{
+		Opts:           opts,
+		OutputDir:      cfg.outputDir,
+		UrlConcurrency: cfg.urlConcurrency,
+		ProgressEvery:  cfg.progressEvery,
+		ListDefaults:   listDefaults,
+	}
+
+	if cfg.listFile != "" {
+		count, err := urllist.Count(cfg.listFile)
+		if err != nil {
+			printer.Error(err.Error())
+			os.Exit(1)
 		}
-		printer.KV("targets", fmt.Sprintf("%d urls (%s)", len(targetList), src))
+		if count == 0 {
+			printer.Error("liste vide")
+			os.Exit(1)
+		}
+		applyMassDefaults(&runCfg, count, cfg.massMode)
+		runCfg.ListFile = cfg.listFile
+		runCfg.UrlCount = count
+
+		printer.KV("mode", "mass scan (streaming)")
+		printer.KV("targets", fmt.Sprintf("%d urls (%s)", count, cfg.listFile))
+	} else {
+		target, err := targets.FromURL(cfg.targetURL, listDefaults)
+		if err != nil {
+			printer.Error(err.Error())
+			os.Exit(1)
+		}
+		runCfg.Targets = []models.ScanTarget{target}
+		printer.KV("target", truncate(target.URL, 70))
 	}
 
 	printer.ScanConfig(opts.Mode, opts.Categories, opts.IncludeWAF)
 	printer.KV("threads", fmt.Sprintf("scan %d · extract %d · urls %d",
-		opts.Threads, opts.ExtractThreads, cfg.urlConcurrency))
+		opts.Threads, opts.ExtractThreads, runCfg.UrlConcurrency))
 	printer.KV("rate", fmt.Sprintf("%d ms", opts.RateLimitMs))
 	printer.KV("output", cfg.outputDir+"/DOMAIN/DOMAIN.{json,sql}")
 	printer.Rule()
@@ -94,15 +113,25 @@ func main() {
 	}()
 
 	r := &runner.Runner{Version: version, Printer: printer}
-	_, err = r.Run(ctx, runner.Config{
-		Targets:        targetList,
-		Opts:           opts,
-		OutputDir:      cfg.outputDir,
-		UrlConcurrency: cfg.urlConcurrency,
-	})
-	if err != nil {
+	if _, err := r.Run(ctx, runCfg); err != nil {
 		printer.Error(err.Error())
 		os.Exit(1)
+	}
+}
+
+func applyMassDefaults(cfg *runner.Config, urlCount int, forceMass bool) {
+	mass := forceMass || urlCount >= 500
+	if !mass {
+		return
+	}
+	if cfg.UrlConcurrency <= 4 {
+		cfg.UrlConcurrency = 32
+	}
+	if cfg.ProgressEvery <= 0 {
+		cfg.ProgressEvery = 100
+	}
+	if urlCount >= 10000 && cfg.UrlConcurrency < 64 {
+		cfg.UrlConcurrency = 64
 	}
 }
 
@@ -128,46 +157,12 @@ type config struct {
 	threads        int
 	extractThreads int
 	urlConcurrency int
+	progressEvery  int
+	massMode       bool
 	verbose        bool
 	noColor        bool
 	showHelp       bool
 	showVersion    bool
-}
-
-func resolveTargets(cfg config) ([]models.ScanTarget, []string, error) {
-	def := targets.Defaults{
-		Method:  cfg.method,
-		Headers: cfg.headers,
-		Cookies: cfg.cookies,
-		Params:  cfg.params,
-		Data:    cfg.data,
-		JSON:    cfg.jsonBody,
-	}
-
-	var rawURLs []string
-	if cfg.listFile != "" {
-		urls, err := urllist.Load(cfg.listFile)
-		if err != nil {
-			return nil, nil, err
-		}
-		rawURLs = urls
-	} else {
-		rawURLs = []string{cfg.targetURL}
-	}
-
-	var (
-		valid   []models.ScanTarget
-		skipped []string
-	)
-	for _, raw := range rawURLs {
-		t, err := targets.FromURL(raw, def)
-		if err != nil {
-			skipped = append(skipped, raw)
-			continue
-		}
-		valid = append(valid, t)
-	}
-	return valid, skipped, nil
 }
 
 func parseArgs(args []string) (config, error) {
@@ -360,6 +355,18 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("--url-threads doit être >= 1")
 			}
 			cfg.urlConcurrency = v
+		case arg == "--progress-every":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--progress-every nécessite une valeur")
+			}
+			v, err := strconv.Atoi(args[i])
+			if err != nil || v < 1 {
+				return cfg, fmt.Errorf("--progress-every doit être >= 1")
+			}
+			cfg.progressEvery = v
+		case arg == "--mass":
+			cfg.massMode = true
 		case arg == "-v" || arg == "--verbose":
 			cfg.verbose = true
 		case arg == "--no-color":
@@ -445,7 +452,9 @@ Injections:
 Performance:
       --threads <n>           Workers scan par URL [défaut: 8]
       --extract-threads <n>     Workers extraction [défaut: 2]
-      --url-threads <n>         URLs scannées en parallèle [défaut: 4]
+      --url-threads <n>         URLs en parallèle [défaut: 4, auto 32+ en mass]
+      --progress-every <n>      Progression tous les N URLs [défaut: 100]
+      --mass                    Force mode massif (streaming, dès 500 URLs auto)
       --rate-limit <ms>       Délai entre requêtes [défaut: 100]
       --timeout <sec>         Timeout HTTP [défaut: 15]
 
@@ -457,8 +466,8 @@ Affichage:
 
 Exemples:
   sqli-hunter -u "https://target.com/page?id=1"
-  sqli-hunter -l urls.txt --url-threads 8
-  sqli-hunter -l scope.txt -o results -t sqli
+  sqli-hunter -l urls.txt --url-threads 64
+  sqli-hunter -l scope_50k.txt --mass --progress-every 500
 
 `)
 }

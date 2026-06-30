@@ -12,14 +12,19 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
 	"github.com/sqli-hunter/sqli-hunter/internal/results"
 	"github.com/sqli-hunter/sqli-hunter/internal/scanner"
+	"github.com/sqli-hunter/sqli-hunter/internal/targets"
 )
 
 // Config configure une exécution.
 type Config struct {
-	Targets        []models.ScanTarget
+	Targets        []models.ScanTarget // mode -u (petite liste en mémoire)
+	ListFile       string              // mode -l (streaming massif)
+	ListDefaults   targets.Defaults
 	Opts           models.ScanOptions
-	OutputDir      string // base dir, défaut: results/
+	OutputDir      string
 	UrlConcurrency int
+	UrlCount       int // total URLs (pour progression)
+	ProgressEvery  int // affichage progression tous les N URLs
 }
 
 // TargetResult résultat pour une cible.
@@ -35,14 +40,14 @@ type TargetResult struct {
 
 // Report rapport global.
 type Report struct {
-	Version     string         `json:"version"`
-	Scanned     int            `json:"scanned"`
-	Vulnerable  int            `json:"vulnerable"`
-	Findings    int            `json:"findings"`
-	Extractions int            `json:"extractions"`
-	DurationMs  int64          `json:"duration_ms"`
-	Results     []TargetResult `json:"results"`
-	OutputFiles []string       `json:"output_files,omitempty"`
+	Version     string   `json:"version"`
+	Scanned     int      `json:"scanned"`
+	Vulnerable  int      `json:"vulnerable"`
+	Findings    int      `json:"findings"`
+	Extractions int      `json:"extractions"`
+	DurationMs  int64    `json:"duration_ms"`
+	Results     []TargetResult `json:"results,omitempty"`
+	OutputFiles []string `json:"output_files,omitempty"`
 }
 
 // Runner orchestre scan + extraction.
@@ -51,8 +56,16 @@ type Runner struct {
 	Printer *output.Printer
 }
 
-// Run exécute le scan sur toutes les cibles.
+// Run exécute le scan (-l streaming ou -u batch).
 func (r *Runner) Run(ctx context.Context, cfg Config) (Report, error) {
+	if cfg.ListFile != "" {
+		return r.runMass(ctx, cfg)
+	}
+	return r.runBatch(ctx, cfg)
+}
+
+// runBatch scanne une petite liste en mémoire (mode -u).
+func (r *Runner) runBatch(ctx context.Context, cfg Config) (Report, error) {
 	start := time.Now()
 	report := Report{Version: r.Version}
 

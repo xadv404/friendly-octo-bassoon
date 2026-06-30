@@ -26,9 +26,11 @@ const (
 
 // Printer affiche la sortie CLI.
 type Printer struct {
-	noColor bool
-	verbose bool
-	mu      sync.Mutex
+	noColor       bool
+	verbose       bool
+	massMode      bool
+	progressEvery int
+	mu            sync.Mutex
 }
 
 // New crée un printer.
@@ -103,6 +105,59 @@ func (p *Printer) Verbose(msg string) {
 	fmt.Printf("  %s %s\n", p.c(dim, "~"), p.c(gray, msg))
 }
 
+// SetMassMode active l'affichage optimisé pour scan massif.
+func (p *Printer) SetMassMode(on bool, progressEvery int) {
+	p.massMode = on
+	if progressEvery > 0 {
+		p.progressEvery = progressEvery
+	} else {
+		p.progressEvery = 100
+	}
+}
+
+// MassProgress affiche la progression globale (tous les N URLs).
+func (p *Printer) MassProgress(done, total, vulns, skipped int, rate float64, elapsed time.Duration) {
+	if done%p.progressEvery != 0 && done != total {
+		return
+	}
+	p.lock()
+	defer p.unlock()
+
+	pct := 0.0
+	if total > 0 {
+		pct = float64(done) / float64(total) * 100
+	}
+	eta := time.Duration(0)
+	if rate > 0 && done < total {
+		eta = time.Duration(float64(total-done)/rate) * time.Second
+	}
+
+	fmt.Printf("  %s %6d/%d (%.1f%%) · %s vuln · %s skip · %.0f url/s · ETA %s\n",
+		p.c(gray, "scan"),
+		done, total, pct,
+		p.c(red, fmt.Sprintf("%d", vulns)),
+		p.c(yellow, fmt.Sprintf("%d", skipped)),
+		rate,
+		formatDuration(eta),
+	)
+}
+
+// MassSummary résumé final scan massif.
+func (p *Printer) MassSummary(scanned, total, vulns, findings, skipped int, elapsed time.Duration) {
+	p.Rule()
+	p.lock()
+	defer p.unlock()
+	fmt.Printf("  %s %d/%d scanned", p.c(gray, "done"), scanned, total)
+	if vulns > 0 {
+		fmt.Printf(" · %s %d vulnerable", p.c(red, ""), vulns)
+	}
+	fmt.Printf(" · %d finding(s)", findings)
+	if skipped > 0 {
+		fmt.Printf(" · %s %d skipped", p.c(yellow, ""), skipped)
+	}
+	fmt.Printf(" · %s\n\n", formatDuration(elapsed))
+}
+
 // ScanConfig affiche la configuration du scan.
 func (p *Printer) ScanConfig(mode models.ScanMode, categories []models.VulnCategory, waf bool) {
 	modeLabel := "fast"
@@ -142,6 +197,16 @@ func (p *Printer) ScanProgress(index, total int, targetURL string, findings int,
 func (p *Printer) Finding(f models.Finding) {
 	p.lock()
 	defer p.unlock()
+
+	if p.massMode {
+		fmt.Printf("  %s %s %s  %s\n",
+			p.c(red+bold, "VULN"),
+			p.c(cyan, string(f.VulnType)),
+			p.c(white, f.Parameter),
+			p.c(gray, truncate(f.URL, 90)),
+		)
+		return
+	}
 
 	conf := confidenceStyle(p, f.Confidence)
 	fmt.Printf("\n  %s  %s  %s  %s\n",

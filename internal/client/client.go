@@ -38,8 +38,14 @@ func New(timeoutSec int, headers, cookies map[string]string) *HTTPClient {
 		cookies:         cookies,
 		followRedirects: true,
 	}
+	transport := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+	}
 	c.client = &http.Client{
-		Timeout: time.Duration(timeoutSec) * time.Second,
+		Timeout:   time.Duration(timeoutSec) * time.Second,
+		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if !c.followRedirects {
 				return http.ErrUseLastResponse
@@ -49,6 +55,17 @@ func New(timeoutSec int, headers, cookies map[string]string) *HTTPClient {
 			}
 			return nil
 		},
+	}
+	return c
+}
+
+// NewMass crée un client HTTP optimisé pour scan massif.
+func NewMass(timeoutSec int, headers, cookies map[string]string) *HTTPClient {
+	c := New(timeoutSec, headers, cookies)
+	if t, ok := c.client.Transport.(*http.Transport); ok {
+		t.MaxIdleConns = 500
+		t.MaxIdleConnsPerHost = 50
+		t.MaxConnsPerHost = 100
 	}
 	return c
 }

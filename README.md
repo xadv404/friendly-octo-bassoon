@@ -51,6 +51,28 @@ Dès qu'une vulnérabilité est détectée, l'outil lance automatiquement l'extr
 - Tables (`information_schema`, `sqlite_master`)
 - Dump NoSQL (collections MongoDB)
 
+## Scan massif (1k – 100k URLs)
+
+Le mode `-l` utilise le **streaming** : les URLs ne sont pas chargées en mémoire.
+
+```bash
+# 50 000 URLs — auto mass si ≥ 500 URLs
+sqli-hunter -l scope.txt --url-threads 64
+
+# 100k URLs — progression tous les 500
+sqli-hunter -l big_scope.txt --mass --url-threads 64 --progress-every 500
+```
+
+| Paramètre | Défaut | Mass auto (≥500 URLs) |
+|-----------|--------|------------------------|
+| `--url-threads` | 4 | **32** (64 si ≥10k) |
+| `--progress-every` | 100 | 100 |
+| Mémoire | streaming | écriture disque au fil de l'eau |
+
+- Résultats écrits **immédiatement** par domaine (`jsonl` → `json` final)
+- Affichage compact : progression + vulns uniquement
+- Pool HTTP optimisé (500 connexions idle)
+
 ## Sortie des résultats
 
 Par défaut, les rapports sont écrits dans `results/` :

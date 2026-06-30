@@ -27,7 +27,7 @@ func NewPool(ex *Extractor, workers int) *Pool {
 	}
 	return &Pool{
 		extractor: ex,
-		jobs:      make(chan extractJob, 128),
+		jobs:      make(chan extractJob, 4096),
 		workers:   workers,
 	}
 }
