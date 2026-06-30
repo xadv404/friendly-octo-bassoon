@@ -27,7 +27,7 @@ Payloads orientés **extraction de métadonnées DB** : version, schémas, table
 | Option | Description | Défaut |
 |--------|-------------|--------|
 | `-l, --list` | Fichier d'URLs | — |
-| `-o, --output` | Export JSON | — |
+| `-o, --output` | Répertoire de sortie | `results` |
 | `--url-threads` | URLs scannées en parallèle | 4 |
 | `--threads` | Workers scan par URL | 8 |
 | `--extract-threads` | Workers extraction | 2 |
@@ -51,12 +51,25 @@ Dès qu'une vulnérabilité est détectée, l'outil lance automatiquement l'extr
 - Tables (`information_schema`, `sqlite_master`)
 - Dump NoSQL (collections MongoDB)
 
-```bash
-# URL unique
-./sqli-hunter -u "https://target.com/page?id=1"
+## Sortie des résultats
 
-# Liste bulk + export
-./sqli-hunter -l scope.txt --url-threads 8 -o results.json -v
+Par défaut, les rapports sont écrits dans `results/` :
+
+```
+results/
+  target.com/
+    target.com.json    ← rapport complet (vulns + extractions)
+    target.com.sql     ← dump commenté des données extraites
+  api.shop.io/
+    api.shop.io.json
+    api.shop.io.sql
+```
+
+Les URLs d'un même domaine sont regroupées dans un seul rapport.
+
+```bash
+./sqli-hunter -l urls.txt                    # → results/
+./sqli-hunter -u "https://x.com/p?id=1" -o results
 ```
 
 ## Installation

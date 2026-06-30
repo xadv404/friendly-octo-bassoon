@@ -18,7 +18,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
 )
 
-const version = "1.5.0"
+const version = "1.6.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -78,9 +78,7 @@ func main() {
 	printer.KV("threads", fmt.Sprintf("scan %d · extract %d · urls %d",
 		opts.Threads, opts.ExtractThreads, cfg.urlConcurrency))
 	printer.KV("rate", fmt.Sprintf("%d ms", opts.RateLimitMs))
-	if cfg.outputFile != "" {
-		printer.KV("output", cfg.outputFile)
-	}
+	printer.KV("output", cfg.outputDir+"/DOMAIN/DOMAIN.{json,sql}")
 	printer.Rule()
 	fmt.Println()
 
@@ -99,7 +97,7 @@ func main() {
 	_, err = r.Run(ctx, runner.Config{
 		Targets:        targetList,
 		Opts:           opts,
-		OutputPath:     cfg.outputFile,
+		OutputDir:      cfg.outputDir,
 		UrlConcurrency: cfg.urlConcurrency,
 	})
 	if err != nil {
@@ -111,7 +109,7 @@ func main() {
 type config struct {
 	targetURL      string
 	listFile       string
-	outputFile     string
+	outputDir      string
 	method         string
 	params         map[string]string
 	data           map[string]string
@@ -181,6 +179,7 @@ func parseArgs(args []string) (config, error) {
 		extractThreads: 2,
 		urlConcurrency: 4,
 		rateLimit:      100,
+		outputDir:      "results",
 		params:         make(map[string]string),
 		data:           make(map[string]string),
 		headers:        make(map[string]string),
@@ -209,9 +208,9 @@ func parseArgs(args []string) (config, error) {
 		case arg == "-o" || arg == "--output":
 			i++
 			if i >= len(args) {
-				return cfg, fmt.Errorf("-o nécessite un fichier")
+				return cfg, fmt.Errorf("-o nécessite un répertoire")
 			}
-			cfg.outputFile = args[i]
+			cfg.outputDir = args[i]
 		case arg == "-m" || arg == "--method":
 			i++
 			if i >= len(args) {
@@ -425,7 +424,9 @@ Usage:
 Cible:
   -u, --url <URL>             URL unique avec paramètres
   -l, --list <fichier>        Fichier d'URLs (une par ligne, # commentaires)
-  -o, --output <fichier>      Export JSON des résultats
+  -o, --output <dir>          Répertoire de sortie [défaut: results]
+                              → results/SITE.COM/SITE.COM.json
+                              → results/SITE.COM/SITE.COM.sql
   -m, --method <METHOD>       GET ou POST [défaut: GET]
   -p, --param <nom=valeur>    Paramètre GET additionnel (mode -u)
   -d, --data <nom=valeur>     Paramètre POST (mode -u)
@@ -456,8 +457,8 @@ Affichage:
 
 Exemples:
   sqli-hunter -u "https://target.com/page?id=1"
-  sqli-hunter -l urls.txt --url-threads 8 -o results.json
-  sqli-hunter -l scope.txt -t sqli --rate-limit 50
+  sqli-hunter -l urls.txt --url-threads 8
+  sqli-hunter -l scope.txt -o results -t sqli
 
 `)
 }

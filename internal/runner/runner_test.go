@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -43,6 +42,7 @@ func TestRun_BulkURLs(t *testing.T) {
 			RateLimitMs: 0, EarlyExit: true,
 		},
 		UrlConcurrency: 2,
+		OutputDir:      t.TempDir(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -55,17 +55,17 @@ func TestRun_BulkURLs(t *testing.T) {
 	}
 }
 
-func TestRun_JSONOutput(t *testing.T) {
+func TestRun_SiteOutputFiles(t *testing.T) {
 	srv := benchserver.New()
 	defer srv.Close()
 
-	out := filepath.Join(t.TempDir(), "out.json")
+	outDir := t.TempDir()
 	printer := output.New(true, false)
 	r := &Runner{Version: "test", Printer: printer}
 
-	_, err := r.Run(context.Background(), Config{
+	report, err := r.Run(context.Background(), Config{
 		Targets:    []models.ScanTarget{benchTarget(srv, 0)},
-		OutputPath: out,
+		OutputDir:  outDir,
 		Opts: models.ScanOptions{
 			Mode: models.ScanFast, Categories: payloads.DefaultCategories(models.ScanFast),
 			TimeoutSec: 5, Threads: 4, RateLimitMs: 0, EarlyExit: true,
@@ -74,16 +74,17 @@ func TestRun_JSONOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(report.OutputFiles) != 2 {
+		t.Fatalf("expected 2 output files, got %d", len(report.OutputFiles))
+	}
 
-	data, err := os.ReadFile(out)
-	if err != nil {
-		t.Fatal(err)
+	domain := "127.0.0.1"
+	jsonPath := filepath.Join(outDir, domain, domain+".json")
+	sqlPath := filepath.Join(outDir, domain, domain+".sql")
+	if _, err := os.Stat(jsonPath); err != nil {
+		t.Fatalf("missing json: %v", err)
 	}
-	var report Report
-	if err := json.Unmarshal(data, &report); err != nil {
-		t.Fatal(err)
-	}
-	if report.Scanned != 1 {
-		t.Fatalf("json scanned %d", report.Scanned)
+	if _, err := os.Stat(sqlPath); err != nil {
+		t.Fatalf("missing sql: %v", err)
 	}
 }

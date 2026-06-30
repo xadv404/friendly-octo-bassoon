@@ -2,8 +2,6 @@ package runner
 
 import (
 	"context"
-	"encoding/json"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +10,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/extractor"
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
+	"github.com/sqli-hunter/sqli-hunter/internal/results"
 	"github.com/sqli-hunter/sqli-hunter/internal/scanner"
 )
 
@@ -19,7 +18,7 @@ import (
 type Config struct {
 	Targets        []models.ScanTarget
 	Opts           models.ScanOptions
-	OutputPath     string
+	OutputDir      string // base dir, défaut: results/
 	UrlConcurrency int
 }
 
@@ -43,6 +42,7 @@ type Report struct {
 	Extractions int            `json:"extractions"`
 	DurationMs  int64          `json:"duration_ms"`
 	Results     []TargetResult `json:"results"`
+	OutputFiles []string       `json:"output_files,omitempty"`
 }
 
 // Runner orchestre scan + extraction.
@@ -92,7 +92,7 @@ func (r *Runner) Run(ctx context.Context, cfg Config) (Report, error) {
 	pool := extractor.NewPool(ext, cfg.Opts.ExtractThreads)
 	pool.Start(ctx)
 
-	results := make([]TargetResult, len(cfg.Targets))
+	scanResults := make([]TargetResult, len(cfg.Targets))
 	sem := make(chan struct{}, urlConc)
 	var wg sync.WaitGroup
 
@@ -127,7 +127,7 @@ func (r *Runner) Run(ctx context.Context, cfg Config) (Report, error) {
 			if len(result.Errors) > 0 {
 				tr.Error = result.Errors[0]
 			}
-			results[idx] = tr
+			scanResults[idx] = tr
 
 			if bulk {
 				r.Printer.ScanProgress(idx+1, len(cfg.Targets), t.URL, len(tr.Findings), time.Since(tStart))
@@ -139,14 +139,14 @@ func (r *Runner) Run(ctx context.Context, cfg Config) (Report, error) {
 	pool.CloseAndWait()
 
 	extMu.Lock()
-	for i := range results {
-		results[i].Extractions = matchExtractions(allExtractions, results[i].URL, results[i].Findings)
+	for i := range scanResults {
+		scanResults[i].Extractions = matchExtractions(allExtractions, scanResults[i].URL, scanResults[i].Findings)
 	}
 	totalExtractions := len(allExtractions)
 	extMu.Unlock()
 
 	vulnerable, totalFindings := 0, 0
-	for _, tr := range results {
+	for _, tr := range scanResults {
 		if len(tr.Findings) > 0 {
 			vulnerable++
 			totalFindings += len(tr.Findings)
@@ -158,28 +158,50 @@ func (r *Runner) Run(ctx context.Context, cfg Config) (Report, error) {
 	report.Findings = totalFindings
 	report.Extractions = totalExtractions
 	report.DurationMs = time.Since(start).Milliseconds()
-	report.Results = results
+	report.Results = scanResults
 
 	if bulk {
 		r.Printer.Summary(report.Scanned, report.Vulnerable, report.Findings, report.Extractions, time.Since(start))
-	} else if len(results) == 1 {
+	} else if len(scanResults) == 1 {
 		r.Printer.SingleSummary(models.ScanResult{
 			Target:         cfg.Targets[0],
-			Findings:       results[0].Findings,
-			Extractions:    results[0].Extractions,
-			TestedParams:   results[0].TestedParams,
-			TestedPayloads: results[0].TestedPayloads,
+			Findings:       scanResults[0].Findings,
+			Extractions:    scanResults[0].Extractions,
+			TestedParams:   scanResults[0].TestedParams,
+			TestedPayloads: scanResults[0].TestedPayloads,
 		})
 	}
 
-	if cfg.OutputPath != "" {
-		if err := writeReport(cfg.OutputPath, report); err != nil {
-			return report, err
-		}
-		r.Printer.Success("résultats → " + cfg.OutputPath)
+	outputDir := cfg.OutputDir
+	if outputDir == "" {
+		outputDir = "results"
+	}
+	files, err := results.WriteSites(outputDir, r.Version, toExportResults(scanResults))
+	if err != nil {
+		return report, err
+	}
+	report.OutputFiles = files
+	for _, f := range files {
+		r.Printer.Success("→ " + f)
 	}
 
 	return report, nil
+}
+
+func toExportResults(in []TargetResult) []results.TargetResult {
+	out := make([]results.TargetResult, len(in))
+	for i, t := range in {
+		out[i] = results.TargetResult{
+			URL:            t.URL,
+			Findings:       t.Findings,
+			Extractions:    t.Extractions,
+			TestedParams:   t.TestedParams,
+			TestedPayloads: t.TestedPayloads,
+			DurationMs:     t.DurationMs,
+			Error:          t.Error,
+		}
+	}
+	return out
 }
 
 func matchExtractions(all []models.ExtractedData, targetURL string, findings []models.Finding) []models.ExtractedData {
@@ -200,17 +222,6 @@ func matchExtractions(all []models.ExtractedData, targetURL string, findings []m
 		}
 	}
 	return out
-}
-
-func writeReport(path string, report Report) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	return enc.Encode(report)
 }
 
 func max(a, b int) int {
