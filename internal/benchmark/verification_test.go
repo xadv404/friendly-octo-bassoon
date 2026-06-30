@@ -172,6 +172,7 @@ func TestVerification_FullPipeline(t *testing.T) {
 			RateLimitMs: 0, EarlyExit: false,
 		},
 		UrlConcurrency: 4,
+		OutputDir:      t.TempDir(),
 	})
 	if err != nil {
 		t.Fatal(err)
