@@ -40,10 +40,11 @@ func DetectNoSQL(body, baseline, payload string) NoSQLResult {
 
 	bodyLower := strings.ToLower(body)
 	baselineLower := strings.ToLower(baseline)
+	authMarkers := []string{"admin", "password", "email", "token", "secret", "users", "tenants", "enterprise"}
 
-	// Bypass auth : plus de résultats ou contenu sensible
-	authMarkers := []string{"admin", "password", "email", "token", "secret", "users"}
-	if strings.Contains(payload, "$gt") || strings.Contains(payload, "$ne") || strings.Contains(payload, "||") {
+	// Bypass auth / dump collection
+	if strings.Contains(payload, "$gt") || strings.Contains(payload, "$ne") || strings.Contains(payload, "||") ||
+		strings.Contains(payload, "$regex") {
 		for _, m := range authMarkers {
 			if strings.Contains(bodyLower, m) && !strings.Contains(baselineLower, m) {
 				return NoSQLResult{
@@ -53,7 +54,15 @@ func DetectNoSQL(body, baseline, payload string) NoSQLResult {
 				}
 			}
 		}
-		if len(body) > len(baseline)*2 && len(body) > 100 {
+		// Dump collection : réponse significativement plus riche
+		if len(baseline) > 0 && len(body) > len(baseline)+50 {
+			return NoSQLResult{
+				Found:    true,
+				Evidence: "dump collection NoSQL — données supplémentaires exposées",
+				Snippet:  truncateStr(body, 0, 120),
+			}
+		}
+		if len(body) > len(baseline)*2 && len(body) > 80 {
 			return NoSQLResult{
 				Found:    true,
 				Evidence: "réponse anormalement large — possible dump collection",

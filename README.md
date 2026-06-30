@@ -36,15 +36,39 @@ go build -o sqli-hunter ./cmd/sqli-hunter
 ./sqli-hunter -u "https://target.com/api?id=1" --full
 ```
 
-## Benchmark local
+## Benchmark local — 24 scénarios réalistes
 
 ```bash
 go run ./cmd/benchmark
+go test ./internal/benchmark/... -v
 ```
 
-Teste 4 scénarios : SQLi error, union (fuite version), boolean blind, NoSQL.
+### Contextes applicatifs testés
 
-## Sites de test (depuis ton réseau)
+| Contexte | Scénarios | Exemple réel |
+|----------|-----------|--------------|
+| E-commerce | 3 | testphp.vulnweb.com, fiche produit, recherche |
+| Authentification | 3 | DVWA login, Juice Shop MongoDB |
+| API REST | 3 | Spring Boot, Node.js JSON, ASP.NET pagination |
+| Panel admin | 3 | EXTRACTVALUE, MSSQL search, logs blind |
+| Santé | 2 | Oracle patient, SQLite labo |
+| Banque | 2 | PostgreSQL relevé, virement blind |
+| Blog/CMS | 2 | WordPress slug, UNION database() |
+| Legacy PHP | 2 | artists.php, avis POST |
+| SaaS B2B | 2 | CRM MSSQL, tenant NoSQL $regex |
+| Réservation | 2 | Booking ref, moteur vols PG |
+| **Négatifs** | 2 | Page statique, requêtes préparées |
+
+### DBMS couverts
+
+MySQL, PostgreSQL, MSSQL, Oracle, SQLite, MongoDB
+
+### Tests unitaires
+
+```bash
+go test ./... -v   # 50+ cas : erreurs SQL par DBMS, boolean blind, UNION, NoSQL, faux positifs
+```
+
 
 ```bash
 ./sqli-hunter -u "http://testphp.vulnweb.com/artists.php?artist=1" -t sqli -v

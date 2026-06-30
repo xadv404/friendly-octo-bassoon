@@ -2,62 +2,205 @@ package detector
 
 import "testing"
 
+// ── MySQL ──
+
 func TestDetectSQLError_MySQL(t *testing.T) {
-	body := `Error: You have an error in your SQL syntax near '1'' at line 1`
-	result := DetectSQLError(body)
-	if !result.Found {
-		t.Fatal("expected SQL error detection")
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"syntax error", `Error: You have an error in your SQL syntax near '1'' at line 1`},
+		{"unknown column", `Unknown column 'password' in 'field list'`},
+		{"mysqli", `Warning: mysqli_fetch_array() expects parameter 1 to be mysqli_result`},
+		{"acunetix test site", `Error: You have an error in your SQL syntax check the manual that corresponds to your MySQL server version`},
 	}
-	if result.DBMS != "mysql" {
-		t.Errorf("expected mysql, got %s", result.DBMS)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := DetectSQLError(tc.body)
+			if !r.Found || r.DBMS != "mysql" {
+				t.Fatalf("expected mysql, got %+v", r)
+			}
+		})
 	}
 }
 
+// ── PostgreSQL ──
+
 func TestDetectSQLError_PostgreSQL(t *testing.T) {
-	body := `ERROR: syntax error at or near "'"`
-	result := DetectSQLError(body)
-	if !result.Found {
-		t.Fatal("expected SQL error detection")
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"syntax near", `ERROR:  syntax error at or near "'"`},
+		{"unterminated", `ERROR:  unterminated quoted string at or near "'"`},
+		{"pg driver", `org.postgresql.util.PSQLException: ERROR: syntax error`},
 	}
-	if result.DBMS != "postgresql" {
-		t.Errorf("expected postgresql, got %s", result.DBMS)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := DetectSQLError(tc.body)
+			if !r.Found || r.DBMS != "postgresql" {
+				t.Fatalf("expected postgresql, got %+v", r)
+			}
+		})
+	}
+}
+
+// ── MSSQL ──
+
+func TestDetectSQLError_MSSQL(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"unclosed quote", `Microsoft SQL Native Client error: Unclosed quotation mark`},
+		{"sql server driver", `ODBC SQL Server Driver error`},
+		{"sqlclient", `System.Data.SqlClient.SqlException: Incorrect syntax near`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := DetectSQLError(tc.body)
+			if !r.Found || r.DBMS != "mssql" {
+				t.Fatalf("expected mssql, got %+v", r)
+			}
+		})
+	}
+}
+
+// ── Oracle ──
+
+func TestDetectSQLError_Oracle(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"ORA-01756", `ORA-01756: quoted string not properly terminated`},
+		{"ORA-00933", `ORA-00933: SQL command not properly ended`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := DetectSQLError(tc.body)
+			if !r.Found || r.DBMS != "oracle" {
+				t.Fatalf("expected oracle, got %+v", r)
+			}
+		})
+	}
+}
+
+// ── SQLite ──
+
+func TestDetectSQLError_SQLite(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"near syntax", `SQLITE_ERROR: near "'": syntax error`},
+		{"unrecognized token", `unrecognized token: "'"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := DetectSQLError(tc.body)
+			if !r.Found || r.DBMS != "sqlite" {
+				t.Fatalf("expected sqlite, got %+v", r)
+			}
+		})
 	}
 }
 
 func TestDetectSQLError_NoError(t *testing.T) {
-	body := `<html><body>Hello World</body></html>`
-	result := DetectSQLError(body)
-	if result.Found {
-		t.Fatal("expected no detection")
+	safe := []string{
+		`<html><body>Hello World</body></html>`,
+		`{"status":"ok","data":[]}`,
+		`Product not found`,
+		`Access denied`,
+	}
+	for _, body := range safe {
+		if DetectSQLError(body).Found {
+			t.Fatalf("false positive on: %s", body)
+		}
 	}
 }
 
-func TestResponsesDiffer(t *testing.T) {
-	baseline := "Welcome admin, you have 10 messages"
-	trueBody := "Welcome admin, you have 10 messages"
-	falseBody := "Access denied"
+// ── Boolean blind ──
 
-	differs, evidence := ResponsesDiffer(trueBody, falseBody, baseline, 200, 403, 200)
-	if !differs {
-		t.Fatal("expected difference detection")
+func TestResponsesDiffer_RealCases(t *testing.T) {
+	cases := []struct {
+		name      string
+		baseline  string
+		trueBody  string
+		falseBody string
+		trueCode  int
+		falseCode int
+		want      bool
+	}{
+		{
+			name: "e-commerce listing", baseline: "total: 12 items for electronics",
+			trueBody: "total: 847 items in database", falseBody: "total: 0 items",
+			trueCode: 200, falseCode: 200, want: true,
+		},
+		{
+			name: "login boolean", baseline: "Welcome user",
+			trueBody: "Welcome admin", falseBody: "Invalid credentials",
+			trueCode: 200, falseCode: 401, want: true,
+		},
+		{
+			name: "same response", baseline: "ok",
+			trueBody: "ok", falseBody: "ok",
+			trueCode: 200, falseCode: 200, want: false,
+		},
 	}
-	if evidence == "" {
-		t.Fatal("expected evidence")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			differs, _ := ResponsesDiffer(tc.trueBody, tc.falseBody, tc.baseline, tc.trueCode, tc.falseCode, 200)
+			if differs != tc.want {
+				t.Fatalf("expected %v", tc.want)
+			}
+		})
 	}
 }
 
-func TestResponsesDiffer_Same(t *testing.T) {
-	body := "same content here"
-	differs, _ := ResponsesDiffer(body, body, body, 200, 200, 200)
-	if differs {
-		t.Fatal("expected no difference")
+// ── UNION extraction ──
+
+func TestDetectUnionSuccess_RealCases(t *testing.T) {
+	cases := []struct {
+		name     string
+		baseline string
+		body     string
+		payload  string
+	}{
+		{"mysql version", `<html>results</html>`, `<html>8.0.32-MySQL Community Server</html>`, ""},
+		{"postgresql", `Account balance`, `PostgreSQL 14.10 on x86_64`, ""},
+		{"mssql", `{"invoices":[]}`, `{"db":"Microsoft SQL Server 2019"}`, ""},
+		{"reflected payload only", `lang=fr`, `<html>lang=' UNION SELECT version(),NULL--</html>`, `' UNION SELECT version(),NULL--`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := DetectUnionSuccess(tc.body, tc.baseline, tc.payload)
+			want := tc.name != "reflected payload only"
+			if got != want {
+				t.Fatalf("expected %v, got %v", want, got)
+			}
+		})
 	}
 }
 
-func TestDetectUnionSuccess(t *testing.T) {
-	baseline := `<html>search results</html>`
-	body := `<html>5.7.33-MySQL</html>`
-	if !DetectUnionSuccess(body, baseline) {
-		t.Fatal("expected union success detection")
+// ── DB leak ──
+
+func TestDetectDBLeak_RealCases(t *testing.T) {
+	cases := []struct {
+		name     string
+		baseline string
+		body     string
+	}{
+		{"extractvalue", `Report generated`, `XPATH syntax error: '~8.0.32-MySQL~'`},
+		{"version string", `Product id=1`, `Result: 5.7.33-log`},
+		{"db user", `ok`, `connected as root@localhost`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			leak, _ := DetectDBLeak(tc.body, tc.baseline)
+			if !leak {
+				t.Fatal("expected leak")
+			}
+		})
 	}
 }

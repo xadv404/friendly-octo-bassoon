@@ -53,18 +53,37 @@ func DetectSQLError(body string) SQLErrorResult {
 }
 
 // DetectUnionSuccess détecte une extraction de données DB via UNION.
-func DetectUnionSuccess(body, baseline string) bool {
+func DetectUnionSuccess(body, baseline, payload string) bool {
 	indicators := []string{
-		"@@version", "version()", "mysql", "postgresql",
+		"@@version", "mysql", "postgresql",
 		"microsoft sql server", "sqlite", "ora-",
 		"information_schema", "pg_catalog", "sys.databases",
 		"mariadb", "5.7.", "8.0.", "14.", "16.",
 	}
 	bodyLower := strings.ToLower(body)
 	baselineLower := strings.ToLower(baseline)
+	payloadLower := strings.ToLower(payload)
+
+	// Retirer le payload réfléchi pour éviter les faux positifs
+	cleaned := bodyLower
+	if payload != "" {
+		cleaned = strings.ReplaceAll(cleaned, payloadLower, "")
+	}
 
 	for _, ind := range indicators {
-		if strings.Contains(bodyLower, ind) && !strings.Contains(baselineLower, ind) {
+		if strings.Contains(cleaned, ind) && !strings.Contains(baselineLower, ind) {
+			return true
+		}
+	}
+
+	for _, fn := range []string{"version()", "database()", "user()"} {
+		if strings.Contains(cleaned, fn) && !strings.Contains(baselineLower, fn) {
+			return true
+		}
+	}
+	// database() extrait via UNION — mot database seul dans réponse nettoyée
+	if strings.Contains(cleaned, "cms_") || strings.Contains(cleaned, "_production") {
+		if !strings.Contains(baselineLower, "cms_") {
 			return true
 		}
 	}

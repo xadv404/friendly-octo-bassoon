@@ -178,7 +178,7 @@ func (s *Scanner) testUnion(ctx context.Context, target models.ScanTarget, param
 		}, 1
 	}
 
-	if baseline.err == nil && detector.DetectUnionSuccess(resp.Body, baseline.body) {
+	if baseline.err == nil && detector.DetectUnionSuccess(resp.Body, baseline.body, payload) {
 		return &models.Finding{
 			URL: resp.URL, Parameter: param, Payload: payload,
 			VulnType: models.SQLiUnion, Confidence: models.Confirmed,
