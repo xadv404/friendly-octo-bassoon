@@ -14,6 +14,35 @@ Scanner CLI en **Go** dédié aux **injections donnant accès à la base de donn
 
 Payloads orientés **extraction de métadonnées DB** : version, schémas, tables, utilisateurs.
 
+## Extraction de données
+
+Trois modes d'extraction :
+
+| Mode | Flag | Comportement |
+|------|------|--------------|
+| **Auto** | `--auto-extract` | Extrait dès qu'une vuln est détectée |
+| **Après scan** | `--extract-after` | Phase 1 : scan → Phase 2 : extraction |
+| **Direct** | `--extract` | Extraction seule (URL déjà vulnérable) |
+
+### Données extraites
+
+- Version DB (`@@version`, `version()`)
+- Nom de la base (`database()`, `current_database()`)
+- Utilisateur DB (`user()`, `system_user`)
+- Tables (`information_schema`, `sqlite_master`)
+- Dump NoSQL (collections MongoDB)
+
+```bash
+# Scan + extraction immédiate
+./sqli-hunter -u "https://target.com/page?id=1" --auto-extract -v
+
+# Scan puis extraction sur toutes les vulns trouvées
+./sqli-hunter -u "https://target.com/product?id=1" --extract-after
+
+# Extraction directe (tu sais déjà que c'est vulnérable)
+./sqli-hunter -u "https://target.com/page?id=1" --extract
+```
+
 ## Installation
 
 ```bash

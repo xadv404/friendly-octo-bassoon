@@ -134,6 +134,57 @@ func truncateURL(u string, n int) string {
 	return u[:n] + "..."
 }
 
+// Extraction affiche une donnée extraite.
+func (p *Printer) Extraction(d models.ExtractedData) {
+	fmt.Println()
+	fmt.Println(p.color(green+bold, "  ═══ DONNÉE EXTRAITE ═══"))
+	fmt.Printf("  %s %s\n", p.color(bold, "Type:"), dataTypeLabel(d.DataType))
+	fmt.Printf("  %s %s\n", p.color(bold, "Valeur:"), p.color(yellow, d.Value))
+	fmt.Printf("  %s %s\n", p.color(bold, "Paramètre:"), d.Parameter)
+	fmt.Printf("  %s %s\n", p.color(bold, "Méthode:"), d.Method)
+	if d.DBMS != "" {
+		fmt.Printf("  %s %s\n", p.color(bold, "DBMS:"), d.DBMS)
+	}
+	fmt.Printf("  %s %s\n", p.color(bold, "Payload:"), truncateURL(d.Payload, 80))
+	fmt.Println()
+}
+
+// ExtractionSummary affiche le résumé des extractions.
+func (p *Printer) ExtractionSummary(extractions []models.ExtractedData) {
+	if len(extractions) == 0 {
+		return
+	}
+	fmt.Println()
+	fmt.Println(p.color(bold, "─── Données extraites ───"))
+	for _, d := range extractions {
+		fmt.Printf("  %s %s = %s\n",
+			p.color(cyan, string(d.DataType)),
+			p.color(dim, "["+d.Parameter+"]"),
+			p.color(yellow, truncateURL(d.Value, 120)))
+	}
+	fmt.Println()
+}
+
+func dataTypeLabel(d models.DataType) string {
+	labels := map[models.DataType]string{
+		models.DataVersion:  "Version DB",
+		models.DataDatabase: "Base de données",
+		models.DataUser:     "Utilisateur DB",
+		models.DataTables:   "Tables",
+		models.DataColumns:  "Colonnes",
+		models.DataDump:     "Dump NoSQL",
+	}
+	if l, ok := labels[d]; ok {
+		return l
+	}
+	return string(d)
+}
+
+// PrintExtractMode affiche le mode extraction.
+func (p *Printer) PrintExtractMode(mode string) {
+	p.Info("Extraction : " + mode)
+}
+
 // PrintScanConfig affiche la configuration.
 func (p *Printer) PrintScanConfig(mode models.ScanMode, categories []models.VulnCategory, waf bool) {
 	modeLabel := "rapide"

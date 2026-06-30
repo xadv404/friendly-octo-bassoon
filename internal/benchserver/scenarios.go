@@ -53,6 +53,10 @@ func registerScenarios(mux *http.ServeMux) {
 	mux.HandleFunc("/booking/hotel", booleanHandler("booking_ref"))
 	mux.HandleFunc("/flights/search", postgresErrorHandler("from"))
 
+	// Endpoints extraction
+	mux.HandleFunc("/extract/mysql", mysqlExtractHandler("id"))
+	mux.HandleFunc("/extract/nosql", nosqlAuthHandler("user"))
+
 	// ── Safe (négatifs) ──
 	mux.HandleFunc("/static/about", safeHandler)
 	mux.HandleFunc("/safe/users", preparedStatementHandler)
@@ -283,4 +287,41 @@ func isBooleanFalse(s string) bool {
 func isNoSQLBypass(s string) bool {
 	return strings.Contains(s, "$gt") || strings.Contains(s, "$ne") ||
 		strings.Contains(s, "||") || strings.Contains(s, "$regex")
+}
+
+func mysqlExtractHandler(param string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		v := getParam(r, param)
+		lower := strings.ToLower(v)
+
+		if strings.Contains(lower, "extractvalue") || strings.Contains(lower, "updatexml") {
+			if strings.Contains(lower, "@@version") || strings.Contains(lower, "version") {
+				fmt.Fprint(w, "XPATH syntax error: '~8.0.32-MySQL~'")
+				return
+			}
+			if strings.Contains(lower, "database()") {
+				fmt.Fprint(w, "XPATH syntax error: '~shop_production~'")
+				return
+			}
+			if strings.Contains(lower, "user()") {
+				fmt.Fprint(w, "XPATH syntax error: '~root@localhost~'")
+				return
+			}
+		}
+
+		if strings.Contains(lower, "union") && strings.Contains(lower, "@@version") {
+			fmt.Fprint(w, "Item: 8.0.32-MySQL")
+			return
+		}
+		if strings.Contains(lower, "union") && strings.Contains(lower, "database()") {
+			fmt.Fprint(w, "Item: shop_production")
+			return
+		}
+		if strings.Contains(lower, "union") && strings.Contains(lower, "information_schema") {
+			fmt.Fprint(w, "Item: users,orders,products,payments")
+			return
+		}
+
+		fmt.Fprintf(w, "Product id=%s", v)
+	}
 }

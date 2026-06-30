@@ -87,12 +87,16 @@ type ScanOptions struct {
 	Threads         int
 	Verbose         bool
 	EarlyExit       bool
+	AutoExtract     bool // extraire dès qu'une vuln est trouvée
+	ExtractOnly     bool // mode extraction seul (pas de scan)
+	ExtractAfter    bool // extraire après le scan sur toutes les findings
 }
 
 // ScanResult agrège les résultats d'un scan.
 type ScanResult struct {
 	Target         ScanTarget
 	Findings       []Finding
+	Extractions    []ExtractedData
 	TestedParams   int
 	TestedPayloads int
 	Errors         []string
