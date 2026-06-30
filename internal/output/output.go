@@ -126,9 +126,11 @@ func vulnLabel(v models.VulnType) string {
 		models.SQLiTime:     "SQL Injection (time-blind)",
 		models.SQLiUnion:    "SQL Injection (union-based)",
 		models.XSS:          "XSS (réfléchi)",
+		models.SSTI:         "SSTI (Server-Side Template Injection)",
 		models.OpenRedirect: "Open Redirect",
 		models.LFI:          "LFI / Path Traversal",
 		models.SSRF:         "SSRF",
+		models.IDOR:         "IDOR (Broken Access Control)",
 	}
 	if l, ok := labels[v]; ok {
 		return l

@@ -366,7 +366,7 @@ Requête:
   -c, --cookie <nom=val>    Cookie (répétable)
 
 Vulnérabilités (mode rapide par défaut):
-  -t, --test <liste>        sqli,xss,redirect,lfi,ssrf [défaut: toutes]
+  -t, --test <liste>        sqli,xss,ssti,redirect,lfi,ssrf,idor [défaut: toutes]
                             SQLi fin : error,boolean,time,union
       --full                Scan complet (plus de payloads + time-based)
       --waf                 Payloads bypass WAF (SQLi)
@@ -390,6 +390,9 @@ Exemples:
   sqli-hunter -u "https://target.com/search?q=test" -t sqli,xss
   sqli-hunter -u "https://target.com/redirect?url=/" -t redirect
   sqli-hunter -u "https://target.com/file?path=index" -t lfi,ssrf --full -v
+
+Benchmark (entraînement local):
+  go run ./cmd/benchmark
 
 Mode rapide (défaut):
   - SQLi error + union + boolean (pas de time-based)

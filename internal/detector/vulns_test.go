@@ -38,6 +38,22 @@ func TestDetectLFI_Passwd(t *testing.T) {
 	}
 }
 
+func TestDetectSSTI_Eval(t *testing.T) {
+	result := DetectSSTI("Hello 49 world", "{{7*7}}")
+	if !result.Found {
+		t.Fatal("expected SSTI detection")
+	}
+}
+
+func TestDetectIDOR_DifferentUsers(t *testing.T) {
+	body1 := "<div class='profile'>User: Alice, email: alice@corp.com, balance: $12,400</div>"
+	body2 := "<div class='profile'>User: Bob, email: bob@corp.com, balance: $8,200</div>"
+	result := DetectIDOR(body1, body2, 200, 200, "id")
+	if !result.Found {
+		t.Fatal("expected IDOR detection")
+	}
+}
+
 func TestDetectSSRF_Metadata(t *testing.T) {
 	body := `{"ami-id": "ami-12345", "instance-id": "i-abc"}`
 	result := DetectSSRF(body, "http://169.254.169.254")

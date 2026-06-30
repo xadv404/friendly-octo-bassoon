@@ -2,25 +2,52 @@
 
 Scanner CLI en **Go** de vulnérabilités web courantes pour bug bounty.
 
+## Alignement OWASP Top 10:2025 / bug bounty 2026
+
+Sources : OWASP Top 10:2025, Synack State of Vulnerabilities 2026, Penetrify Q1 2026.
+
+| Rang OWASP 2025 | Part estimée | Couvert par sqli-hunter |
+|-----------------|--------------|-------------------------|
+| A01 Broken Access Control | ~34% | **IDOR**, **LFI** |
+| A05 Injection | ~22% | **SQLi**, **XSS**, **SSTI** |
+| A02 Security Misconfiguration | ~18% | **SSRF** (partiel) |
+| Open Redirect | fréquent en bounty | **Open Redirect** |
+
+> Les catégories non couvertes (auth failures, supply chain, crypto, misconfig générale) nécessitent des tests manuels ou des outils complémentaires.
+
 ## Vulnérabilités testées
 
 | Type | Mode rapide | Mode complet |
 |------|-------------|--------------|
-| SQLi error-based | ✓ | ✓ |
-| SQLi union-based | ✓ | ✓ |
-| SQLi boolean-blind | ✓ | ✓ |
+| SQLi (error, union, boolean) | ✓ | ✓ |
 | SQLi time-blind | — | ✓ |
 | XSS réfléchi | ✓ | ✓ |
+| SSTI | ✓ | ✓ |
 | Open Redirect | ✓ | ✓ |
 | LFI / Path Traversal | ✓ | ✓ |
 | SSRF | ✓ | ✓ |
+| IDOR | ✓ | ✓ |
 
-## Mode rapide (défaut)
+## Entraînement / benchmark
 
-- Payloads les plus efficaces uniquement (~30 tests/paramètre)
-- Pas de time-based SQLi (trop lent)
-- Arrêt anticipé par catégorie si vuln confirmée
-- 8 threads, 100ms entre requêtes
+Les sites publics (vulnweb, testfire) bloquent souvent les IP cloud. Un **serveur vulnérable local** est inclus pour valider la détection :
+
+```bash
+# Lancer le benchmark (7 vulns simulées)
+go run ./cmd/benchmark
+
+# Ou via les tests
+go test ./internal/benchmark/... -v
+```
+
+Le benchmark teste automatiquement :
+- SQLi error-based sur `/sqli?id=1`
+- XSS sur `/xss?q=test`
+- Open Redirect sur `/redirect?url=/`
+- LFI sur `/file?path=index`
+- SSRF sur `/fetch?url=...`
+- SSTI sur `/template?name=world`
+- IDOR sur `/user?id=1`
 
 ## Installation
 
@@ -31,33 +58,30 @@ go build -o sqli-hunter ./cmd/sqli-hunter
 ## Usage
 
 ```bash
-# Scan rapide complet (toutes les vulns communes)
+# Scan rapide — toutes les vulns communes
 ./sqli-hunter -u "https://target.com/page?id=1"
 
-# Cibler des vulns spécifiques
-./sqli-hunter -u "https://target.com/search?q=test" -t sqli,xss
+# Cibler sqli + xss + ssti
+./sqli-hunter -u "https://target.com/search?q=test" -t sqli,xss,ssti
 
-# Scan exhaustif avec time-based
-./sqli-hunter -u "https://target.com/api?id=1" --full -t sqli
-
-# Open redirect
-./sqli-hunter -u "https://target.com/redirect?url=/" -t redirect
-
-# LFI + SSRF
-./sqli-hunter -u "https://target.com/file?path=index" -t lfi,ssrf -v
+# Scan exhaustif
+./sqli-hunter -u "https://target.com/api?id=1" --full
 ```
 
-## Options
+## Sites de test publics (à lancer depuis ta machine)
 
-| Option | Description | Défaut |
-|--------|-------------|--------|
-| `-u, --url` | URL cible | — |
-| `-t, --test` | `sqli,xss,redirect,lfi,ssrf` | toutes |
-| `--full` | Scan complet (+ payloads, time-based) | off |
-| `--waf` | Bypass WAF (SQLi) | off |
-| `--threads` | Parallélisme | 8 |
-| `--rate-limit` | Délai entre requêtes (ms) | 100 |
-| `-v, --verbose` | Afficher chaque test | off |
+| Site | Vulns connues |
+|------|---------------|
+| http://testphp.vulnweb.com | SQLi, XSS, LFI |
+| http://testasp.vulnweb.com | SQLi (ASP) |
+| https://juice-shop.herokuapp.com | OWASP Juice Shop (complet) |
+| DVWA / WebGoat | Local (Docker) |
+
+```bash
+# Exemple depuis ton réseau local
+./sqli-hunter -u "http://testphp.vulnweb.com/artists.php?artist=1" -t sqli -v
+./sqli-hunter -u "http://testphp.vulnweb.com/search.php?test=query" -t xss,sqli
+```
 
 ## Avertissement
 

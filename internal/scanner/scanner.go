@@ -3,6 +3,7 @@ package scanner
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -59,6 +60,25 @@ func (s *Scanner) Scan(ctx context.Context, target models.ScanTarget) models.Sca
 			baseline := s.getBaseline(ctx, target, p)
 			foundCategories := make(map[models.VulnCategory]bool)
 
+			// IDOR : test dédié pour paramètres ID-like
+			if s.categoryEnabled(models.CategoryIDOR) {
+				if ctx.Err() == nil {
+					s.rateLimit()
+					if finding, tested := s.testIDOR(ctx, target, p, baseline); finding != nil {
+						mu.Lock()
+						result.TestedPayloads += tested
+						result.Findings = append(result.Findings, *finding)
+						if s.onFinding != nil {
+							s.onFinding(*finding)
+						}
+						if s.opts.EarlyExit {
+							foundCategories[models.CategoryIDOR] = true
+						}
+						mu.Unlock()
+					}
+				}
+			}
+
 			for _, job := range jobs {
 				if ctx.Err() != nil {
 					return
@@ -107,6 +127,8 @@ func (s *Scanner) runJob(ctx context.Context, target models.ScanTarget, param st
 		return s.testLFI(ctx, target, param, job.Payload)
 	case models.SSRF:
 		return s.testSSRF(ctx, target, param, job.Payload)
+	case models.SSTI:
+		return s.testSSTI(ctx, target, param, job.Payload)
 	default:
 		return nil, 0
 	}
@@ -305,6 +327,94 @@ func (s *Scanner) testSSRF(ctx context.Context, target models.ScanTarget, param,
 		Evidence: ssrf.Evidence + ": " + ssrf.Snippet,
 		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 	}, 1
+}
+
+func (s *Scanner) testSSTI(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
+	s.progress(fmt.Sprintf("[%s] ssti → %s", param, truncate(payload, 50)))
+	resp, err := s.httpClient.Send(ctx, target, param, payload)
+	if err != nil {
+		return nil, 1
+	}
+	ssti := detector.DetectSSTI(resp.Body, payload)
+	if !ssti.Found {
+		return nil, 1
+	}
+	return &models.Finding{
+		URL: resp.URL, Parameter: param, Payload: payload,
+		VulnType: models.SSTI, Confidence: models.High,
+		Evidence: ssti.Context + ": " + ssti.Snippet,
+		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
+	}, 1
+}
+
+func (s *Scanner) testIDOR(ctx context.Context, target models.ScanTarget, param string, baseline baselineResp) (*models.Finding, int) {
+	if !isIDORCandidate(param) {
+		return nil, 0
+	}
+	s.progress(fmt.Sprintf("[%s] idor → probe %s", param, param))
+
+	orig := s.getOriginalValue(target, param)
+	resp1, err1 := s.httpClient.Send(ctx, target, param, orig)
+	if err1 != nil {
+		return nil, 2
+	}
+	alt := alternateID(orig)
+	resp2, err2 := s.httpClient.Send(ctx, target, param, alt)
+	if err2 != nil {
+		return nil, 2
+	}
+
+	idor := detector.DetectIDOR(resp1.Body, resp2.Body, resp1.StatusCode, resp2.StatusCode, param)
+	if !idor.Found {
+		return nil, 2
+	}
+	return &models.Finding{
+		URL: resp1.URL, Parameter: param, Payload: orig + " vs " + alt,
+		VulnType: models.IDOR, Confidence: models.Medium,
+		Evidence: idor.Evidence,
+		ResponseTimeMs: float64(resp1.Duration.Milliseconds()), StatusCode: resp1.StatusCode,
+	}, 2
+}
+
+func (s *Scanner) hasCategory(jobs []models.TestJob, cat models.VulnCategory) bool {
+	for _, j := range jobs {
+		if j.Category == cat {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Scanner) categoryEnabled(cat models.VulnCategory) bool {
+	for _, c := range s.opts.Categories {
+		if c == cat {
+			return true
+		}
+	}
+	return len(s.opts.Categories) == 0
+}
+
+func isIDORCandidate(param string) bool {
+	paramLower := strings.ToLower(param)
+	for _, p := range payloads.IDORProbeParams() {
+		if paramLower == p || strings.HasSuffix(paramLower, "_"+p) || strings.HasSuffix(paramLower, p) {
+			return true
+		}
+	}
+	return false
+}
+
+func alternateID(val string) string {
+	switch val {
+	case "1":
+		return "2"
+	case "2":
+		return "1"
+	case "0":
+		return "1"
+	default:
+		return val + "1"
+	}
 }
 
 func (s *Scanner) collectParams(target models.ScanTarget) []string {

@@ -49,16 +49,61 @@ func DetectXSS(body, payload string) XSSResult {
 		}
 	}
 
-	// Canary mathématique SSTI/XSS
-	if strings.Contains(payload, "{{") && strings.Contains(body, "49") {
+	// Canary mathématique — laissé à DetectSSTI
+
+	return XSSResult{}
+}
+
+// DetectSSTI détecte une injection de template côté serveur.
+func DetectSSTI(body, payload string) XSSResult {
+	if strings.Contains(payload, "7*7") && strings.Contains(body, "49") && !strings.Contains(body, "7*7") {
 		return XSSResult{
 			Found:   true,
-			Context: "évaluation d'expression détectée (SSTI/XSS)",
-			Snippet: "49 trouvé en réponse à {{...}}",
+			Context: "évaluation d'expression template (7*7=49)",
+			Snippet: truncate(body, strings.Index(body, "49"), 120),
 		}
 	}
 
+	templateErrors := []string{
+		"TemplateSyntaxError", "jinja2", "twig", "freemarker",
+		"Velocity", "Thymeleaf", "Handlebars", "mustache",
+		"template error", "undefined variable", "Template render error",
+	}
+	bodyLower := strings.ToLower(body)
+	for _, err := range templateErrors {
+		if strings.Contains(bodyLower, strings.ToLower(err)) {
+			return XSSResult{
+				Found:   true,
+				Context: "erreur moteur de template",
+				Snippet: err,
+			}
+		}
+	}
 	return XSSResult{}
+}
+
+// IDORResult contient le résultat d'une détection IDOR.
+type IDORResult struct {
+	Found    bool
+	Evidence string
+}
+
+// DetectIDOR compare les réponses pour deux valeurs d'un paramètre ID.
+func DetectIDOR(body1, body2 string, code1, code2 int, param string) IDORResult {
+	if code1 != 200 || code2 != 200 {
+		return IDORResult{}
+	}
+	if body1 == body2 || len(body1) < 20 || len(body2) < 20 {
+		return IDORResult{}
+	}
+	sim := similarityRatio(body1, body2)
+	if sim > 0.05 && sim < 0.85 {
+		return IDORResult{
+			Found:    true,
+			Evidence: "réponses différentes pour valeurs distinctes du paramètre " + param,
+		}
+	}
+	return IDORResult{}
 }
 
 // RedirectResult contient le résultat d'une détection open redirect.

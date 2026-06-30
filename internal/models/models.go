@@ -9,9 +9,11 @@ const (
 	SQLiTime       VulnType = "sqli_time"
 	SQLiUnion      VulnType = "sqli_union"
 	XSS            VulnType = "xss"
+	SSTI           VulnType = "ssti"
 	OpenRedirect   VulnType = "open_redirect"
 	LFI            VulnType = "lfi"
 	SSRF           VulnType = "ssrf"
+	IDOR           VulnType = "idor"
 )
 
 // InjectionType est un alias rétrocompatible.
@@ -30,7 +32,9 @@ type VulnCategory string
 const (
 	CategorySQLi     VulnCategory = "sqli"
 	CategoryXSS      VulnCategory = "xss"
+	CategorySSTI     VulnCategory = "ssti"
 	CategoryRedirect VulnCategory = "redirect"
+	CategoryIDOR     VulnCategory = "idor"
 	CategoryLFI      VulnCategory = "lfi"
 	CategorySSRF     VulnCategory = "ssrf"
 )

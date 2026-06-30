@@ -133,6 +133,16 @@ var (
 		`http://169.254.169.254/latest/meta-data/`,
 		`http://[::1]`,
 	}
+
+	fastSSTIPayloads = []string{
+		`{{7*7}}`,
+		`${7*7}`,
+		`#{7*7}`,
+		`{{7*'7'}}`,
+		`*{7*7}`,
+	}
+
+	idorProbeParams = []string{"id", "user_id", "userid", "uid", "account_id", "order_id", "doc_id", "file_id"}
 )
 
 // Payloads complets
@@ -206,6 +216,12 @@ var (
 		`http://127.1`, `dict://127.0.0.1:6379/info`,
 	}
 
+	fullSSTIPayloads = []string{
+		`{{7*7}}`, `${7*7}`, `#{7*7}`, `{{7*'7'}}`, `*{7*7}`,
+		`<%= 7*7 %>`, `{{config}}`, `{{self}}`, `{{''.__class__}}`,
+		`{7*7}`, `[[7*7]]`,
+	}
+
 	wafBypassPayloads = []string{
 		`' oR '1'='1`, `'%20OR%20'1'='1`, `'/**/OR/**/'1'='1`,
 		`'%09OR%091=1--`, `' UnIoN SeLeCt NULL--`,
@@ -235,12 +251,16 @@ func BuildJobs(opts models.ScanOptions) []models.TestJob {
 			jobs = append(jobs, buildSQLiJobs(opts, full)...)
 		case models.CategoryXSS:
 			jobs = append(jobs, buildSimpleJobs(models.XSS, cat, xssPayloads(full), 20)...)
+		case models.CategorySSTI:
+			jobs = append(jobs, buildSimpleJobs(models.SSTI, cat, sstiPayloads(full), 25)...)
 		case models.CategoryRedirect:
 			jobs = append(jobs, buildSimpleJobs(models.OpenRedirect, cat, redirectPayloads(full), 30)...)
 		case models.CategoryLFI:
 			jobs = append(jobs, buildSimpleJobs(models.LFI, cat, lfiPayloads(full), 40)...)
 		case models.CategorySSRF:
 			jobs = append(jobs, buildSimpleJobs(models.SSRF, cat, ssrfPayloads(full), 50)...)
+		case models.CategoryIDOR:
+			// IDOR : pas de payload, testé séparément dans le scanner
 		}
 	}
 
@@ -382,6 +402,18 @@ func ssrfPayloads(full bool) []string {
 	return append([]string{}, fastSSRFPayloads...)
 }
 
+func sstiPayloads(full bool) []string {
+	if full {
+		return append([]string{}, fullSSTIPayloads...)
+	}
+	return append([]string{}, fastSSTIPayloads...)
+}
+
+// IDORProbeParams retourne les noms de paramètres à tester pour IDOR.
+func IDORProbeParams() []string {
+	return append([]string{}, idorProbeParams...)
+}
+
 func formatTime(templates []string, delay int) []string {
 	if delay < 1 {
 		delay = 3
@@ -398,9 +430,11 @@ func DefaultCategories(mode models.ScanMode) []models.VulnCategory {
 	return []models.VulnCategory{
 		models.CategorySQLi,
 		models.CategoryXSS,
+		models.CategorySSTI,
 		models.CategoryRedirect,
 		models.CategoryLFI,
 		models.CategorySSRF,
+		models.CategoryIDOR,
 	}
 }
 
@@ -425,6 +459,10 @@ func ParseCategory(s string) (models.VulnCategory, models.VulnType, error) {
 		return models.CategorySQLi, "", nil
 	case "xss":
 		return models.CategoryXSS, models.XSS, nil
+	case "ssti", "template":
+		return models.CategorySSTI, models.SSTI, nil
+	case "idor", "bac", "access":
+		return models.CategoryIDOR, models.IDOR, nil
 	case "redirect", "open_redirect", "openredirect":
 		return models.CategoryRedirect, models.OpenRedirect, nil
 	case "lfi", "path_traversal", "traversal":
