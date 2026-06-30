@@ -1,22 +1,17 @@
 package models
 
-// VulnType représente le type de vulnérabilité testée.
+// VulnType représente une vulnérabilité donnant accès à la base de données.
 type VulnType string
 
 const (
-	SQLiError      VulnType = "sqli_error"
-	SQLiBoolean    VulnType = "sqli_boolean"
-	SQLiTime       VulnType = "sqli_time"
-	SQLiUnion      VulnType = "sqli_union"
-	XSS            VulnType = "xss"
-	SSTI           VulnType = "ssti"
-	OpenRedirect   VulnType = "open_redirect"
-	LFI            VulnType = "lfi"
-	SSRF           VulnType = "ssrf"
-	IDOR           VulnType = "idor"
+	SQLiError   VulnType = "sqli_error"
+	SQLiBoolean VulnType = "sqli_boolean"
+	SQLiTime    VulnType = "sqli_time"
+	SQLiUnion   VulnType = "sqli_union"
+	NoSQL       VulnType = "nosql"
 )
 
-// InjectionType est un alias rétrocompatible.
+// InjectionType alias rétrocompatible.
 type InjectionType = VulnType
 
 const (
@@ -26,17 +21,12 @@ const (
 	UnionBased   = SQLiUnion
 )
 
-// VulnCategory regroupe les tests par famille.
+// VulnCategory regroupe les familles d'injection DB.
 type VulnCategory string
 
 const (
-	CategorySQLi     VulnCategory = "sqli"
-	CategoryXSS      VulnCategory = "xss"
-	CategorySSTI     VulnCategory = "ssti"
-	CategoryRedirect VulnCategory = "redirect"
-	CategoryIDOR     VulnCategory = "idor"
-	CategoryLFI      VulnCategory = "lfi"
-	CategorySSRF     VulnCategory = "ssrf"
+	CategorySQLi   VulnCategory = "sqli"
+	CategoryNoSQL  VulnCategory = "nosql"
 )
 
 // ScanMode définit la profondeur du scan.
@@ -68,7 +58,7 @@ type ScanTarget struct {
 	JSONBody map[string]any
 }
 
-// Finding représente une vulnérabilité potentielle détectée.
+// Finding représente une injection DB détectée.
 type Finding struct {
 	URL            string
 	Parameter      string
@@ -81,13 +71,12 @@ type Finding struct {
 	StatusCode     int
 }
 
-// InjectionType field alias for backward compat in output
 func (f Finding) InjectionType() VulnType { return f.VulnType }
 
 // ScanOptions configure le comportement du scanner.
 type ScanOptions struct {
 	Categories      []VulnCategory
-	Techniques      []VulnType // filtre fin SQLi si categories contient sqli
+	Techniques      []VulnType
 	Mode            ScanMode
 	IncludeWAF      bool
 	CustomPayloads  []string
@@ -109,12 +98,12 @@ type ScanResult struct {
 	Errors         []string
 }
 
-// TestJob décrit un test unitaire à exécuter.
+// TestJob décrit un test unitaire.
 type TestJob struct {
-	Param      string
-	VulnType   VulnType
-	Category   VulnCategory
-	Payload    string
-	PayloadB   string // pour boolean blind (payload faux)
-	Priority   int
+	Param     string
+	VulnType  VulnType
+	Category  VulnCategory
+	Payload   string
+	PayloadB  string
+	Priority  int
 }

@@ -46,39 +46,20 @@ func (p *Printer) Banner() {
   ╚═╗│ ││  ││││  ╠═╣└┬┘│││ │ ├┤ ├┬┘
   ╚═╝└─┘┴─┘┴└┴┘  ╩ ╩ ┴ ┘└┘ ┴ └─┘┴└─
 `))
-	fmt.Println(p.color(dim, "  Scanner rapide de vulnérabilités web — bug bounty"))
+	fmt.Println(p.color(dim, "  Détection d'injections base de données — bug bounty"))
 	fmt.Println()
 }
 
-// Info affiche un message informatif.
-func (p *Printer) Info(msg string) {
-	fmt.Println(p.color(blue, "[*]") + " " + msg)
-}
+func (p *Printer) Info(msg string)    { fmt.Println(p.color(blue, "[*]") + " " + msg) }
+func (p *Printer) Success(msg string)  { fmt.Println(p.color(green, "[+]") + " " + msg) }
+func (p *Printer) Warning(msg string)  { fmt.Println(p.color(yellow, "[!]") + " " + msg) }
+func (p *Printer) Error(msg string)    { fmt.Println(p.color(red, "[-]") + " " + msg) }
+func (p *Printer) Verbose(msg string)  { fmt.Println(p.color(dim, "[~]") + " " + msg) }
 
-// Success affiche un message de succès.
-func (p *Printer) Success(msg string) {
-	fmt.Println(p.color(green, "[+]") + " " + msg)
-}
-
-// Warning affiche un avertissement.
-func (p *Printer) Warning(msg string) {
-	fmt.Println(p.color(yellow, "[!]") + " " + msg)
-}
-
-// Error affiche une erreur.
-func (p *Printer) Error(msg string) {
-	fmt.Println(p.color(red, "[-]") + " " + msg)
-}
-
-// Verbose affiche un message de debug.
-func (p *Printer) Verbose(msg string) {
-	fmt.Println(p.color(dim, "[~]") + " " + msg)
-}
-
-// Finding affiche une vulnérabilité détectée en temps réel.
+// Finding affiche une injection DB détectée.
 func (p *Printer) Finding(f models.Finding) {
 	fmt.Println()
-	fmt.Println(p.color(red+bold, "  ═══ VULNÉRABILITÉ DÉTECTÉE ═══"))
+	fmt.Println(p.color(red+bold, "  ═══ ACCÈS DB POTENTIEL ═══"))
 	fmt.Printf("  %s %s\n", p.color(bold, "Paramètre:"), f.Parameter)
 	fmt.Printf("  %s %s\n", p.color(bold, "Type:"), vulnLabel(f.VulnType))
 	fmt.Printf("  %s %s\n", p.color(bold, "Confiance:"), confidenceColor(p, f.Confidence))
@@ -95,17 +76,17 @@ func (p *Printer) Finding(f models.Finding) {
 	fmt.Println()
 }
 
-// Summary affiche le résumé final du scan.
+// Summary affiche le résumé final.
 func (p *Printer) Summary(result models.ScanResult) {
 	fmt.Println()
 	fmt.Println(p.color(bold, "─── Résumé ───"))
 	fmt.Printf("  Paramètres testés : %d\n", result.TestedParams)
 	fmt.Printf("  Payloads envoyés  : %d\n", result.TestedPayloads)
-	fmt.Printf("  Findings          : %d\n", len(result.Findings))
+	fmt.Printf("  Injections DB     : %d\n", len(result.Findings))
 
 	if len(result.Errors) > 0 {
 		fmt.Println()
-		p.Warning(fmt.Sprintf("%d erreur(s) durant le scan", len(result.Errors)))
+		p.Warning(fmt.Sprintf("%d erreur(s)", len(result.Errors)))
 		for _, e := range result.Errors {
 			fmt.Printf("    %s\n", e)
 		}
@@ -113,24 +94,19 @@ func (p *Printer) Summary(result models.ScanResult) {
 
 	fmt.Println()
 	if len(result.Findings) > 0 {
-		p.Success(fmt.Sprintf("%d vulnérabilité(s) potentielle(s) détectée(s)", len(result.Findings)))
+		p.Success(fmt.Sprintf("%d injection(s) DB détectée(s)", len(result.Findings)))
 	} else {
-		p.Info("Aucune vulnérabilité détectée avec le profil configuré")
+		p.Info("Aucune injection base de données détectée")
 	}
 }
 
 func vulnLabel(v models.VulnType) string {
 	labels := map[models.VulnType]string{
-		models.SQLiError:    "SQL Injection (error-based)",
-		models.SQLiBoolean:  "SQL Injection (boolean-blind)",
-		models.SQLiTime:     "SQL Injection (time-blind)",
-		models.SQLiUnion:    "SQL Injection (union-based)",
-		models.XSS:          "XSS (réfléchi)",
-		models.SSTI:         "SSTI (Server-Side Template Injection)",
-		models.OpenRedirect: "Open Redirect",
-		models.LFI:          "LFI / Path Traversal",
-		models.SSRF:         "SSRF",
-		models.IDOR:         "IDOR (Broken Access Control)",
+		models.SQLiError:   "SQL Injection (error-based)",
+		models.SQLiBoolean: "SQL Injection (boolean-blind)",
+		models.SQLiTime:    "SQL Injection (time-blind)",
+		models.SQLiUnion:   "SQL Injection (union — extraction DB)",
+		models.NoSQL:       "NoSQL Injection (MongoDB, etc.)",
 	}
 	if l, ok := labels[v]; ok {
 		return l
@@ -158,7 +134,7 @@ func truncateURL(u string, n int) string {
 	return u[:n] + "..."
 }
 
-// PrintScanConfig affiche la configuration du scan.
+// PrintScanConfig affiche la configuration.
 func (p *Printer) PrintScanConfig(mode models.ScanMode, categories []models.VulnCategory, waf bool) {
 	modeLabel := "rapide"
 	if mode == models.ScanFull {
@@ -170,7 +146,7 @@ func (p *Printer) PrintScanConfig(mode models.ScanMode, categories []models.Vuln
 	for i, c := range categories {
 		names[i] = string(c)
 	}
-	p.Info("Vulnérabilités : " + strings.Join(names, ", "))
+	p.Info("Injections DB : " + strings.Join(names, ", "))
 	if waf {
 		p.Info("WAF bypass : activé")
 	}

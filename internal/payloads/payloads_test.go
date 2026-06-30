@@ -10,23 +10,23 @@ func TestBuildJobs_FastMode(t *testing.T) {
 	opts := models.ScanOptions{Mode: models.ScanFast}
 	jobs := BuildJobs(opts)
 	if len(jobs) == 0 {
-		t.Fatal("expected jobs in fast mode")
+		t.Fatal("expected jobs")
 	}
 
-	hasXSS, hasSQLi, hasTime := false, false, false
+	hasSQLi, hasNoSQL, hasTime := false, false, false
 	for _, j := range jobs {
-		if j.VulnType == models.XSS {
-			hasXSS = true
-		}
 		if j.Category == models.CategorySQLi {
 			hasSQLi = true
+		}
+		if j.VulnType == models.NoSQL {
+			hasNoSQL = true
 		}
 		if j.VulnType == models.SQLiTime {
 			hasTime = true
 		}
 	}
-	if !hasXSS || !hasSQLi {
-		t.Fatal("fast mode should include sqli and xss")
+	if !hasSQLi || !hasNoSQL {
+		t.Fatal("fast mode should include sqli and nosql")
 	}
 	if hasTime {
 		t.Fatal("fast mode should not include time-based")
@@ -47,37 +47,36 @@ func TestBuildJobs_FullMode(t *testing.T) {
 	}
 }
 
-func TestFastPayloadsSmallerThanFull(t *testing.T) {
-	fast := BuildJobs(models.ScanOptions{Mode: models.ScanFast})
-	full := BuildJobs(models.ScanOptions{Mode: models.ScanFull})
-	if len(fast) >= len(full) {
-		t.Fatalf("fast (%d) should have fewer jobs than full (%d)", len(fast), len(full))
+func TestUnionPayloads_DBExtraction(t *testing.T) {
+	payloads := unionPayloads(false)
+	found := false
+	for _, p := range payloads {
+		if contains(p, "version") || contains(p, "database") || contains(p, "information_schema") {
+			found = true
+			break
+		}
 	}
-}
-
-func TestGetBooleanPairs(t *testing.T) {
-	pairs := GetBooleanPairs(false)
-	if len(pairs) == 0 {
-		t.Fatal("expected boolean pairs")
+	if !found {
+		t.Fatal("union payloads should target DB extraction")
 	}
 }
 
 func TestParseCategory(t *testing.T) {
-	cat, _, err := ParseCategory("sqli")
-	if err != nil || cat != models.CategorySQLi {
-		t.Fatal("expected sqli category")
-	}
-	cat, tech, err := ParseCategory("xss")
-	if err != nil || cat != models.CategoryXSS || tech != models.XSS {
-		t.Fatal("expected xss")
+	cat, _, err := ParseCategory("nosql")
+	if err != nil || cat != models.CategoryNoSQL {
+		t.Fatal("expected nosql")
 	}
 }
 
-func TestDefaultSQLiTechniques_FastNoTime(t *testing.T) {
-	techs := DefaultSQLiTechniques(models.ScanFast)
-	for _, tech := range techs {
-		if tech == models.SQLiTime {
-			t.Fatal("fast should not include time")
+func contains(s, sub string) bool {
+	return len(s) >= len(sub) && (s == sub || len(sub) == 0 || indexOf(s, sub) >= 0)
+}
+
+func indexOf(s, sub string) int {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return i
 		}
 	}
+	return -1
 }

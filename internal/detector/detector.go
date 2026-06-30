@@ -52,16 +52,13 @@ func DetectSQLError(body string) SQLErrorResult {
 	return SQLErrorResult{}
 }
 
-// DetectUnionSuccess détecte des signes de succès UNION (colonnes réfléchies).
+// DetectUnionSuccess détecte une extraction de données DB via UNION.
 func DetectUnionSuccess(body, baseline string) bool {
 	indicators := []string{
-		"@@version",
-		"version()",
-		"mysql",
-		"postgresql",
-		"microsoft sql server",
-		"sqlite",
-		"ora-",
+		"@@version", "version()", "mysql", "postgresql",
+		"microsoft sql server", "sqlite", "ora-",
+		"information_schema", "pg_catalog", "sys.databases",
+		"mariadb", "5.7.", "8.0.", "14.", "16.",
 	}
 	bodyLower := strings.ToLower(body)
 	baselineLower := strings.ToLower(baseline)
@@ -72,6 +69,26 @@ func DetectUnionSuccess(body, baseline string) bool {
 		}
 	}
 	return false
+}
+
+// DetectDBLeak détecte des fuites de métadonnées DB dans la réponse.
+func DetectDBLeak(body, baseline string) (bool, string) {
+	leaks := []struct {
+		pattern string
+		desc    string
+	}{
+		{`(?i)\d+\.\d+\.\d+`, "version DB exposée"},
+		{`(?i)(root@|postgres@|sa@)`, "utilisateur DB exposé"},
+		{`(?i)(information_schema|pg_catalog|sys\.tables)`, "schéma DB exposé"},
+		{`(?i)~[0-9a-f]{20,}`, "données extraites via EXTRACTVALUE/UPDATEXML"},
+	}
+	for _, l := range leaks {
+		re := regexp.MustCompile(l.pattern)
+		if re.FindStringIndex(body) != nil && re.FindStringIndex(baseline) == nil {
+			return true, l.desc
+		}
+	}
+	return false, ""
 }
 
 // ResponsesDiffer compare deux réponses pour le blind boolean.

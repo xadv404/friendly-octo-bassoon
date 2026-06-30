@@ -13,20 +13,18 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/payloads"
 )
 
-// Scanner orchestre les tests de vulnérabilités.
+// Scanner orchestre les tests d'injection base de données.
 type Scanner struct {
-	httpClient  *client.HTTPClient
-	noRedirect  *client.HTTPClient
-	opts        models.ScanOptions
-	onFinding   func(models.Finding)
-	onProgress  func(string)
+	httpClient *client.HTTPClient
+	opts       models.ScanOptions
+	onFinding  func(models.Finding)
+	onProgress func(string)
 }
 
 // New crée un scanner.
 func New(httpClient *client.HTTPClient, opts models.ScanOptions, onFinding func(models.Finding), onProgress func(string)) *Scanner {
 	return &Scanner{
 		httpClient: httpClient,
-		noRedirect: httpClient.WithoutRedirects(),
 		opts:       opts,
 		onFinding:  onFinding,
 		onProgress: onProgress,
@@ -59,25 +57,6 @@ func (s *Scanner) Scan(ctx context.Context, target models.ScanTarget) models.Sca
 
 			baseline := s.getBaseline(ctx, target, p)
 			foundCategories := make(map[models.VulnCategory]bool)
-
-			// IDOR : test dédié pour paramètres ID-like
-			if s.categoryEnabled(models.CategoryIDOR) {
-				if ctx.Err() == nil {
-					s.rateLimit()
-					if finding, tested := s.testIDOR(ctx, target, p, baseline); finding != nil {
-						mu.Lock()
-						result.TestedPayloads += tested
-						result.Findings = append(result.Findings, *finding)
-						if s.onFinding != nil {
-							s.onFinding(*finding)
-						}
-						if s.opts.EarlyExit {
-							foundCategories[models.CategoryIDOR] = true
-						}
-						mu.Unlock()
-					}
-				}
-			}
 
 			for _, job := range jobs {
 				if ctx.Err() != nil {
@@ -112,23 +91,15 @@ func (s *Scanner) Scan(ctx context.Context, target models.ScanTarget) models.Sca
 func (s *Scanner) runJob(ctx context.Context, target models.ScanTarget, param string, job models.TestJob, baseline baselineResp) (*models.Finding, int) {
 	switch job.VulnType {
 	case models.SQLiError:
-		return s.testError(ctx, target, param, job.Payload)
+		return s.testError(ctx, target, param, job.Payload, baseline)
 	case models.SQLiUnion:
 		return s.testUnion(ctx, target, param, job.Payload, baseline)
 	case models.SQLiBoolean:
 		return s.testBoolean(ctx, target, param, job.Payload, job.PayloadB, baseline)
 	case models.SQLiTime:
 		return s.testTime(ctx, target, param, job.Payload, baseline)
-	case models.XSS:
-		return s.testXSS(ctx, target, param, job.Payload)
-	case models.OpenRedirect:
-		return s.testRedirect(ctx, target, param, job.Payload)
-	case models.LFI:
-		return s.testLFI(ctx, target, param, job.Payload)
-	case models.SSRF:
-		return s.testSSRF(ctx, target, param, job.Payload)
-	case models.SSTI:
-		return s.testSSTI(ctx, target, param, job.Payload)
+	case models.NoSQL:
+		return s.testNoSQL(ctx, target, param, job.Payload, baseline)
 	default:
 		return nil, 0
 	}
@@ -154,26 +125,40 @@ func (s *Scanner) getBaseline(ctx context.Context, target models.ScanTarget, par
 	}
 }
 
-func (s *Scanner) testError(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
+func (s *Scanner) testError(ctx context.Context, target models.ScanTarget, param, payload string, baseline baselineResp) (*models.Finding, int) {
 	s.progress(fmt.Sprintf("[%s] sqli:error → %s", param, truncate(payload, 50)))
 	resp, err := s.httpClient.Send(ctx, target, param, payload)
 	if err != nil {
 		return nil, 1
 	}
+
 	sqlErr := detector.DetectSQLError(resp.Body)
-	if !sqlErr.Found {
-		return nil, 1
+	if sqlErr.Found {
+		confidence := models.High
+		if sqlErr.DBMS != "generic" {
+			confidence = models.Confirmed
+		}
+		return &models.Finding{
+			URL: resp.URL, Parameter: param, Payload: payload,
+			VulnType: models.SQLiError, Confidence: confidence,
+			Evidence: "erreur SQL — accès DB probable: " + sqlErr.Snippet,
+			DBMS: sqlErr.DBMS,
+			ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
+		}, 1
 	}
-	confidence := models.High
-	if sqlErr.DBMS != "generic" {
-		confidence = models.Confirmed
+
+	if baseline.err == nil {
+		if leak, desc := detector.DetectDBLeak(resp.Body, baseline.body); leak {
+			return &models.Finding{
+				URL: resp.URL, Parameter: param, Payload: payload,
+				VulnType: models.SQLiError, Confidence: models.High,
+				Evidence: desc,
+				ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
+			}, 1
+		}
 	}
-	return &models.Finding{
-		URL: resp.URL, Parameter: param, Payload: payload,
-		VulnType: models.SQLiError, Confidence: confidence,
-		Evidence: sqlErr.Snippet, DBMS: sqlErr.DBMS,
-		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
-	}, 1
+
+	return nil, 1
 }
 
 func (s *Scanner) testUnion(ctx context.Context, target models.ScanTarget, param, payload string, baseline baselineResp) (*models.Finding, int) {
@@ -182,23 +167,26 @@ func (s *Scanner) testUnion(ctx context.Context, target models.ScanTarget, param
 	if err != nil {
 		return nil, 1
 	}
+
 	sqlErr := detector.DetectSQLError(resp.Body)
 	if sqlErr.Found {
 		return &models.Finding{
 			URL: resp.URL, Parameter: param, Payload: payload,
 			VulnType: models.SQLiUnion, Confidence: models.High,
-			Evidence: "erreur SQL UNION: " + sqlErr.Snippet, DBMS: sqlErr.DBMS,
+			Evidence: "erreur SQL UNION — accès DB: " + sqlErr.Snippet, DBMS: sqlErr.DBMS,
 			ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 		}, 1
 	}
+
 	if baseline.err == nil && detector.DetectUnionSuccess(resp.Body, baseline.body) {
 		return &models.Finding{
 			URL: resp.URL, Parameter: param, Payload: payload,
-			VulnType: models.SQLiUnion, Confidence: models.Medium,
-			Evidence: "données DBMS dans réponse UNION",
+			VulnType: models.SQLiUnion, Confidence: models.Confirmed,
+			Evidence: "données DB extraites via UNION (version/schéma)",
 			ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 		}, 1
 	}
+
 	return nil, 1
 }
 
@@ -221,7 +209,8 @@ func (s *Scanner) testBoolean(ctx context.Context, target models.ScanTarget, par
 	}
 	return &models.Finding{
 		URL: trueResp.URL, Parameter: param, Payload: trueP + " | " + falseP,
-		VulnType: models.SQLiBoolean, Confidence: models.Medium, Evidence: evidence,
+		VulnType: models.SQLiBoolean, Confidence: models.Medium,
+		Evidence: "injection boolean — requêtes DB manipulables: " + evidence,
 		ResponseTimeMs: float64(trueResp.Duration.Milliseconds()), StatusCode: trueResp.StatusCode,
 	}, 2
 }
@@ -250,171 +239,34 @@ func (s *Scanner) testTime(ctx context.Context, target models.ScanTarget, param,
 		return &models.Finding{
 			URL: resp.URL, Parameter: param, Payload: payload,
 			VulnType: models.SQLiTime, Confidence: confidence,
-			Evidence: fmt.Sprintf("délai %.0fms (baseline: %.0fms)", ms, baseMs),
+			Evidence: fmt.Sprintf("time-based — requête DB exécutée (%.0fms)", ms),
 			ResponseTimeMs: ms, StatusCode: resp.StatusCode,
 		}, 1
 	}
 	return nil, 1
 }
 
-func (s *Scanner) testXSS(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
-	s.progress(fmt.Sprintf("[%s] xss → %s", param, truncate(payload, 50)))
+func (s *Scanner) testNoSQL(ctx context.Context, target models.ScanTarget, param, payload string, baseline baselineResp) (*models.Finding, int) {
+	s.progress(fmt.Sprintf("[%s] nosql → %s", param, truncate(payload, 50)))
 	resp, err := s.httpClient.Send(ctx, target, param, payload)
 	if err != nil {
 		return nil, 1
 	}
-	xss := detector.DetectXSS(resp.Body, payload)
-	if !xss.Found {
+	baseBody := ""
+	if baseline.err == nil {
+		baseBody = baseline.body
+	}
+	nosql := detector.DetectNoSQL(resp.Body, baseBody, payload)
+	if !nosql.Found {
 		return nil, 1
 	}
 	return &models.Finding{
 		URL: resp.URL, Parameter: param, Payload: payload,
-		VulnType: models.XSS, Confidence: models.High,
-		Evidence: xss.Context + ": " + xss.Snippet,
+		VulnType: models.NoSQL, Confidence: models.High,
+		Evidence: nosql.Evidence + ": " + nosql.Snippet,
+		DBMS: "nosql",
 		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 	}, 1
-}
-
-func (s *Scanner) testRedirect(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
-	s.progress(fmt.Sprintf("[%s] redirect → %s", param, truncate(payload, 50)))
-	resp, err := s.noRedirect.Send(ctx, target, param, payload)
-	if err != nil {
-		return nil, 1
-	}
-	redir := detector.DetectOpenRedirect(resp.StatusCode, resp.Headers, resp.Body, payload)
-	if !redir.Found {
-		return nil, 1
-	}
-	return &models.Finding{
-		URL: resp.URL, Parameter: param, Payload: payload,
-		VulnType: models.OpenRedirect, Confidence: models.High,
-		Evidence: redir.Evidence,
-		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
-	}, 1
-}
-
-func (s *Scanner) testLFI(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
-	s.progress(fmt.Sprintf("[%s] lfi → %s", param, truncate(payload, 50)))
-	resp, err := s.httpClient.Send(ctx, target, param, payload)
-	if err != nil {
-		return nil, 1
-	}
-	lfi := detector.DetectLFI(resp.Body)
-	if !lfi.Found {
-		return nil, 1
-	}
-	return &models.Finding{
-		URL: resp.URL, Parameter: param, Payload: payload,
-		VulnType: models.LFI, Confidence: models.Confirmed,
-		Evidence: lfi.Evidence + ": " + lfi.Snippet,
-		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
-	}, 1
-}
-
-func (s *Scanner) testSSRF(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
-	s.progress(fmt.Sprintf("[%s] ssrf → %s", param, truncate(payload, 50)))
-	resp, err := s.httpClient.Send(ctx, target, param, payload)
-	if err != nil {
-		return nil, 1
-	}
-	ssrf := detector.DetectSSRF(resp.Body, payload)
-	if !ssrf.Found {
-		return nil, 1
-	}
-	return &models.Finding{
-		URL: resp.URL, Parameter: param, Payload: payload,
-		VulnType: models.SSRF, Confidence: models.Medium,
-		Evidence: ssrf.Evidence + ": " + ssrf.Snippet,
-		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
-	}, 1
-}
-
-func (s *Scanner) testSSTI(ctx context.Context, target models.ScanTarget, param, payload string) (*models.Finding, int) {
-	s.progress(fmt.Sprintf("[%s] ssti → %s", param, truncate(payload, 50)))
-	resp, err := s.httpClient.Send(ctx, target, param, payload)
-	if err != nil {
-		return nil, 1
-	}
-	ssti := detector.DetectSSTI(resp.Body, payload)
-	if !ssti.Found {
-		return nil, 1
-	}
-	return &models.Finding{
-		URL: resp.URL, Parameter: param, Payload: payload,
-		VulnType: models.SSTI, Confidence: models.High,
-		Evidence: ssti.Context + ": " + ssti.Snippet,
-		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
-	}, 1
-}
-
-func (s *Scanner) testIDOR(ctx context.Context, target models.ScanTarget, param string, baseline baselineResp) (*models.Finding, int) {
-	if !isIDORCandidate(param) {
-		return nil, 0
-	}
-	s.progress(fmt.Sprintf("[%s] idor → probe %s", param, param))
-
-	orig := s.getOriginalValue(target, param)
-	resp1, err1 := s.httpClient.Send(ctx, target, param, orig)
-	if err1 != nil {
-		return nil, 2
-	}
-	alt := alternateID(orig)
-	resp2, err2 := s.httpClient.Send(ctx, target, param, alt)
-	if err2 != nil {
-		return nil, 2
-	}
-
-	idor := detector.DetectIDOR(resp1.Body, resp2.Body, resp1.StatusCode, resp2.StatusCode, param)
-	if !idor.Found {
-		return nil, 2
-	}
-	return &models.Finding{
-		URL: resp1.URL, Parameter: param, Payload: orig + " vs " + alt,
-		VulnType: models.IDOR, Confidence: models.Medium,
-		Evidence: idor.Evidence,
-		ResponseTimeMs: float64(resp1.Duration.Milliseconds()), StatusCode: resp1.StatusCode,
-	}, 2
-}
-
-func (s *Scanner) hasCategory(jobs []models.TestJob, cat models.VulnCategory) bool {
-	for _, j := range jobs {
-		if j.Category == cat {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *Scanner) categoryEnabled(cat models.VulnCategory) bool {
-	for _, c := range s.opts.Categories {
-		if c == cat {
-			return true
-		}
-	}
-	return len(s.opts.Categories) == 0
-}
-
-func isIDORCandidate(param string) bool {
-	paramLower := strings.ToLower(param)
-	for _, p := range payloads.IDORProbeParams() {
-		if paramLower == p || strings.HasSuffix(paramLower, "_"+p) || strings.HasSuffix(paramLower, p) {
-			return true
-		}
-	}
-	return false
-}
-
-func alternateID(val string) string {
-	switch val {
-	case "1":
-		return "2"
-	case "2":
-		return "1"
-	case "0":
-		return "1"
-	default:
-		return val + "1"
-	}
 }
 
 func (s *Scanner) collectParams(target models.ScanTarget) []string {
@@ -488,34 +340,16 @@ func flattenJSONKeys(m map[string]any, prefix string) map[string]bool {
 }
 
 func getNestedValue(m map[string]any, key string) (any, bool) {
-	if !containsDot(key) {
+	if !strings.Contains(key, ".") {
 		v, ok := m[key]
 		return v, ok
 	}
-	parts := splitFirst(key, ".")
+	parts := strings.SplitN(key, ".", 2)
 	sub, ok := m[parts[0]].(map[string]any)
 	if !ok {
 		return nil, false
 	}
 	return getNestedValue(sub, parts[1])
-}
-
-func containsDot(s string) bool {
-	for i := 0; i < len(s); i++ {
-		if s[i] == '.' {
-			return true
-		}
-	}
-	return false
-}
-
-func splitFirst(s, sep string) [2]string {
-	for i := 0; i < len(s); i++ {
-		if s[i] == sep[0] {
-			return [2]string{s[:i], s[i+1:]}
-		}
-	}
-	return [2]string{s, ""}
 }
 
 func truncate(s string, n int) string {

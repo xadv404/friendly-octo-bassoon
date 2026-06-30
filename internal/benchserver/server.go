@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Server simule une application web vulnérable pour l'entraînement.
+// Server simule une application avec injections DB vulnérables.
 type Server struct {
 	URL string
 	srv *httptest.Server
@@ -17,71 +17,56 @@ type Server struct {
 func New() *Server {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/sqli", func(w http.ResponseWriter, r *http.Request) {
+	// SQLi error-based
+	mux.HandleFunc("/sqli/error", func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
-		if strings.Contains(id, "'") || strings.Contains(id, `"`) {
+		if strings.Contains(id, "'") {
 			fmt.Fprintf(w, "You have an error in your SQL syntax near '%s'", id)
 			return
 		}
-		fmt.Fprintf(w, "User profile for id=%s", id)
+		fmt.Fprintf(w, "User id=%s", id)
 	})
 
-	mux.HandleFunc("/xss", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query().Get("q")
-		fmt.Fprintf(w, "<html><body>Results for: %s</body></html>", q)
-	})
-
-	mux.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {
-		target := r.URL.Query().Get("url")
-		if strings.Contains(target, "evil.com") || strings.HasPrefix(target, "//") {
-			http.Redirect(w, r, target, 302)
-			return
-		}
-		fmt.Fprint(w, "redirect ok")
-	})
-
-	mux.HandleFunc("/file", func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Query().Get("path")
-		if strings.Contains(path, "passwd") || strings.Contains(path, "../") {
-			fmt.Fprint(w, "root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n")
-			return
-		}
-		fmt.Fprintf(w, "content of %s", path)
-	})
-
-	mux.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
-		target := r.URL.Query().Get("url")
-		if strings.Contains(target, "169.254.169.254") {
-			fmt.Fprint(w, `{"ami-id":"ami-12345","instance-id":"i-abc","meta-data":"available"}`)
-			return
-		}
-		if strings.Contains(target, "127.0.0.1") || strings.Contains(target, "localhost") {
-			fmt.Fprint(w, "Connection refused connecting to 127.0.0.1")
-			return
-		}
-		fmt.Fprintf(w, "fetched %s", target)
-	})
-
-	mux.HandleFunc("/template", func(w http.ResponseWriter, r *http.Request) {
-		name := r.URL.Query().Get("name")
-		if strings.Contains(name, "{{7*7}}") || strings.Contains(name, "${7*7}") {
-			fmt.Fprint(w, "Hello 49")
-			return
-		}
-		fmt.Fprintf(w, "Hello %s", name)
-	})
-
-	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+	// SQLi union — fuite version MySQL
+	mux.HandleFunc("/sqli/union", func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
-		users := map[string]string{
-			"1": "<div class='profile'>User: Alice, email: alice@corp.com, balance: $12,400</div>",
-			"2": "<div class='profile'>User: Bob, email: bob@corp.com, balance: $8,200</div>",
-		}
-		if u, ok := users[id]; ok {
-			fmt.Fprint(w, u)
+		if strings.Contains(strings.ToLower(id), "union") && strings.Contains(strings.ToLower(id), "version") {
+			fmt.Fprint(w, "Result: 8.0.32-MySQL Community Server")
 			return
 		}
-		http.NotFound(w, r)
+		fmt.Fprintf(w, "Product id=%s", id)
+	})
+
+	// SQLi boolean blind
+	mux.HandleFunc("/sqli/boolean", func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Query().Get("id")
+		if strings.Contains(id, "OR") && strings.Contains(id, "1=1") {
+			fmt.Fprint(w, "10 results found in database")
+			return
+		}
+		if strings.Contains(id, "AND") && strings.Contains(id, "1=2") {
+			fmt.Fprint(w, "0 results found")
+			return
+		}
+		fmt.Fprint(w, "1 result found")
+	})
+
+	// NoSQL injection MongoDB
+	mux.HandleFunc("/nosql/login", func(w http.ResponseWriter, r *http.Request) {
+		user := r.URL.Query().Get("user")
+		if strings.Contains(user, "$gt") || strings.Contains(user, "$ne") || strings.Contains(user, "||") {
+			fmt.Fprint(w, `{"users":[{"username":"admin","password":"hash","email":"admin@db.local","role":"admin"}]}`)
+			return
+		}
+		if user == "guest" {
+			fmt.Fprint(w, `{"error":"invalid credentials"}`)
+			return
+		}
+		if strings.Contains(user, "$where") {
+			fmt.Fprint(w, "MongoError: $where is not allowed in this context")
+			return
+		}
+		fmt.Fprint(w, `{"error":"invalid credentials"}`)
 	})
 
 	srv := httptest.NewServer(mux)
@@ -93,17 +78,14 @@ func (s *Server) Close() {
 	s.srv.Close()
 }
 
-// Targets retourne les cibles de benchmark avec vulnérabilité attendue.
+// Targets retourne les cibles de benchmark DB.
 func (s *Server) Targets() []Target {
 	base := s.URL
 	return []Target{
-		{Name: "SQLi error-based", URL: base + "/sqli?id=1", Param: "id", Expected: "sqli_error"},
-		{Name: "XSS reflected", URL: base + "/xss?q=test", Param: "q", Expected: "xss"},
-		{Name: "Open Redirect", URL: base + "/redirect?url=/", Param: "url", Expected: "open_redirect"},
-		{Name: "LFI / Path Traversal", URL: base + "/file?path=index", Param: "path", Expected: "lfi"},
-		{Name: "SSRF", URL: base + "/fetch?url=http://example.com", Param: "url", Expected: "ssrf"},
-		{Name: "SSTI", URL: base + "/template?name=world", Param: "name", Expected: "ssti"},
-		{Name: "IDOR", URL: base + "/user?id=1", Param: "id", Expected: "idor"},
+		{Name: "SQLi error-based", URL: base + "/sqli/error?id=1", Param: "id", Expected: "sqli_error"},
+		{Name: "SQLi union (version DB)", URL: base + "/sqli/union?id=1", Param: "id", Expected: "sqli_union"},
+		{Name: "SQLi boolean blind", URL: base + "/sqli/boolean?id=1", Param: "id", Expected: "sqli_boolean"},
+		{Name: "NoSQL injection", URL: base + "/nosql/login?user=guest", Param: "user", Expected: "nosql"},
 	}
 }
 

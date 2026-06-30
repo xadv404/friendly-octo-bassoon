@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	fmt.Println("═══ Benchmark sqli-hunter — serveur vulnérable local ═══")
+	fmt.Println("═══ Benchmark sqli-hunter — injections base de données ═══")
 	fmt.Println()
 
 	result, err := benchmark.Run()
@@ -17,8 +17,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Résultat : %d/%d vulnérabilités détectées\n", result.Passed, result.Total)
-	fmt.Printf("Findings totaux : %d\n\n", result.Findings)
+	fmt.Printf("Résultat : %d/%d injections DB détectées\n\n", result.Passed, result.Total)
 
 	if len(result.Failed) > 0 {
 		fmt.Println("Échecs :")
@@ -28,11 +27,11 @@ func main() {
 		fmt.Println()
 	}
 
-	fmt.Println("Couverture OWASP Top 10:2025 (bug bounty automatisé) :")
-	fmt.Println("  A01 Broken Access Control  → IDOR, LFI")
-	fmt.Println("  A05 Injection              → SQLi, XSS, SSTI")
-	fmt.Println("  A02 Security Misconfig       → SSRF (partiel)")
-	fmt.Println("  Open Redirect              → classement fréquent bug bounty")
+	fmt.Println("Scénarios testés :")
+	fmt.Println("  • SQLi error-based")
+	fmt.Println("  • SQLi union (extraction version MySQL)")
+	fmt.Println("  • SQLi boolean blind")
+	fmt.Println("  • NoSQL injection (bypass auth MongoDB)")
 
 	if result.Passed < result.Total {
 		os.Exit(1)

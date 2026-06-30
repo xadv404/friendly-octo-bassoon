@@ -19,7 +19,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/scanner"
 )
 
-const version = "1.1.0"
+const version = "1.2.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -349,7 +349,7 @@ func buildOptions(cfg config) models.ScanOptions {
 }
 
 func printUsage() {
-	fmt.Print(`sqli-hunter — Scanner rapide de vulnérabilités web pour bug bounty
+	fmt.Print(`sqli-hunter — Détection d'injections base de données pour bug bounty
 
 Usage:
   sqli-hunter -u <URL> [options]
@@ -365,19 +365,17 @@ Requête:
   -H, --header <Nom: Val>   Header HTTP (répétable)
   -c, --cookie <nom=val>    Cookie (répétable)
 
-Vulnérabilités (mode rapide par défaut):
-  -t, --test <liste>        sqli,xss,ssti,redirect,lfi,ssrf,idor [défaut: toutes]
-                            SQLi fin : error,boolean,time,union
-      --full                Scan complet (plus de payloads + time-based)
-      --waf                 Payloads bypass WAF (SQLi)
-      --payload <PAYLOAD>     Payload SQLi personnalisé (répétable)
+Injections DB:
+  -t, --test <liste>        sqli,nosql,error,union,boolean,time [défaut: sqli,nosql]
+      --full                Scan complet (+ time-based SQLi)
+      --waf                 Payloads bypass WAF
+      --payload <PAYLOAD>   Payload SQLi personnalisé (répétable)
 
 Timing:
       --time-delay <sec>    Délai time-based [défaut: 3]
-      --time-threshold <ms> Seuil détection time-based
       --rate-limit <ms>     Délai entre requêtes [défaut: 100]
       --timeout <sec>       Timeout HTTP [défaut: 15]
-      --threads <n>         Goroutines parallèles [défaut: 8]
+      --threads <n>         Goroutines [défaut: 8]
 
 Affichage:
   -v, --verbose             Afficher chaque test
@@ -387,18 +385,9 @@ Affichage:
 
 Exemples:
   sqli-hunter -u "https://target.com/page?id=1"
-  sqli-hunter -u "https://target.com/search?q=test" -t sqli,xss
-  sqli-hunter -u "https://target.com/redirect?url=/" -t redirect
-  sqli-hunter -u "https://target.com/file?path=index" -t lfi,ssrf --full -v
-
-Benchmark (entraînement local):
+  sqli-hunter -u "https://target.com/product?id=1" -t sqli,union -v
+  sqli-hunter -u "https://target.com/api?user=guest" -t nosql
   go run ./cmd/benchmark
-
-Mode rapide (défaut):
-  - SQLi error + union + boolean (pas de time-based)
-  - XSS, Open Redirect, LFI, SSRF
-  - Payloads les plus efficaces uniquement
-  - Arrêt anticipé par catégorie si vuln confirmée
 
 ⚠️  Utilisez uniquement sur des cibles autorisées (bug bounty, pentest contractuel).
 `)

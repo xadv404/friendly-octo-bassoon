@@ -1,53 +1,18 @@
 # sqli-hunter
 
-Scanner CLI en **Go** de vulnérabilités web courantes pour bug bounty.
+Scanner CLI en **Go** dédié aux **injections donnant accès à la base de données**.
 
-## Alignement OWASP Top 10:2025 / bug bounty 2026
+## Cible : accès DB uniquement
 
-Sources : OWASP Top 10:2025, Synack State of Vulnerabilities 2026, Penetrify Q1 2026.
+| Type | Objectif |
+|------|----------|
+| **SQLi error-based** | Erreurs SQL → requêtes injectables |
+| **SQLi union-based** | Extraction `version()`, `database()`, `information_schema` |
+| **SQLi boolean-blind** | Manipulation de requêtes SELECT |
+| **SQLi time-blind** | Exécution de requêtes temporisées (`--full`) |
+| **NoSQL injection** | Bypass auth MongoDB, accès collections |
 
-| Rang OWASP 2025 | Part estimée | Couvert par sqli-hunter |
-|-----------------|--------------|-------------------------|
-| A01 Broken Access Control | ~34% | **IDOR**, **LFI** |
-| A05 Injection | ~22% | **SQLi**, **XSS**, **SSTI** |
-| A02 Security Misconfiguration | ~18% | **SSRF** (partiel) |
-| Open Redirect | fréquent en bounty | **Open Redirect** |
-
-> Les catégories non couvertes (auth failures, supply chain, crypto, misconfig générale) nécessitent des tests manuels ou des outils complémentaires.
-
-## Vulnérabilités testées
-
-| Type | Mode rapide | Mode complet |
-|------|-------------|--------------|
-| SQLi (error, union, boolean) | ✓ | ✓ |
-| SQLi time-blind | — | ✓ |
-| XSS réfléchi | ✓ | ✓ |
-| SSTI | ✓ | ✓ |
-| Open Redirect | ✓ | ✓ |
-| LFI / Path Traversal | ✓ | ✓ |
-| SSRF | ✓ | ✓ |
-| IDOR | ✓ | ✓ |
-
-## Entraînement / benchmark
-
-Les sites publics (vulnweb, testfire) bloquent souvent les IP cloud. Un **serveur vulnérable local** est inclus pour valider la détection :
-
-```bash
-# Lancer le benchmark (7 vulns simulées)
-go run ./cmd/benchmark
-
-# Ou via les tests
-go test ./internal/benchmark/... -v
-```
-
-Le benchmark teste automatiquement :
-- SQLi error-based sur `/sqli?id=1`
-- XSS sur `/xss?q=test`
-- Open Redirect sur `/redirect?url=/`
-- LFI sur `/file?path=index`
-- SSRF sur `/fetch?url=...`
-- SSTI sur `/template?name=world`
-- IDOR sur `/user?id=1`
+Payloads orientés **extraction de métadonnées DB** : version, schémas, tables, utilisateurs.
 
 ## Installation
 
@@ -58,31 +23,42 @@ go build -o sqli-hunter ./cmd/sqli-hunter
 ## Usage
 
 ```bash
-# Scan rapide — toutes les vulns communes
+# Scan rapide SQLi + NoSQL
 ./sqli-hunter -u "https://target.com/page?id=1"
 
-# Cibler sqli + xss + ssti
-./sqli-hunter -u "https://target.com/search?q=test" -t sqli,xss,ssti
+# SQLi uniquement
+./sqli-hunter -u "https://target.com/product?id=1" -t sqli
 
-# Scan exhaustif
+# Union + extraction DB
+./sqli-hunter -u "https://target.com/item?id=1" -t union -v
+
+# Scan complet (time-based inclus)
 ./sqli-hunter -u "https://target.com/api?id=1" --full
 ```
 
-## Sites de test publics (à lancer depuis ta machine)
-
-| Site | Vulns connues |
-|------|---------------|
-| http://testphp.vulnweb.com | SQLi, XSS, LFI |
-| http://testasp.vulnweb.com | SQLi (ASP) |
-| https://juice-shop.herokuapp.com | OWASP Juice Shop (complet) |
-| DVWA / WebGoat | Local (Docker) |
+## Benchmark local
 
 ```bash
-# Exemple depuis ton réseau local
-./sqli-hunter -u "http://testphp.vulnweb.com/artists.php?artist=1" -t sqli -v
-./sqli-hunter -u "http://testphp.vulnweb.com/search.php?test=query" -t xss,sqli
+go run ./cmd/benchmark
 ```
+
+Teste 4 scénarios : SQLi error, union (fuite version), boolean blind, NoSQL.
+
+## Sites de test (depuis ton réseau)
+
+```bash
+./sqli-hunter -u "http://testphp.vulnweb.com/artists.php?artist=1" -t sqli -v
+./sqli-hunter -u "http://testphp.vulnweb.com/listproducts.php?cat=1" -t sqli,union
+```
+
+## Options
+
+| Option | Description | Défaut |
+|--------|-------------|--------|
+| `-t, --test` | `sqli`, `nosql`, `error`, `union`, `boolean`, `time` | sqli + nosql |
+| `--full` | Scan complet + time-based | off |
+| `--waf` | Bypass WAF SQLi | off |
 
 ## Avertissement
 
-Utilisez cet outil **uniquement** sur des cibles autorisées (bug bounty, pentest contractuel, lab personnel).
+Utilisez uniquement sur des cibles autorisées (bug bounty, pentest, lab).
