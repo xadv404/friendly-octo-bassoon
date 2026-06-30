@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -20,7 +21,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/scanner"
 )
 
-const version = "1.3.0"
+const version = "1.4.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -60,30 +61,31 @@ func main() {
 	opts := buildOptions(cfg)
 	printer.Info(fmt.Sprintf("Cible : %s", cfg.targetURL))
 	printer.Info(fmt.Sprintf("Méthode : %s", target.Method))
-	if !opts.ExtractOnly {
-		printer.PrintScanConfig(opts.Mode, opts.Categories, opts.IncludeWAF)
-	}
-	if opts.AutoExtract {
-		printer.PrintExtractMode("automatique (dès détection)")
-	} else if opts.ExtractAfter {
-		printer.PrintExtractMode("après scan")
-	} else if opts.ExtractOnly {
-		printer.PrintExtractMode("extraction seule")
-	}
-	printer.Info(fmt.Sprintf("Threads : %d | Timeout : %ds | Rate limit : %dms", opts.Threads, opts.TimeoutSec, opts.RateLimitMs))
+	printer.PrintScanConfig(opts.Mode, opts.Categories, opts.IncludeWAF)
+	printer.PrintExtractMode(fmt.Sprintf("automatique (%d workers dédiés)", opts.ExtractThreads))
+	printer.Info(fmt.Sprintf("Threads scan : %d | Threads extract : %d | Timeout : %ds | Rate limit : %dms",
+		opts.Threads, opts.ExtractThreads, opts.TimeoutSec, opts.RateLimitMs))
 	fmt.Println()
 
-	httpClient := client.New(opts.TimeoutSec, target.Headers, target.Cookies)
+	scanClient := client.New(opts.TimeoutSec, target.Headers, target.Cookies)
+	extractClient := client.New(opts.TimeoutSec, target.Headers, target.Cookies)
+
 	rateLimit := func() {
 		if opts.RateLimitMs > 0 {
 			time.Sleep(time.Duration(opts.RateLimitMs) * time.Millisecond)
 		}
 	}
 
-	var allExtractions []models.ExtractedData
-	ext := extractor.New(httpClient,
+	var (
+		allExtractions []models.ExtractedData
+		extMu          sync.Mutex
+	)
+
+	ext := extractor.New(extractClient,
 		func(d models.ExtractedData) {
+			extMu.Lock()
 			allExtractions = append(allExtractions, d)
+			extMu.Unlock()
 			printer.Extraction(d)
 		},
 		func(msg string) {
@@ -93,6 +95,8 @@ func main() {
 		},
 		rateLimit,
 	)
+
+	pool := extractor.NewPool(ext, opts.ExtractThreads)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -105,47 +109,25 @@ func main() {
 		cancel()
 	}()
 
+	pool.Start(ctx)
+
 	start := time.Now()
 
-	// Mode extraction seule : pas de scan de détection
-	if opts.ExtractOnly {
-		printer.Info("Mode extraction — tentative directe sur les paramètres")
-		ext.ExtractDirect(ctx, target)
-		printer.ExtractionSummary(allExtractions)
-		printer.Info(fmt.Sprintf("Durée : %s", time.Since(start).Round(time.Millisecond)))
-		if len(allExtractions) == 0 {
-			printer.Warning("Aucune donnée extraite — lancez d'abord un scan ou vérifiez l'injection")
-		}
-		return
-	}
-
-	// Callback extraction auto dès détection
 	onFinding := func(f models.Finding) {
 		printer.Finding(f)
-		if opts.AutoExtract {
-			ext.ExtractFromFinding(ctx, target, f)
-		}
+		pool.Submit(target, f)
 	}
 
-	sc := scanner.New(httpClient, opts, onFinding,
+	sc := scanner.New(scanClient, opts, onFinding,
 		func(msg string) { printer.Verbose(msg) },
 	)
 
 	result := sc.Scan(ctx, target)
+	pool.CloseAndWait()
 
-	// Phase 2 : extraction après scan
-	if opts.ExtractAfter && len(result.Findings) > 0 {
-		fmt.Println()
-		printer.Info(fmt.Sprintf("Phase extraction — %d vulnérabilité(s) à exploiter", len(result.Findings)))
-		extResult := ext.ExtractAll(ctx, target, result.Findings)
-		for _, d := range extResult.Extractions {
-			if !containsExtraction(allExtractions, d) {
-				allExtractions = append(allExtractions, d)
-			}
-		}
-	}
-
-	result.Extractions = allExtractions
+	extMu.Lock()
+	result.Extractions = append([]models.ExtractedData(nil), allExtractions...)
+	extMu.Unlock()
 	elapsed := time.Since(start)
 
 	printer.Summary(result)
@@ -171,26 +153,25 @@ type config struct {
 	rateLimit      int
 	timeout        int
 	threads        int
+	extractThreads int
 	verbose        bool
 	noColor        bool
-	autoExtract    bool
-	extractOnly    bool
-	extractAfter   bool
 	showHelp       bool
 	showVersion    bool
 }
 
 func parseArgs(args []string) (config, error) {
 	cfg := config{
-		method:    "GET",
-		timeDelay: 3,
-		timeout:   15,
-		threads:   8,
-		rateLimit: 100,
-		params:    make(map[string]string),
-		data:      make(map[string]string),
-		headers:   make(map[string]string),
-		cookies:   make(map[string]string),
+		method:         "GET",
+		timeDelay:      3,
+		timeout:        15,
+		threads:        8,
+		extractThreads: 2,
+		rateLimit:      100,
+		params:         make(map[string]string),
+		data:           make(map[string]string),
+		headers:        make(map[string]string),
+		cookies:        make(map[string]string),
 	}
 
 	for i := 0; i < len(args); i++ {
@@ -335,16 +316,20 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("--threads doit être >= 1")
 			}
 			cfg.threads = v
+		case arg == "--extract-threads":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--extract-threads nécessite une valeur")
+			}
+			v, err := strconv.Atoi(args[i])
+			if err != nil || v < 1 {
+				return cfg, fmt.Errorf("--extract-threads doit être >= 1")
+			}
+			cfg.extractThreads = v
 		case arg == "-v" || arg == "--verbose":
 			cfg.verbose = true
 		case arg == "--no-color":
 			cfg.noColor = true
-		case arg == "--auto-extract":
-			cfg.autoExtract = true
-		case arg == "--extract":
-			cfg.extractOnly = true
-		case arg == "--extract-after":
-			cfg.extractAfter = true
 		default:
 			return cfg, fmt.Errorf("argument inconnu : %s", arg)
 		}
@@ -360,15 +345,6 @@ func appendUniqueCategory(cats []models.VulnCategory, cat models.VulnCategory) [
 		}
 	}
 	return append(cats, cat)
-}
-
-func containsExtraction(list []models.ExtractedData, d models.ExtractedData) bool {
-	for _, e := range list {
-		if e.Parameter == d.Parameter && e.DataType == d.DataType && e.Value == d.Value {
-			return true
-		}
-	}
-	return false
 }
 
 func buildTarget(cfg config) (models.ScanTarget, error) {
@@ -426,11 +402,9 @@ func buildOptions(cfg config) models.ScanOptions {
 		RateLimitMs:     cfg.rateLimit,
 		TimeoutSec:      cfg.timeout,
 		Threads:         cfg.threads,
+		ExtractThreads:  cfg.extractThreads,
 		Verbose:         cfg.verbose,
-		EarlyExit:       !cfg.extractAfter,
-		AutoExtract:     cfg.autoExtract,
-		ExtractOnly:     cfg.extractOnly,
-		ExtractAfter:    cfg.extractAfter,
+		EarlyExit:       true,
 	}
 }
 
@@ -458,15 +432,15 @@ Injections DB:
       --payload <PAYLOAD>   Payload SQLi personnalisé (répétable)
 
 Extraction:
-      --auto-extract        Extraire dès qu'une vuln est détectée
-      --extract-after       Scanner puis extraire sur toutes les vulns
-      --extract             Mode extraction seul (URL déjà vulnérable)
+  L'extraction démarre automatiquement dès qu'une vulnérabilité est détectée,
+  sur des workers dédiés (séparés des threads de scan).
 
 Timing:
       --time-delay <sec>    Délai time-based [défaut: 3]
       --rate-limit <ms>     Délai entre requêtes [défaut: 100]
       --timeout <sec>       Timeout HTTP [défaut: 15]
-      --threads <n>         Goroutines [défaut: 8]
+      --threads <n>         Goroutines de scan [défaut: 8]
+      --extract-threads <n> Workers d'extraction [défaut: 2]
 
 Affichage:
   -v, --verbose             Afficher chaque test
@@ -475,16 +449,8 @@ Affichage:
       --version             Version
 
 Exemples:
-  # Scan + extraction auto
-  sqli-hunter -u "https://target.com/page?id=1" --auto-extract -v
-
-  # Scan puis extraction (2 phases)
-  sqli-hunter -u "https://target.com/product?id=1" --extract-after
-
-  # Extraction directe (URL déjà confirmée vulnérable)
-  sqli-hunter -u "https://target.com/page?id=1" --extract
-
-  sqli-hunter -u "https://target.com/api?user=guest" -t nosql --auto-extract
+  sqli-hunter -u "https://target.com/page?id=1" -v
+  sqli-hunter -u "https://target.com/api?user=guest" -t nosql
   go run ./cmd/benchmark
 
 ⚠️  Utilisez uniquement sur des cibles autorisées (bug bounty, pentest contractuel).

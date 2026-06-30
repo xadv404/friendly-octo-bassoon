@@ -87,9 +87,7 @@ type ScanOptions struct {
 	Threads         int
 	Verbose         bool
 	EarlyExit       bool
-	AutoExtract     bool // extraire dès qu'une vuln est trouvée
-	ExtractOnly     bool // mode extraction seul (pas de scan)
-	ExtractAfter    bool // extraire après le scan sur toutes les findings
+	ExtractThreads  int // workers dédiés à l'extraction (séparés du scan)
 }
 
 // ScanResult agrège les résultats d'un scan.

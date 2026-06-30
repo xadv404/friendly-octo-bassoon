@@ -16,13 +16,12 @@ Payloads orientés **extraction de métadonnées DB** : version, schémas, table
 
 ## Extraction de données
 
-Trois modes d'extraction :
+Dès qu'une vulnérabilité est détectée, l'outil lance automatiquement l'extraction sur des **workers dédiés** (séparés des threads de scan). Le scan continue en parallèle sans bloquer.
 
-| Mode | Flag | Comportement |
-|------|------|--------------|
-| **Auto** | `--auto-extract` | Extrait dès qu'une vuln est détectée |
-| **Après scan** | `--extract-after` | Phase 1 : scan → Phase 2 : extraction |
-| **Direct** | `--extract` | Extraction seule (URL déjà vulnérable) |
+| Option | Description | Défaut |
+|--------|-------------|--------|
+| `--threads` | Goroutines de scan | 8 |
+| `--extract-threads` | Workers d'extraction | 2 |
 
 ### Données extraites
 
@@ -33,14 +32,11 @@ Trois modes d'extraction :
 - Dump NoSQL (collections MongoDB)
 
 ```bash
-# Scan + extraction immédiate
-./sqli-hunter -u "https://target.com/page?id=1" --auto-extract -v
+# Scan + extraction automatique (dès détection)
+./sqli-hunter -u "https://target.com/page?id=1" -v
 
-# Scan puis extraction sur toutes les vulns trouvées
-./sqli-hunter -u "https://target.com/product?id=1" --extract-after
-
-# Extraction directe (tu sais déjà que c'est vulnérable)
-./sqli-hunter -u "https://target.com/page?id=1" --extract
+# Ajuster les workers d'extraction
+./sqli-hunter -u "https://target.com/product?id=1" --extract-threads 4
 ```
 
 ## Installation
