@@ -14,6 +14,26 @@ Scanner CLI en **Go** dédié aux **injections donnant accès à la base de donn
 
 Payloads orientés **extraction de métadonnées DB** : version, schémas, tables, utilisateurs.
 
+## Listes d'URLs (bulk)
+
+```bash
+# Fichier urls.txt — une URL par ligne, paramètres dans la query
+# https://target.com/page?id=1
+# https://api.example.com/users?uid=42
+
+./sqli-hunter -l urls.txt --url-threads 8 -o results.json
+```
+
+| Option | Description | Défaut |
+|--------|-------------|--------|
+| `-l, --list` | Fichier d'URLs | — |
+| `-o, --output` | Export JSON | — |
+| `--url-threads` | URLs scannées en parallèle | 4 |
+| `--threads` | Workers scan par URL | 8 |
+| `--extract-threads` | Workers extraction | 2 |
+
+En mode liste : progression `[42/1240]`, vulns affichées immédiatement, résumé final compact.
+
 ## Extraction de données
 
 Dès qu'une vulnérabilité est détectée, l'outil lance automatiquement l'extraction sur des **workers dédiés** (séparés des threads de scan). Le scan continue en parallèle sans bloquer.

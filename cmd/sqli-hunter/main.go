@@ -4,24 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
-	"time"
 
-	"github.com/sqli-hunter/sqli-hunter/internal/client"
-	"github.com/sqli-hunter/sqli-hunter/internal/extractor"
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
 	"github.com/sqli-hunter/sqli-hunter/internal/payloads"
-	"github.com/sqli-hunter/sqli-hunter/internal/scanner"
+	"github.com/sqli-hunter/sqli-hunter/internal/runner"
+	"github.com/sqli-hunter/sqli-hunter/internal/targets"
+	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
 )
 
-const version = "1.4.0"
+const version = "1.5.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -31,7 +28,7 @@ func main() {
 
 	cfg, err := parseArgs(os.Args[1:])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Erreur: %v\n", err)
+		fmt.Fprintf(os.Stderr, "erreur: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -40,63 +37,52 @@ func main() {
 		return
 	}
 	if cfg.showVersion {
-		fmt.Printf("sqli-hunter v%s\n", version)
+		fmt.Printf("sqli-hunter %s\n", version)
 		return
 	}
 
-	printer := output.NewPrinter(cfg.noColor)
-	printer.Banner()
-
-	if cfg.targetURL == "" {
-		printer.Error("URL requise (-u)")
+	if cfg.targetURL == "" && cfg.listFile == "" {
+		fmt.Fprintln(os.Stderr, "erreur: -u ou -l requis")
 		os.Exit(1)
 	}
 
-	target, err := buildTarget(cfg)
+	printer := output.New(cfg.noColor, cfg.verbose)
+	printer.Header(version)
+
+	targetList, skipped, err := resolveTargets(cfg)
 	if err != nil {
 		printer.Error(err.Error())
 		os.Exit(1)
 	}
-
-	opts := buildOptions(cfg)
-	printer.Info(fmt.Sprintf("Cible : %s", cfg.targetURL))
-	printer.Info(fmt.Sprintf("Méthode : %s", target.Method))
-	printer.PrintScanConfig(opts.Mode, opts.Categories, opts.IncludeWAF)
-	printer.PrintExtractMode(fmt.Sprintf("automatique (%d workers dédiés)", opts.ExtractThreads))
-	printer.Info(fmt.Sprintf("Threads scan : %d | Threads extract : %d | Timeout : %ds | Rate limit : %dms",
-		opts.Threads, opts.ExtractThreads, opts.TimeoutSec, opts.RateLimitMs))
-	fmt.Println()
-
-	scanClient := client.New(opts.TimeoutSec, target.Headers, target.Cookies)
-	extractClient := client.New(opts.TimeoutSec, target.Headers, target.Cookies)
-
-	rateLimit := func() {
-		if opts.RateLimitMs > 0 {
-			time.Sleep(time.Duration(opts.RateLimitMs) * time.Millisecond)
-		}
+	if len(skipped) > 0 {
+		printer.Warning(fmt.Sprintf("%d URL(s) ignorée(s) (pas de paramètres)", len(skipped)))
+	}
+	if len(targetList) == 0 {
+		printer.Error("aucune cible valide")
+		os.Exit(1)
 	}
 
-	var (
-		allExtractions []models.ExtractedData
-		extMu          sync.Mutex
-	)
+	opts := buildOptions(cfg)
 
-	ext := extractor.New(extractClient,
-		func(d models.ExtractedData) {
-			extMu.Lock()
-			allExtractions = append(allExtractions, d)
-			extMu.Unlock()
-			printer.Extraction(d)
-		},
-		func(msg string) {
-			if opts.Verbose {
-				printer.Verbose(msg)
-			}
-		},
-		rateLimit,
-	)
+	if len(targetList) == 1 {
+		printer.KV("target", truncate(targetList[0].URL, 70))
+	} else {
+		src := cfg.listFile
+		if src == "" {
+			src = "stdin"
+		}
+		printer.KV("targets", fmt.Sprintf("%d urls (%s)", len(targetList), src))
+	}
 
-	pool := extractor.NewPool(ext, opts.ExtractThreads)
+	printer.ScanConfig(opts.Mode, opts.Categories, opts.IncludeWAF)
+	printer.KV("threads", fmt.Sprintf("scan %d · extract %d · urls %d",
+		opts.Threads, opts.ExtractThreads, cfg.urlConcurrency))
+	printer.KV("rate", fmt.Sprintf("%d ms", opts.RateLimitMs))
+	if cfg.outputFile != "" {
+		printer.KV("output", cfg.outputFile)
+	}
+	printer.Rule()
+	fmt.Println()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -105,38 +91,27 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		printer.Warning("Interruption — arrêt en cours...")
+		printer.Warning("interruption")
 		cancel()
 	}()
 
-	pool.Start(ctx)
-
-	start := time.Now()
-
-	onFinding := func(f models.Finding) {
-		printer.Finding(f)
-		pool.Submit(target, f)
+	r := &runner.Runner{Version: version, Printer: printer}
+	_, err = r.Run(ctx, runner.Config{
+		Targets:        targetList,
+		Opts:           opts,
+		OutputPath:     cfg.outputFile,
+		UrlConcurrency: cfg.urlConcurrency,
+	})
+	if err != nil {
+		printer.Error(err.Error())
+		os.Exit(1)
 	}
-
-	sc := scanner.New(scanClient, opts, onFinding,
-		func(msg string) { printer.Verbose(msg) },
-	)
-
-	result := sc.Scan(ctx, target)
-	pool.CloseAndWait()
-
-	extMu.Lock()
-	result.Extractions = append([]models.ExtractedData(nil), allExtractions...)
-	extMu.Unlock()
-	elapsed := time.Since(start)
-
-	printer.Summary(result)
-	printer.ExtractionSummary(allExtractions)
-	printer.Info(fmt.Sprintf("Durée : %s", elapsed.Round(time.Millisecond)))
 }
 
 type config struct {
 	targetURL      string
+	listFile       string
+	outputFile     string
 	method         string
 	params         map[string]string
 	data           map[string]string
@@ -154,10 +129,47 @@ type config struct {
 	timeout        int
 	threads        int
 	extractThreads int
+	urlConcurrency int
 	verbose        bool
 	noColor        bool
 	showHelp       bool
 	showVersion    bool
+}
+
+func resolveTargets(cfg config) ([]models.ScanTarget, []string, error) {
+	def := targets.Defaults{
+		Method:  cfg.method,
+		Headers: cfg.headers,
+		Cookies: cfg.cookies,
+		Params:  cfg.params,
+		Data:    cfg.data,
+		JSON:    cfg.jsonBody,
+	}
+
+	var rawURLs []string
+	if cfg.listFile != "" {
+		urls, err := urllist.Load(cfg.listFile)
+		if err != nil {
+			return nil, nil, err
+		}
+		rawURLs = urls
+	} else {
+		rawURLs = []string{cfg.targetURL}
+	}
+
+	var (
+		valid   []models.ScanTarget
+		skipped []string
+	)
+	for _, raw := range rawURLs {
+		t, err := targets.FromURL(raw, def)
+		if err != nil {
+			skipped = append(skipped, raw)
+			continue
+		}
+		valid = append(valid, t)
+	}
+	return valid, skipped, nil
 }
 
 func parseArgs(args []string) (config, error) {
@@ -167,6 +179,7 @@ func parseArgs(args []string) (config, error) {
 		timeout:        15,
 		threads:        8,
 		extractThreads: 2,
+		urlConcurrency: 4,
 		rateLimit:      100,
 		params:         make(map[string]string),
 		data:           make(map[string]string),
@@ -187,6 +200,18 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("-u nécessite une valeur")
 			}
 			cfg.targetURL = args[i]
+		case arg == "-l" || arg == "--list":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("-l nécessite un fichier")
+			}
+			cfg.listFile = args[i]
+		case arg == "-o" || arg == "--output":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("-o nécessite un fichier")
+			}
+			cfg.outputFile = args[i]
 		case arg == "-m" || arg == "--method":
 			i++
 			if i >= len(args) {
@@ -326,6 +351,16 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("--extract-threads doit être >= 1")
 			}
 			cfg.extractThreads = v
+		case arg == "--url-threads":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--url-threads nécessite une valeur")
+			}
+			v, err := strconv.Atoi(args[i])
+			if err != nil || v < 1 {
+				return cfg, fmt.Errorf("--url-threads doit être >= 1")
+			}
+			cfg.urlConcurrency = v
 		case arg == "-v" || arg == "--verbose":
 			cfg.verbose = true
 		case arg == "--no-color":
@@ -347,50 +382,15 @@ func appendUniqueCategory(cats []models.VulnCategory, cat models.VulnCategory) [
 	return append(cats, cat)
 }
 
-func buildTarget(cfg config) (models.ScanTarget, error) {
-	u, err := url.Parse(cfg.targetURL)
-	if err != nil {
-		return models.ScanTarget{}, fmt.Errorf("URL invalide : %w", err)
-	}
-
-	if len(cfg.params) == 0 && u.RawQuery != "" {
-		for k, vals := range u.Query() {
-			if len(vals) > 0 {
-				cfg.params[k] = vals[0]
-			}
-		}
-	}
-
-	if len(cfg.params) == 0 && len(cfg.data) == 0 && cfg.jsonBody == nil {
-		return models.ScanTarget{}, fmt.Errorf("aucun paramètre — utilisez -p, -d ou --json")
-	}
-
-	method := cfg.method
-	if len(cfg.data) > 0 || cfg.jsonBody != nil {
-		if method == "GET" {
-			method = "POST"
-		}
-	}
-
-	return models.ScanTarget{
-		URL: cfg.targetURL, Method: method,
-		Params: cfg.params, Data: cfg.data,
-		Headers: cfg.headers, Cookies: cfg.cookies,
-		JSONBody: cfg.jsonBody,
-	}, nil
-}
-
 func buildOptions(cfg config) models.ScanOptions {
 	mode := models.ScanFast
 	if cfg.fullScan {
 		mode = models.ScanFull
 	}
-
 	categories := cfg.categories
 	if len(categories) == 0 {
 		categories = payloads.DefaultCategories(mode)
 	}
-
 	return models.ScanOptions{
 		Categories:      categories,
 		Techniques:      cfg.techniques,
@@ -408,51 +408,56 @@ func buildOptions(cfg config) models.ScanOptions {
 	}
 }
 
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
+}
+
 func printUsage() {
-	fmt.Print(`sqli-hunter — Détection d'injections base de données pour bug bounty
+	fmt.Print(`sqli-hunter — détection d'injections base de données
 
 Usage:
   sqli-hunter -u <URL> [options]
+  sqli-hunter -l <fichier> [options]
 
 Cible:
-  -u, --url <URL>           URL cible (requise)
-  -m, --method <METHOD>     Méthode HTTP (GET, POST) [défaut: GET]
-  -p, --param <nom=valeur>  Paramètre GET (répétable)
-  -d, --data <nom=valeur>   Paramètre POST form (répétable)
-      --json <JSON>         Corps JSON (ex: '{"id":1}')
+  -u, --url <URL>             URL unique avec paramètres
+  -l, --list <fichier>        Fichier d'URLs (une par ligne, # commentaires)
+  -o, --output <fichier>      Export JSON des résultats
+  -m, --method <METHOD>       GET ou POST [défaut: GET]
+  -p, --param <nom=valeur>    Paramètre GET additionnel (mode -u)
+  -d, --data <nom=valeur>     Paramètre POST (mode -u)
+      --json <JSON>           Corps JSON (mode -u)
 
 Requête:
-  -H, --header <Nom: Val>   Header HTTP (répétable)
-  -c, --cookie <nom=val>    Cookie (répétable)
+  -H, --header <Nom: Val>     Header HTTP (répétable)
+  -c, --cookie <nom=val>      Cookie (répétable)
 
-Injections DB:
-  -t, --test <liste>        sqli,nosql,error,union,boolean,time [défaut: sqli,nosql]
-      --full                Scan complet (+ time-based SQLi)
-      --waf                 Payloads bypass WAF
-      --payload <PAYLOAD>   Payload SQLi personnalisé (répétable)
+Injections:
+  -t, --test <liste>          sqli,nosql,error,union,boolean,time
+      --full                  Scan complet (+ time-based)
+      --waf                   Payloads bypass WAF
+      --payload <PAYLOAD>       Payload personnalisé
 
-Extraction:
-  L'extraction démarre automatiquement dès qu'une vulnérabilité est détectée,
-  sur des workers dédiés (séparés des threads de scan).
-
-Timing:
-      --time-delay <sec>    Délai time-based [défaut: 3]
-      --rate-limit <ms>     Délai entre requêtes [défaut: 100]
-      --timeout <sec>       Timeout HTTP [défaut: 15]
-      --threads <n>         Goroutines de scan [défaut: 8]
-      --extract-threads <n> Workers d'extraction [défaut: 2]
+Performance:
+      --threads <n>           Workers scan par URL [défaut: 8]
+      --extract-threads <n>     Workers extraction [défaut: 2]
+      --url-threads <n>         URLs scannées en parallèle [défaut: 4]
+      --rate-limit <ms>       Délai entre requêtes [défaut: 100]
+      --timeout <sec>         Timeout HTTP [défaut: 15]
 
 Affichage:
-  -v, --verbose             Afficher chaque test
-      --no-color            Désactiver les couleurs
-  -h, --help                Aide
-      --version             Version
+  -v, --verbose               Détails payloads et preuves
+      --no-color              Sans couleurs
+  -h, --help
+      --version
 
 Exemples:
-  sqli-hunter -u "https://target.com/page?id=1" -v
-  sqli-hunter -u "https://target.com/api?user=guest" -t nosql
-  go run ./cmd/benchmark
+  sqli-hunter -u "https://target.com/page?id=1"
+  sqli-hunter -l urls.txt --url-threads 8 -o results.json
+  sqli-hunter -l scope.txt -t sqli --rate-limit 50
 
-⚠️  Utilisez uniquement sur des cibles autorisées (bug bounty, pentest contractuel).
 `)
 }
