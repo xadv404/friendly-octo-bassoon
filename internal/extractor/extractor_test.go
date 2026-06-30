@@ -2,6 +2,8 @@ package extractor
 
 import (
 	"testing"
+
+	"github.com/sqli-hunter/sqli-hunter/internal/models"
 )
 
 func TestParseResponse_EXTRACTVALUE(t *testing.T) {
@@ -52,6 +54,25 @@ func TestBuildJobs_MySQL(t *testing.T) {
 	}
 	if !hasVersion {
 		t.Fatal("expected version extraction job")
+	}
+}
+
+func TestBuildJobs_BooleanSkipsUnion(t *testing.T) {
+	jobs := BuildJobs("mysql", models.SQLiBoolean)
+	for _, j := range jobs {
+		if j.Method == "union" {
+			t.Fatal("boolean finding should not use union extraction")
+		}
+	}
+	unionJobs := BuildJobs("mysql", models.SQLiUnion)
+	hasUnion := false
+	for _, j := range unionJobs {
+		if j.Method == "union" {
+			hasUnion = true
+		}
+	}
+	if !hasUnion {
+		t.Fatal("union finding should use union extraction")
 	}
 }
 

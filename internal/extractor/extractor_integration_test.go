@@ -62,11 +62,11 @@ func TestExtractAll_AfterScan(t *testing.T) {
 	defer srv.Close()
 
 	target := models.ScanTarget{
-		URL: srv.URL + "/sqli/union?id=1", Method: "GET",
-		Params: map[string]string{"id": "1"},
+		URL: srv.URL + "/shop/search?q=1", Method: "GET",
+		Params: map[string]string{"q": "1"},
 	}
 	findings := []models.Finding{{
-		URL: target.URL, Parameter: "id",
+		URL: target.URL, Parameter: "q",
 		VulnType: models.SQLiUnion, DBMS: "mysql",
 	}}
 

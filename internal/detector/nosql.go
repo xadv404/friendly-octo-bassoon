@@ -27,6 +27,11 @@ type NoSQLResult struct {
 
 // DetectNoSQL détecte une injection NoSQL (accès base document).
 func DetectNoSQL(body, baseline, payload string) NoSQLResult {
+	// Réponse SQL = pas du NoSQL
+	if DetectSQLError(body).Found {
+		return NoSQLResult{}
+	}
+
 	for _, re := range compiledNoSQL {
 		loc := re.FindStringIndex(body)
 		if loc != nil {
@@ -38,40 +43,68 @@ func DetectNoSQL(body, baseline, payload string) NoSQLResult {
 		}
 	}
 
+	if !isNoSQLPayload(payload) {
+		return NoSQLResult{}
+	}
+
 	bodyLower := strings.ToLower(body)
 	baselineLower := strings.ToLower(baseline)
+
+	// Les heuristiques de contenu exigent une réponse JSON
+	if !looksLikeJSON(body) {
+		return NoSQLResult{}
+	}
+
 	authMarkers := []string{"admin", "password", "email", "token", "secret", "users", "tenants", "enterprise"}
 
-	// Bypass auth / dump collection
-	if strings.Contains(payload, "$gt") || strings.Contains(payload, "$ne") || strings.Contains(payload, "||") ||
-		strings.Contains(payload, "$regex") {
-		for _, m := range authMarkers {
-			if strings.Contains(bodyLower, m) && !strings.Contains(baselineLower, m) {
-				return NoSQLResult{
-					Found:    true,
-					Evidence: "bypass authentification NoSQL — données DB accessibles",
-					Snippet:  m + " trouvé en réponse",
-				}
-			}
-		}
-		// Dump collection : réponse significativement plus riche
-		if len(baseline) > 0 && len(body) > len(baseline)+50 {
+	for _, m := range authMarkers {
+		if strings.Contains(bodyLower, m) && !strings.Contains(baselineLower, m) {
 			return NoSQLResult{
 				Found:    true,
-				Evidence: "dump collection NoSQL — données supplémentaires exposées",
-				Snippet:  truncateStr(body, 0, 120),
-			}
-		}
-		if len(body) > len(baseline)*2 && len(body) > 80 {
-			return NoSQLResult{
-				Found:    true,
-				Evidence: "réponse anormalement large — possible dump collection",
-				Snippet:  truncateStr(body, 0, 120),
+				Evidence: "bypass authentification NoSQL — données DB accessibles",
+				Snippet:  m + " trouvé en réponse",
 			}
 		}
 	}
 
+	// Dump collection : JSON plus riche que le baseline JSON
+	if looksLikeJSON(baseline) && len(body) > len(baseline)+50 && jsonContentGrew(body, baseline) {
+		return NoSQLResult{
+			Found:    true,
+			Evidence: "dump collection NoSQL — données supplémentaires exposées",
+			Snippet:  truncateStr(body, 0, 120),
+		}
+	}
+
 	return NoSQLResult{}
+}
+
+func isNoSQLPayload(payload string) bool {
+	ops := []string{"$gt", "$ne", "$regex", "$where", "$or", "||", "[$ne]"}
+	for _, op := range ops {
+		if strings.Contains(payload, op) {
+			return true
+		}
+	}
+	return false
+}
+
+func looksLikeJSON(s string) bool {
+	s = strings.TrimSpace(s)
+	return strings.HasPrefix(s, "{") || strings.HasPrefix(s, "[")
+}
+
+func jsonContentGrew(body, baseline string) bool {
+	// Évite les faux positifs sur pages texte/HTML plus longues
+	if !looksLikeJSON(body) || !looksLikeJSON(baseline) {
+		return false
+	}
+	// Tableau/objet non vide ajouté
+	if strings.Contains(body, `"users"`) || strings.Contains(body, `"orders"`) ||
+		strings.Contains(body, `"tenants"`) || strings.Contains(body, `"token"`) {
+		return true
+	}
+	return len(body) > len(baseline)*2 && len(body) > 80
 }
 
 func truncateStr(s string, start, maxLen int) string {

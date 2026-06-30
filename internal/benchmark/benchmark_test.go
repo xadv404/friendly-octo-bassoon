@@ -38,10 +38,9 @@ func TestBenchmark_AllRealWorldScenarios(t *testing.T) {
 		}
 	}
 
-	// Au moins 90% des scénarios vulnérables détectés
-	minPass := int(float64(result.Total) * 0.9)
-	if result.Passed < minPass {
-		t.Fatalf("seulement %d/%d passés (minimum %d)", result.Passed, result.Total, minPass)
+	// 100% des scénarios vulnérables détectés
+	if result.Passed != result.Total {
+		t.Fatalf("seulement %d/%d passés (100%% requis)", result.Passed, result.Total)
 	}
 }
 

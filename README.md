@@ -52,11 +52,11 @@ Dès qu'une vulnérabilité est détectée, l'outil lance automatiquement l'extr
 - Dump NoSQL (collections MongoDB)
 
 ```bash
-# Scan + extraction automatique (dès détection)
-./sqli-hunter -u "https://target.com/page?id=1" -v
+# URL unique
+./sqli-hunter -u "https://target.com/page?id=1"
 
-# Ajuster les workers d'extraction
-./sqli-hunter -u "https://target.com/product?id=1" --extract-threads 4
+# Liste bulk + export
+./sqli-hunter -l scope.txt --url-threads 8 -o results.json -v
 ```
 
 ## Installation
