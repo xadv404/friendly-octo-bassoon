@@ -18,7 +18,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
 )
 
-const version = "1.9.1"
+const version = "1.9.2"
 
 func main() {
 	if len(os.Args) >= 2 {

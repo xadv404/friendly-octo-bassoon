@@ -5,6 +5,18 @@ import (
 	"testing"
 )
 
+// completePIIRecord enregistrement valide avec tous les champs obligatoires.
+func completePIIRecord() PIIRecord {
+	return PIIRecord{
+		Nom:     "Dupont",
+		Prenom:  "Jean",
+		DOB:     "1990-05-15",
+		Address: "Bahnhofstrasse 1, 8001 Zürich",
+		Email:   "jean.dupont@bluewin.ch",
+		Phone:   "0791234567",
+	}
+}
+
 func TestClassifyColumn(t *testing.T) {
 	cases := []struct {
 		col  string
@@ -28,7 +40,6 @@ func TestClassifyColumn(t *testing.T) {
 			t.Errorf("ClassifyColumn(%q) = %q,%v want %q", c.col, kind, ok, c.kind)
 		}
 	}
-	// Faux positifs colonnes
 	for _, col := range []string{"username", "filename", "table_name", "is_mail_sent"} {
 		if kind, ok := ClassifyColumn(col); ok && kind == PIINom {
 			t.Errorf("column %q should not classify as nom", col)
@@ -48,20 +59,42 @@ func TestIsUserTable(t *testing.T) {
 }
 
 func TestRecordMeetsMinimum(t *testing.T) {
-	r := PIIRecord{Email: "hans.meier@bluewin.ch"}
+	r := completePIIRecord()
 	sanitizeRecord(&r)
 	if !RecordMeetsMinimum(r) {
-		t.Error("valid email should pass")
+		t.Error("complete record should pass")
 	}
-	r = PIIRecord{Phone: "0791234567"}
+	// IBAN optionnel
+	r.IBAN = "CH9300762011623852957"
 	sanitizeRecord(&r)
 	if !RecordMeetsMinimum(r) {
-		t.Error("valid CH phone should pass")
+		t.Error("complete record with iban should pass")
 	}
-	r = PIIRecord{Nom: "Meier", Prenom: "Hans"}
-	sanitizeRecord(&r)
-	if RecordMeetsMinimum(r) {
-		t.Error("name only should fail")
+	// Champs manquants → rejet
+	partials := []PIIRecord{
+		{Email: "a@b.ch", Phone: "0791234567"},
+		{Nom: "Meier", Prenom: "Hans", Email: "a@b.ch", Phone: "0791234567"},
+		{Nom: "Meier", Prenom: "Hans", DOB: "1985-01-01", Email: "a@b.ch", Phone: "0791234567"},
+	}
+	for i, p := range partials {
+		sanitizeRecord(&p)
+		if RecordMeetsMinimum(p) {
+			t.Errorf("partial record %d should fail: %+v", i, p)
+		}
+	}
+}
+
+func TestHasMinimumPIIColumns(t *testing.T) {
+	full := map[PIIColumnKind]string{
+		PIINom: "nachname", PIIPrenom: "vorname", PIIDOB: "geburtsdatum",
+		PIIAddress: "strasse", PIIEmail: "email", PIIPhone: "telefon",
+	}
+	if !HasMinimumPIIColumns(full) {
+		t.Fatal("all required columns should pass")
+	}
+	partial := map[PIIColumnKind]string{PIIEmail: "email", PIIPhone: "telefon"}
+	if HasMinimumPIIColumns(partial) {
+		t.Fatal("email+phone only should not pass column check")
 	}
 }
 
@@ -72,7 +105,7 @@ func TestParseLabeledPII(t *testing.T) {
 		t.Fatalf("got %d records", len(records))
 	}
 	r := records[0]
-	if r.Nom != "Meier" || r.Email != "hans.meier@bluewin.ch" || r.Phone == "" {
+	if r.Nom == "" || r.Prenom == "" || r.DOB == "" || r.Address == "" || r.Email == "" || r.Phone == "" {
 		t.Fatalf("incomplete record: %+v", r)
 	}
 	if r.IBAN == "" {
@@ -81,7 +114,7 @@ func TestParseLabeledPII(t *testing.T) {
 }
 
 func TestParseLabeledPII_WithoutIBAN(t *testing.T) {
-	raw := "nom=Dupont|prenom=Marie|email=marie@sunrise.ch|tel=+41791234567"
+	raw := "nom=Dupont|prenom=Marie|email=marie@sunrise.ch|tel=+41791234567|naissance=1990-05-15|adresse=Rue du Rhône 12, 1204 Genève"
 	records := ParseLabeledPII(raw, "clients")
 	if len(records) != 1 {
 		t.Fatalf("got %d records", len(records))
@@ -91,35 +124,34 @@ func TestParseLabeledPII_WithoutIBAN(t *testing.T) {
 	}
 }
 
+func TestParseLabeledPII_PartialRejected(t *testing.T) {
+	raw := "nom=Dupont|email=marie@sunrise.ch|tel=0791234567"
+	if len(ParseLabeledPII(raw, "clients")) != 0 {
+		t.Fatal("partial record should be rejected")
+	}
+}
+
 func TestScanPIIInText_NoSQL(t *testing.T) {
-	body := `{"nachname":"Meier","vorname":"Hans","email":"user@bluewin.ch","telefon":"0791234567","strasse":"Bahnhofstrasse 1, 8001 Zürich"}`
+	body := `{"nachname":"Meier","vorname":"Hans","email":"user@bluewin.ch","telefon":"0791234567","geburtsdatum":"1985-03-12","strasse":"Bahnhofstrasse 1, 8001 Zürich"}`
 	records := ScanPIIInText(body)
 	if len(records) != 1 {
 		t.Fatalf("got %d records", len(records))
 	}
-	if records[0].Email != "user@bluewin.ch" {
-		t.Fatalf("email: %q", records[0].Email)
+	r := records[0]
+	if r.Nom == "" || r.Prenom == "" || r.DOB == "" || r.Address == "" {
+		t.Fatalf("incomplete: %+v", r)
 	}
 }
 
 func TestPII_NoFalsePositives(t *testing.T) {
-	// Aucun email ni téléphone CH valide → 0 enregistrement
 	safeBodies := []string{
 		"XPATH syntax error: '~8.0.32-MySQL~'",
 		"total: 847 items in database",
 		`{"error":"invalid credentials"}`,
 		`{"token":"eyJhbG","user":{"role":"admin"}}`,
 		"SELECT * FROM users WHERE id=1",
-		"null",
-		"have results",
-		`nom=admin|email=admin@localhost`,
-		`tel=12345|email=test@example.com`,
-		`iban=FR7630006000011234567890189|email=test@example.com`,
-		`iban=CH0000000000000000000|email=noreply@css.ch`,
-		`nom=select|prenom=union|email=error@syntax.com`,
-		`tel=0999999999|email=invalid`,
-		"044123",
-		"version 14.10 PostgreSQL",
+		`email=hans@bluewin.ch|tel=0791234567`,
+		`nom=Dupont|email=marie@sunrise.ch|tel=0791234567`,
 		`email=select@union.com|tel=12345`,
 	}
 	for _, body := range safeBodies {
@@ -127,19 +159,14 @@ func TestPII_NoFalsePositives(t *testing.T) {
 			t.Errorf("false positive on %q: %+v", body, recs[0])
 		}
 	}
-	// noreply + tel invalide
 	if recs := ParseLabeledPII("nom=admin|email=noreply@css.ch|tel=0999999999", "users"); len(recs) > 0 {
-		t.Error("noreply + invalid phone should be rejected")
+		t.Error("incomplete/invalid should be rejected")
 	}
-	// Noms SQL rejetés, email+tel valides conservés
-	if recs := ParseLabeledPII("nom=Error|prenom=Syntax|email=hans@bluewin.ch|tel=0791234567", "users"); len(recs) != 1 {
-		t.Fatal("valid email+phone should pass")
-	} else if recs[0].Nom != "" || recs[0].Prenom != "" {
-		t.Errorf("SQL-ish names should be stripped: %+v", recs[0])
+	if recs := ParseLabeledPII("nom=Error|prenom=Syntax|email=hans@bluewin.ch|tel=0791234567", "users"); len(recs) != 0 {
+		t.Error("missing dob+address should be rejected")
 	}
-	// IBAN invalide ignoré, enregistrement conservé sans iban
-	if recs := ParseLabeledPII("email=marie@sunrise.ch|tel=0791112233|iban=CH0000000000000000000", "users"); len(recs) != 1 {
-		t.Fatal("valid contact without iban should pass")
+	if recs := ParseLabeledPII("nom=Meier|prenom=Hans|email=hans@bluewin.ch|tel=0791234567|naissance=1985-03-12|adresse=Bahnhofstrasse 1, 8001 Zürich|iban=CH0000000000000000000", "users"); len(recs) != 1 {
+		t.Fatal("full record without valid iban should pass")
 	} else if recs[0].IBAN != "" {
 		t.Error("invalid iban should be stripped")
 	}
@@ -175,17 +202,15 @@ func TestSwissIBAN(t *testing.T) {
 }
 
 func TestSwissEmail(t *testing.T) {
-	valid := []string{"hans.meier@bluewin.ch", "a.b@canton-ge.ch"}
-	for _, e := range valid {
+	for _, e := range []string{"hans.meier@bluewin.ch", "a.b@canton-ge.ch"} {
 		if !isValidEmail(e) {
 			t.Errorf("valid email rejected: %s", e)
 		}
 	}
-	invalid := []string{
+	for _, e := range []string{
 		"admin@localhost", "test@example.com", "noreply@css.ch",
 		"@invalid.ch", "a@", "a@b", "select@union.com",
-	}
-	for _, e := range invalid {
+	} {
 		if isValidEmail(e) {
 			t.Errorf("invalid email accepted: %s", e)
 		}
@@ -231,14 +256,11 @@ func TestSwissAddress(t *testing.T) {
 }
 
 func TestFormatPIIRecord(t *testing.T) {
-	s := FormatPIIRecord(PIIRecord{
-		Nom: "Meier", Prenom: "Hans", Email: "hans@bluewin.ch", Phone: "0791234567",
-		DOB: "1985-03-12", Address: "Bahnhofstrasse 1, 8001 Zürich", IBAN: "CH9300762011623852957",
-	})
+	s := FormatPIIRecord(completePIIRecord())
 	for _, want := range []string{
-		"nom: Meier", "prenom: Hans", "date_naissance: 1985-03-12",
-		"adresse: Bahnhofstrasse 1, 8001 Zürich", "email: hans@bluewin.ch",
-		"telephone: 0791234567", "iban: CH9300762011623852957",
+		"nom: Dupont", "prenom: Jean", "date_naissance: 1990-05-15",
+		"adresse: Bahnhofstrasse 1, 8001 Zürich", "email: jean.dupont@bluewin.ch",
+		"telephone: 0791234567",
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("missing %q in:\n%s", want, s)
@@ -246,6 +268,11 @@ func TestFormatPIIRecord(t *testing.T) {
 	}
 }
 
-func stringsContains(s, sub string) bool {
-	return strings.Contains(s, sub)
+func TestFormatPIIRecord_WithIBAN(t *testing.T) {
+	r := completePIIRecord()
+	r.IBAN = "CH9300762011623852957"
+	s := FormatPIIRecord(r)
+	if !strings.Contains(s, "iban: CH9300762011623852957") {
+		t.Error("iban should appear when present")
+	}
 }

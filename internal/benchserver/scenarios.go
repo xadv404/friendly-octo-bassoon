@@ -213,7 +213,7 @@ func nosqlAuthHandler(param string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := getParam(r, param)
 		if isNoSQLBypass(v) {
-			fmt.Fprint(w, `{"token":"eyJhbG","user":{"email":"admin@corp.com","role":"admin"}}`)
+			fmt.Fprint(w, `{"nachname":"Meier","vorname":"Hans","email":"user@bluewin.ch","telefon":"0791234567","geburtsdatum":"1985-03-12","strasse":"Bahnhofstrasse 1, 8001 Zürich"}`)
 			return
 		}
 		fmt.Fprint(w, `{"error":"invalid credentials"}`)
@@ -304,7 +304,7 @@ func mysqlExtractHandler(param string) http.HandlerFunc {
 				return
 			}
 			if strings.Contains(lower, "row_data") || strings.Contains(lower, "'nom='") {
-				fmt.Fprint(w, "XPATH syntax error: '~nom=Meier|prenom=Hans|email=hans.meier@bluewin.ch|tel=0791234567|naissance=1985-03-12|adresse=Bahnhofstrasse 1, 8001 Zürich|iban=CH9300762011623852957;;nom=Dupont|prenom=Marie|email=marie.dupont@sunrise.ch|tel=+41791234567|adresse=Rue du Rhône 12, 1204 Genève~'")
+				fmt.Fprint(w, "XPATH syntax error: '~nom=Meier|prenom=Hans|email=hans.meier@bluewin.ch|tel=0791234567|naissance=1985-03-12|adresse=Bahnhofstrasse 1, 8001 Zürich|iban=CH9300762011623852957;;nom=Dupont|prenom=Marie|email=marie.dupont@sunrise.ch|tel=+41791234567|naissance=1990-05-15|adresse=Rue du Rhône 12, 1204 Genève~'")
 				return
 			}
 			if strings.Contains(lower, "@@version") || strings.Contains(lower, "version") {

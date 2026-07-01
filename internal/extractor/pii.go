@@ -136,17 +136,25 @@ func SelectPIIColumns(columns []string) map[PIIColumnKind]string {
 	return out
 }
 
-// HasMinimumPIIColumns vérifie qu'une table a au moins email ou téléphone.
+// HasMinimumPIIColumns vérifie que la table expose toutes les colonnes requises.
 func HasMinimumPIIColumns(cols map[PIIColumnKind]string) bool {
-	_, hasEmail := cols[PIIEmail]
-	_, hasPhone := cols[PIIPhone]
-	return hasEmail || hasPhone
+	for _, kind := range []PIIColumnKind{PIINom, PIIPrenom, PIIDOB, PIIAddress, PIIEmail, PIIPhone} {
+		if _, ok := cols[kind]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
-// RecordMeetsMinimum valide un enregistrement : email ou téléphone obligatoire.
+// RecordMeetsMinimum : nom, prénom, naissance, adresse, email, téléphone obligatoires — IBAN optionnel.
 func RecordMeetsMinimum(r PIIRecord) bool {
 	sanitizeRecord(&r)
-	return r.Email != "" || r.Phone != ""
+	return r.Nom != "" &&
+		r.Prenom != "" &&
+		r.DOB != "" &&
+		r.Address != "" &&
+		r.Email != "" &&
+		r.Phone != ""
 }
 
 // ParseLabeledPII parse "nom=X|email=Y|tel=Z" depuis une réponse SQL.
@@ -223,12 +231,20 @@ func ScanPIIInText(body string) []PIIRecord {
 		r.DOB = d
 	}
 
-	// Noms depuis JSON courant
+	// Date de naissance depuis JSON
+	for _, key := range []string{`"date_naissance"`, `"geburtsdatum"`, `"birthdate"`, `"dob"`, `"naissance"`} {
+		if v := jsonStringValue(body, key); v != "" && isValidDOB(v) {
+			r.DOB = v
+			break
+		}
+	}
 	for _, key := range []string{`"nom"`, `"nachname"`, `"prenom"`, `"vorname"`, `"firstname"`, `"lastname"`, `"first_name"`, `"last_name"`} {
 		if v := jsonStringValue(body, key); v != "" && isValidName(v) {
-			if strings.Contains(strings.ToLower(key), "pre") || strings.Contains(key, "first") {
+			kl := strings.ToLower(key)
+			switch {
+			case strings.Contains(kl, "pre") || strings.Contains(kl, "vor") || strings.Contains(kl, "first"):
 				r.Prenom = v
-			} else {
+			default:
 				r.Nom = v
 			}
 		}

@@ -69,7 +69,13 @@ telephone: 0791234567
 iban: CH9300762011623852957   ← uniquement si présent en DB
 ```
 
-**Seuil minimum** : email **ou** téléphone suisse valide. IBAN CH extrait si disponible.
+**Seuil minimum** — les **6 champs obligatoires** doivent être présents et valides :
+
+```
+nom + prénom + date_naissance + adresse + email + téléphone
+```
+
+L'**IBAN CH** est extrait en plus si disponible, mais n'est pas requis.
 
 ```bash
 # Scope assureur suisse
