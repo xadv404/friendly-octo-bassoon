@@ -232,6 +232,16 @@ func (p *Printer) Finding(f models.Finding) {
 func (p *Printer) Extraction(d models.ExtractedData) {
 	p.lock()
 	defer p.unlock()
+	if d.DataType == models.DataPII && d.PII != nil {
+		fmt.Printf("  %s %s\n", p.c(gray, "→"), p.c(red, "utilisateur"))
+		for _, line := range strings.Split(d.Value, "\n") {
+			if line == "" {
+				continue
+			}
+			fmt.Printf("    %s\n", p.c(white, line))
+		}
+		return
+	}
 	fmt.Printf("  %s %s %s\n",
 		p.c(gray, "→"),
 		p.c(green, dataTypeLabel(d.DataType)),
@@ -324,6 +334,7 @@ func dataTypeLabel(d models.DataType) string {
 		models.DataTables:   "tables",
 		models.DataColumns:  "columns",
 		models.DataDump:     "dump",
+		models.DataPII:      "pii",
 	}
 	if l, ok := labels[d]; ok {
 		return l

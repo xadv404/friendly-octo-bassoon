@@ -18,7 +18,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
 )
 
-const version = "1.8.0"
+const version = "1.9.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -170,6 +170,7 @@ type config struct {
 	urlConcurrency int
 	progressEvery  int
 	massMode       bool
+	extractMeta    bool
 	verbose        bool
 	noColor        bool
 	showHelp       bool
@@ -378,6 +379,8 @@ func parseArgs(args []string) (config, error) {
 			cfg.progressEvery = v
 		case arg == "--mass":
 			cfg.massMode = true
+		case arg == "--extract-meta":
+			cfg.extractMeta = true
 		case arg == "-v" || arg == "--verbose":
 			cfg.verbose = true
 		case arg == "--no-color":
@@ -422,6 +425,7 @@ func buildOptions(cfg config) models.ScanOptions {
 		ExtractThreads:  cfg.extractThreads,
 		Verbose:         cfg.verbose,
 		EarlyExit:       true,
+		PIIOnly:         !cfg.extractMeta,
 	}
 }
 
@@ -468,6 +472,7 @@ Injections:
 Performance:
       --threads <n>           Workers scan par URL [défaut: 8]
       --extract-threads <n>     Workers extraction [défaut: 2]
+      --extract-meta            Extraire métadonnées DB (version, tables…) au lieu des PII
       --url-threads <n>         URLs en parallèle [défaut: 4, auto 32+ en mass]
       --progress-every <n>      Progression tous les N URLs [défaut: 100]
       --mass                    Force mode massif (streaming, dès 500 URLs auto)

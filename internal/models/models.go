@@ -88,6 +88,7 @@ type ScanOptions struct {
 	Verbose         bool
 	EarlyExit       bool
 	ExtractThreads  int // workers dédiés à l'extraction (séparés du scan)
+	PIIOnly         bool // extraire uniquement données utilisateurs à risque
 }
 
 // ScanResult agrège les résultats d'un scan.

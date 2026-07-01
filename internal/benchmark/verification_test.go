@@ -132,7 +132,7 @@ func TestVerification_ExtractionNoGarbage(t *testing.T) {
 		VulnType: models.SQLiError, DBMS: "mysql", Confidence: models.Confirmed,
 	}
 
-	ext := extractor.New(client.New(5, nil, nil), nil, nil, nil)
+	ext := extractor.New(client.New(5, nil, nil), nil, nil, nil, true)
 	data := ext.ExtractFromFinding(context.Background(), target, finding)
 
 	if len(data) == 0 {

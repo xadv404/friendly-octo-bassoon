@@ -26,7 +26,7 @@ func TestPoolExtractsOnDedicatedWorkers(t *testing.T) {
 	var count atomic.Int32
 	ext := New(client.New(5, nil, nil),
 		func(models.ExtractedData) { count.Add(1) },
-		nil, nil,
+		nil, nil, true,
 	)
 
 	pool := NewPool(ext, 2)

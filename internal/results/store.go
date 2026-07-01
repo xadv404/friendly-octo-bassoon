@@ -210,12 +210,25 @@ func formatSQLTarget(tr TargetResult) string {
 	}
 	b.WriteString("/* " + strings.Repeat("=", 60) + " */\n")
 	seen := make(map[string]bool)
+	piiNum := 0
 	for _, e := range tr.Extractions {
 		key := string(e.DataType) + ":" + e.Value
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
+		if e.DataType == models.DataPII {
+			piiNum++
+			fmt.Fprintf(&b, "-- ── Utilisateur #%d ──\n", piiNum)
+			for _, line := range strings.Split(e.Value, "\n") {
+				if line == "" {
+					continue
+				}
+				fmt.Fprintf(&b, "-- %s\n", escapeSQLComment(line))
+			}
+			b.WriteString("--\n")
+			continue
+		}
 		fmt.Fprintf(&b, "-- %s: %s\n", e.DataType, escapeSQLComment(e.Value))
 	}
 	b.WriteByte('\n')

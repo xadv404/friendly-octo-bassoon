@@ -295,6 +295,18 @@ func mysqlExtractHandler(param string) http.HandlerFunc {
 		lower := strings.ToLower(v)
 
 		if strings.Contains(lower, "extractvalue") || strings.Contains(lower, "updatexml") {
+			if strings.Contains(lower, "column_name") && strings.Contains(lower, "users") {
+				fmt.Fprint(w, "XPATH syntax error: '~nom,prenom,vorname,nachname,email,telefon,telephone,date_naissance,geburtsdatum,adresse,strasse,plz,iban~'")
+				return
+			}
+			if strings.Contains(lower, "information_schema") && strings.Contains(lower, "table_name") {
+				fmt.Fprint(w, "XPATH syntax error: '~users,kunden,clients,versicherte~'")
+				return
+			}
+			if strings.Contains(lower, "row_data") || strings.Contains(lower, "'nom='") {
+				fmt.Fprint(w, "XPATH syntax error: '~nom=Meier|prenom=Hans|email=hans.meier@bluewin.ch|tel=0791234567|naissance=1985-03-12|adresse=Bahnhofstrasse 1, 8001 Zürich|iban=CH9300762011623852957;;nom=Dupont|prenom=Marie|email=marie.dupont@sunrise.ch|tel=+41791234567|adresse=Rue du Rhône 12, 1204 Genève~'")
+				return
+			}
 			if strings.Contains(lower, "@@version") || strings.Contains(lower, "version") {
 				fmt.Fprint(w, "XPATH syntax error: '~8.0.32-MySQL~'")
 				return

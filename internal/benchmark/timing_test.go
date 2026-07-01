@@ -53,6 +53,7 @@ func TestE2E_ScanExtract_Timing(t *testing.T) {
 		},
 		nil,
 		rateLimit,
+		true,
 	)
 
 	pool := extractor.NewPool(ext, scanOpts.ExtractThreads)

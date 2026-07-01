@@ -100,6 +100,7 @@ func (r *Runner) runBatch(ctx context.Context, cfg Config) (Report, error) {
 		},
 		func(msg string) { r.Printer.Verbose(msg) },
 		rateLimit,
+		cfg.Opts.PIIOnly,
 	)
 
 	pool := extractor.NewPool(ext, cfg.Opts.ExtractThreads)

@@ -15,15 +15,17 @@ type Extractor struct {
 	onExtract  func(models.ExtractedData)
 	onProgress func(string)
 	rateLimit  func()
+	piiOnly    bool
 }
 
 // New crée un extracteur.
-func New(httpClient *client.HTTPClient, onExtract func(models.ExtractedData), onProgress func(string), rateLimit func()) *Extractor {
+func New(httpClient *client.HTTPClient, onExtract func(models.ExtractedData), onProgress func(string), rateLimit func(), piiOnly bool) *Extractor {
 	return &Extractor{
 		httpClient: httpClient,
 		onExtract:  onExtract,
 		onProgress: onProgress,
 		rateLimit:  rateLimit,
+		piiOnly:    piiOnly,
 	}
 }
 
@@ -79,6 +81,13 @@ func (e *Extractor) ExtractAll(ctx context.Context, target models.ScanTarget, fi
 }
 
 func (e *Extractor) run(ctx context.Context, target models.ScanTarget, param string, vulnType models.VulnType, dbms, findingURL string) []models.ExtractedData {
+	if e.piiOnly {
+		return e.runPII(ctx, target, param, vulnType, dbms, findingURL)
+	}
+	return e.runMetadata(ctx, target, param, vulnType, dbms, findingURL)
+}
+
+func (e *Extractor) runMetadata(ctx context.Context, target models.ScanTarget, param string, vulnType models.VulnType, dbms, findingURL string) []models.ExtractedData {
 	jobs := BuildJobs(dbms, vulnType)
 	var results []models.ExtractedData
 	foundTypes := make(map[models.DataType]bool)

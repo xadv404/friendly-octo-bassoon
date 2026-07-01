@@ -2,6 +2,7 @@ package extractor
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/sqli-hunter/sqli-hunter/internal/benchserver"
@@ -22,21 +23,24 @@ func TestExtractFromFinding_MySQL(t *testing.T) {
 		VulnType: models.SQLiError, DBMS: "mysql", Confidence: models.Confirmed,
 	}
 
-	ext := New(client.New(5, nil, nil), nil, nil, nil)
+	ext := New(client.New(5, nil, nil), nil, nil, nil, true)
 	data := ext.ExtractFromFinding(context.Background(), target, finding)
 
 	if len(data) == 0 {
 		t.Fatal("expected extractions")
 	}
 
-	foundVersion := false
+	foundPII := false
 	for _, d := range data {
-		if d.DataType == models.DataVersion {
-			foundVersion = true
+		if d.DataType == models.DataPII {
+			foundPII = true
+			if !strings.Contains(d.Value, "email:") {
+				t.Fatalf("expected email in PII, got %q", d.Value)
+			}
 		}
 	}
-	if !foundVersion {
-		t.Fatalf("expected version extraction, got %d items", len(data))
+	if !foundPII {
+		t.Fatalf("expected PII extraction, got %d items", len(data))
 	}
 }
 
@@ -49,7 +53,7 @@ func TestExtractDirect_NoSQL(t *testing.T) {
 		Params: map[string]string{"user": "guest"},
 	}
 
-	ext := New(client.New(5, nil, nil), nil, nil, nil)
+	ext := New(client.New(5, nil, nil), nil, nil, nil, true)
 	result := ext.ExtractDirect(context.Background(), target)
 
 	if len(result.Extractions) == 0 {
@@ -62,15 +66,15 @@ func TestExtractAll_AfterScan(t *testing.T) {
 	defer srv.Close()
 
 	target := models.ScanTarget{
-		URL: srv.URL + "/shop/search?q=1", Method: "GET",
-		Params: map[string]string{"q": "1"},
+		URL: srv.URL + "/extract/mysql?id=1", Method: "GET",
+		Params: map[string]string{"id": "1"},
 	}
 	findings := []models.Finding{{
-		URL: target.URL, Parameter: "q",
-		VulnType: models.SQLiUnion, DBMS: "mysql",
+		URL: target.URL, Parameter: "id",
+		VulnType: models.SQLiError, DBMS: "mysql",
 	}}
 
-	ext := New(client.New(5, nil, nil), nil, nil, nil)
+	ext := New(client.New(5, nil, nil), nil, nil, nil, true)
 	result := ext.ExtractAll(context.Background(), target, findings)
 
 	if len(result.Extractions) == 0 {
