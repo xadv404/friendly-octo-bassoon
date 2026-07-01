@@ -86,7 +86,7 @@ var (
 // rePIIPhone, rePIIIBAN, rePIIAddr — initialisés dans pii_region.go (profil CH).
 
 var columnPatterns = map[PIIColumnKind]*regexp.Regexp{
-	PIINom: regexp.MustCompile(`(?i)(?:^|_)(?:nom|nachname|lastname|last_name|surname|family_name|name)(?:$|_)`),
+	PIINom: regexp.MustCompile(`(?i)(?:^|_)(?:nom|nachname|lastname|last_name|surname|family_name)(?:$|_)`),
 	PIIPrenom: regexp.MustCompile(`(?i)(?:^|_)(?:prenom|vorname|firstname|first_name|given_name)(?:$|_)`),
 	PIIEmail: regexp.MustCompile(`(?i)(?:^|_)(?:email|e_mail|mail|courriel|email_address)(?:$|_)`),
 	PIIPhone: regexp.MustCompile(`(?i)(?:^|_)(?:tel|telefon|telephone|phone|mobile|gsm|handy|numero|num_tel|phone_number|natel)(?:$|_)`),
@@ -145,71 +145,8 @@ func HasMinimumPIIColumns(cols map[PIIColumnKind]string) bool {
 
 // RecordMeetsMinimum valide un enregistrement : email ou téléphone obligatoire.
 func RecordMeetsMinimum(r PIIRecord) bool {
-	return isValidEmail(r.Email) || isValidPhone(r.Phone)
-}
-
-func isValidEmail(s string) bool {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return false
-	}
-	return rePIIEmail.MatchString(s) && !strings.Contains(s, "example.com") && len(s) < 120
-}
-
-func isValidPhone(s string) bool {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return false
-	}
-	if !rePIIPhone.MatchString(s) {
-		return false
-	}
-	n := normalizePhone(s)
-	// Rejeter numéros français
-	if strings.HasPrefix(n, "+33") || strings.HasPrefix(n, "0033") {
-		return false
-	}
-	if strings.HasPrefix(n, "06") && len(n) == 10 {
-		return false
-	}
-	// Suisse : +41… ou 0 + 9 chiffres
-	if strings.HasPrefix(n, "+41") {
-		return len(n) >= 11 && len(n) <= 12
-	}
-	if strings.HasPrefix(n, "0") {
-		return len(n) == 10
-	}
-	return false
-}
-
-func isValidIBAN(s string) bool {
-	s = strings.TrimSpace(strings.ToUpper(strings.ReplaceAll(s, " ", "")))
-	return s != "" && rePIIIBAN.MatchString(s)
-}
-
-func isValidAddress(s string) bool {
-	s = strings.TrimSpace(s)
-	if len(s) < 5 || isSQLNoise(s) {
-		return false
-	}
-	// Suisse : NPA 4 chiffres OU adresse libre ≥ 8 car.
-	if rePIIAddr != nil && rePIIAddr.MatchString(s) {
-		return true
-	}
-	return len(s) >= 8
-}
-
-func isValidDOB(s string) bool {
-	s = strings.TrimSpace(s)
-	return s != "" && rePIIDOB.MatchString(s)
-}
-
-func isValidName(s string) bool {
-	s = strings.TrimSpace(s)
-	if len(s) < 2 {
-		return false
-	}
-	return rePIIName.MatchString(s)
+	sanitizeRecord(&r)
+	return r.Email != "" || r.Phone != ""
 }
 
 // ParseLabeledPII parse "nom=X|email=Y|tel=Z" depuis une réponse SQL.
@@ -239,7 +176,7 @@ func ParseLabeledPII(raw, table string) []PIIRecord {
 				continue
 			}
 			switch key {
-			case "nom", "lastname", "last_name", "nachname", "name":
+			case "nom", "lastname", "last_name", "nachname":
 				if isValidName(val) {
 					r.Nom = val
 				}
@@ -248,27 +185,22 @@ func ParseLabeledPII(raw, table string) []PIIRecord {
 					r.Prenom = val
 				}
 			case "email", "mail":
-				if em := rePIIEmail.FindString(val); em != "" {
-					r.Email = em
-				}
+				r.Email = extractEmail(val)
 			case "tel", "phone", "telephone", "mobile", "telefon", "natel", "handy":
-				if ph := rePIIPhone.FindString(val); ph != "" {
-					r.Phone = normalizePhone(ph)
-				}
+				r.Phone = extractPhone(val)
 			case "naissance", "dob", "birthdate", "geburtsdatum":
-				if d := rePIIDOB.FindString(val); d != "" {
-					r.DOB = d
+				if isValidDOB(val) {
+					r.DOB = strings.TrimSpace(val)
 				}
 			case "adresse", "address", "addr", "strasse", "ort":
 				if isValidAddress(val) {
 					r.Address = val
 				}
 			case "iban", "konto":
-				if ib := rePIIIBAN.FindString(strings.ToUpper(strings.ReplaceAll(val, " ", ""))); ib != "" {
-					r.IBAN = ib
-				}
+				r.IBAN = extractIBAN(val)
 			}
 		}
+		sanitizeRecord(&r)
 		if RecordMeetsMinimum(r) {
 			records = append(records, r)
 		}
@@ -284,16 +216,10 @@ func ScanPIIInText(body string) []PIIRecord {
 	}
 
 	r := PIIRecord{Raw: truncate(body, 300)}
-	if em := rePIIEmail.FindString(body); em != "" {
-		r.Email = em
-	}
-	if ph := rePIIPhone.FindString(body); ph != "" {
-		r.Phone = normalizePhone(ph)
-	}
-	if ib := rePIIIBAN.FindString(strings.ToUpper(strings.ReplaceAll(body, " ", ""))); ib != "" {
-		r.IBAN = ib
-	}
-	if d := rePIIDOB.FindString(body); d != "" {
+	r.Email = extractEmail(body)
+	r.Phone = extractPhone(body)
+	r.IBAN = extractIBAN(body)
+	if d := rePIIDOB.FindString(body); d != "" && isValidDOB(d) {
 		r.DOB = d
 	}
 
@@ -313,6 +239,7 @@ func ScanPIIInText(body string) []PIIRecord {
 		}
 	}
 
+	sanitizeRecord(&r)
 	if !RecordMeetsMinimum(r) {
 		return nil
 	}
