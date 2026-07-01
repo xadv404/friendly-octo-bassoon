@@ -13,7 +13,6 @@ import (
 type discoverConfig struct {
 	domain    string
 	output    string
-	preset    string
 	paths     string
 	params    string
 	subs      bool
@@ -43,12 +42,8 @@ func runDiscover(args []string) {
 	printer := output.New(false, false)
 	printer.Header(version)
 	printer.KV("commande", "discover")
-	printer.KV("domaine", cfg.domain)
-	if cfg.preset != "" {
-		printer.KV("preset", cfg.preset)
-	} else if discoverNoFilterDiscover(cfg) {
-		printer.KV("filtre", "toutes URLs avec paramètres")
-	}
+	printer.KV("domaine", discover.NormalizeSwissDomain(cfg.domain))
+	printer.KV("profil", "urls .ch avec paramètres")
 	if cfg.paths != "" {
 		printer.KV("paths", cfg.paths)
 	}
@@ -66,7 +61,6 @@ func runDiscover(args []string) {
 		Subs:     cfg.subs,
 		Paths:    discover.ParseList(cfg.paths),
 		Params:   discover.ParseList(cfg.params),
-		Preset:   cfg.preset,
 		NoFilter: discoverNoFilterDiscover(cfg),
 		Limit:    cfg.limit,
 		OnProgress: func(fetched, kept, page int) {
@@ -119,12 +113,6 @@ func parseDiscoverArgs(args []string) (discoverConfig, error) {
 				return cfg, fmt.Errorf("-o nécessite un fichier")
 			}
 			cfg.output = args[i]
-		case arg == "--preset":
-			i++
-			if i >= len(args) {
-				return cfg, fmt.Errorf("--preset nécessite une valeur")
-			}
-			cfg.preset = args[i]
 		case arg == "--paths":
 			i++
 			if i >= len(args) {
@@ -171,41 +159,39 @@ func discoverNoFilterDiscover(cfg discoverConfig) bool {
 	if cfg.noFilter {
 		return true
 	}
-	if cfg.preset != "" || cfg.paths != "" || cfg.params != "" {
+	if cfg.paths != "" || cfg.params != "" {
 		return false
 	}
 	return true
 }
 
 func printDiscoverUsage() {
-	fmt.Print(`sqli-hunter discover — collecte d'URLs via Wayback (Internet Archive)
+	fmt.Print(`sqli-hunter discover — URLs suisses (.ch) via Wayback
 
 Usage:
-  sqli-hunter discover -d <domaine> [options]
+  sqli-hunter discover -d <domaine.ch> [options]
 
 Source:
-  -d, --domain <domaine>      Domaine cible (ex: assureur.com)
+  -d, --domain <domaine>      Domaine .ch (css → css.ch)
       --subs                  Inclure sous-domaines [défaut: oui]
       --no-subs               Domaine exact uniquement
 
-Filtres (optionnels — sans preset : toutes les URLs avec ?param=) :
-      --preset <nom>          bounty, insurance, sqli
+Filtres (optionnels) :
       --paths <a,b,c>         Mots-clés dans le path/URL
       --params <a,b,c>        Noms de paramètres query
-      --no-filter             Toute URL avec paramètres (?key=val)
+      --no-filter             Toutes URLs .ch avec ?key=val
 
 Sortie:
-  -o, --output <fichier>      Fichier scope [défaut: scope_DOMAIN.txt]
+  -o, --output <fichier>      Fichier scope [défaut: scope_DOMAIN.ch.txt]
       --limit <n>             Max URLs à garder
       --scan                  Lancer le scan SQLi après découverte
                               Options scan après -- :
-                              discover -d x.com --scan -- --full -H "Cookie: …"
+                              discover -d x.ch --scan -- --full
 
 Exemples:
-  sqli-hunter discover -d target.com
-  sqli-hunter discover -d assureur.com --preset insurance
-  sqli-hunter discover -d target.com --paths devis,sinistre --params id,policy_id
-  sqli-hunter discover -d target.com --preset bounty --scan -- --full
+  sqli-hunter discover -d css.ch
+  sqli-hunter discover -d helsana --limit 500
+  sqli-hunter discover -d css.ch --scan -- --url-threads 64
 
 `)
 }

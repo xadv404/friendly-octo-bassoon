@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.10.1"
+const version = "1.11.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -138,7 +138,6 @@ type config struct {
 	listFile       string
 	discoverDomain string
 	discoverOutput string
-	discoverPreset string
 	discoverPaths  string
 	discoverParams string
 	discoverSubs   bool
@@ -214,12 +213,6 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("-D nécessite un domaine")
 			}
 			cfg.discoverDomain = args[i]
-		case arg == "--preset":
-			i++
-			if i >= len(args) {
-				return cfg, fmt.Errorf("--preset nécessite une valeur")
-			}
-			cfg.discoverPreset = args[i]
 		case arg == "--paths":
 			i++
 			if i >= len(args) {
@@ -479,40 +472,38 @@ func truncate(s string, n int) string {
 }
 
 func printUsage() {
-	fmt.Print(`sqli-hunter — détection d'injections base de données
+	fmt.Print(`sqli-hunter — détection SQLi/NoSQL · profil Suisse (.ch)
 
 Usage:
-  sqli-hunter <domaine> [options]          Découverte auto + scan
-  sqli-hunter -D <domaine> [options]       Idem (explicite)
+  sqli-hunter <domaine.ch> [options]       Découverte Wayback + scan
+  sqli-hunter -D <domaine.ch> [options]
   sqli-hunter -u <URL> [options]
   sqli-hunter -l <fichier> [options]
-  sqli-hunter discover -d <domaine> [options]
+  sqli-hunter discover -d <domaine.ch> [options]
 
-Découverte automatique (Wayback → scan) :
-  sqli-hunter css.ch
+Découverte automatique (URLs .ch avec paramètres → scan vulnérabilités) :
+  sqli-hunter css
   sqli-hunter css.ch --url-threads 64 --full
-  sqli-hunter -D target.com --preset bounty
 
 Cible:
-  -D, --domain <domaine>      Découvrir les URLs puis scanner [Wayback]
-                              Défaut : toutes URLs avec ?param= (pas seulement assurance)
+  -D, --domain <domaine>      Domaine .ch — découvre puis scanne [Wayback]
+                              css → css.ch automatique
   -u, --url <URL>             URL unique avec paramètres
   -l, --list <fichier>        Fichier d'URLs (une par ligne, # commentaires)
   -o, --output <dir>          Répertoire de sortie [défaut: results]
-                              → results/SITE.COM/SITE.COM.json
-                              → results/SITE.COM/SITE.COM.sql
+                              → results/SITE.CH/SITE.CH.json
+                              → results/SITE.CH/SITE.CH.sql
   -m, --method <METHOD>       GET ou POST [défaut: GET]
   -p, --param <nom=valeur>    Paramètre GET additionnel (mode -u)
   -d, --data <nom=valeur>     Paramètre POST (mode -u)
       --json <JSON>           Corps JSON (mode -u)
 
 Découverte (avec -D) :
-      --preset <nom>          bounty, insurance, sqli (optionnel)
-      --paths <a,b,c>         Mots-clés dans le path/URL
-      --discover-params <a,b> Noms de paramètres query
-      --discover-output <f>   Fichier scope [défaut: scope_DOMAIN.txt]
+      --paths <a,b,c>         Filtre manuel path (optionnel)
+      --discover-params <a,b> Filtre manuel paramètres (optionnel)
+      --discover-output <f>   Fichier scope [défaut: scope_DOMAIN.ch.txt]
       --subs / --no-subs      Sous-domaines [défaut: oui]
-      --no-filter             Force toutes URLs avec paramètres (même avec --preset)
+      --no-filter             Toutes URLs .ch avec ?param= (ignore --paths)
       --discover-limit <n>    Max URLs à garder
 
 Requête:
@@ -543,9 +534,8 @@ Affichage:
 
 Exemples:
   sqli-hunter css.ch --url-threads 64
-  sqli-hunter css.ch --preset insurance
-  sqli-hunter -D target.com --preset bounty --full
-  sqli-hunter -u "https://target.com/page?id=1"
+  sqli-hunter helsana --full
+  sqli-hunter -u "https://target.ch/page?id=1"
   sqli-hunter -l urls.txt --url-threads 64
   sqli-hunter -l scope_50k.txt --mass --progress-every 500
 

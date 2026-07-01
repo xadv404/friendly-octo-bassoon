@@ -14,7 +14,7 @@ func hasQueryParams(raw string) bool {
 	return len(u.Query()) > 0
 }
 
-// isScannable rejette le bruit Wayback (artefacts JS, URLs invalides).
+// isScannable rejette le bruit Wayback et garde les URLs .ch avec paramètres.
 func isScannable(raw string) bool {
 	if len(raw) > 2048 {
 		return false
@@ -29,6 +29,9 @@ func isScannable(raw string) bool {
 		return false
 	}
 	if _, err := url.ParseRequestURI(raw); err != nil {
+		return false
+	}
+	if !IsSwissURL(raw) {
 		return false
 	}
 	return hasQueryParams(raw)

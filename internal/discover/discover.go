@@ -19,11 +19,10 @@ type Options struct {
 	Domain     string
 	Output     string
 	Subs       bool
-	Paths      []string
-	Params     []string
-	Preset     string
-	NoFilter   bool // uniquement URLs avec paramètres, sans filtre path/param
-	Limit      int  // max URLs écrites (0 = illimité)
+	Paths      []string // filtre manuel optionnel
+	Params     []string // filtre manuel optionnel
+	NoFilter   bool     // ignore Paths/Params — toutes URLs .ch avec ?key=val
+	Limit      int      // max URLs écrites (0 = illimité)
 	PageSize   int
 	Fetcher    CDXFetcher
 	OnProgress func(fetched, kept int, page int)
@@ -41,21 +40,9 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	if opts.Domain == "" {
 		return Result{}, fmt.Errorf("domaine requis")
 	}
-	opts.Domain = strings.TrimPrefix(strings.TrimSpace(opts.Domain), "*.")
-	opts.Domain = strings.TrimPrefix(opts.Domain, "www.")
-
-	if opts.Preset != "" {
-		p, ok := Presets[opts.Preset]
-		if !ok {
-			return Result{}, fmt.Errorf("preset inconnu : %s (disponibles: %s)",
-				opts.Preset, strings.Join(PresetNames(), ", "))
-		}
-		if len(opts.Paths) == 0 {
-			opts.Paths = p.Paths
-		}
-		if len(opts.Params) == 0 {
-			opts.Params = p.Params
-		}
+	opts.Domain = NormalizeSwissDomain(opts.Domain)
+	if !strings.HasSuffix(opts.Domain, ".ch") {
+		return Result{}, fmt.Errorf("domaine .ch requis (ex: css.ch)")
 	}
 
 	pageSize := opts.PageSize
@@ -130,7 +117,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 
 	if kept == 0 {
 		return Result{Fetched: fetched, Kept: 0, Output: outPath},
-			fmt.Errorf("aucune URL scannable trouvée pour %s (essayez --no-filter ou moins de filtres)", opts.Domain)
+			fmt.Errorf("aucune URL .ch scannable trouvée pour %s", opts.Domain)
 	}
 
 	return Result{Fetched: fetched, Kept: kept, Output: outPath}, nil
@@ -149,8 +136,6 @@ func passesFilters(raw string, opts Options) bool {
 	switch {
 	case len(opts.Paths) == 0 && len(opts.Params) == 0:
 		return true
-	case len(opts.Paths) > 0 && len(opts.Params) > 0 && opts.Preset != "":
-		return pathMatch || paramMatch
 	case len(opts.Paths) > 0 && len(opts.Params) > 0:
 		return pathMatch && paramMatch
 	case len(opts.Paths) > 0:

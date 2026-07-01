@@ -3,8 +3,8 @@ package main
 import "testing"
 
 func TestNormalizeArgs_PositionalDomain(t *testing.T) {
-	got := normalizeArgs([]string{"css.ch", "--preset", "insurance"})
-	want := []string{"-D", "css.ch", "--preset", "insurance"}
+	got := normalizeArgs([]string{"css.ch", "--url-threads", "64"})
+	want := []string{"-D", "css.ch", "--url-threads", "64"}
 	if len(got) != len(want) {
 		t.Fatalf("got %v want %v", got, want)
 	}
@@ -16,7 +16,7 @@ func TestNormalizeArgs_PositionalDomain(t *testing.T) {
 }
 
 func TestNormalizeArgs_PreservesFlags(t *testing.T) {
-	args := []string{"-u", "https://x.com?id=1"}
+	args := []string{"-u", "https://x.ch?id=1"}
 	if normalizeArgs(args)[0] != "-u" {
 		t.Fatal("should not modify flag args")
 	}
@@ -35,56 +35,30 @@ func TestParseArgs_DiscoverDefaultNoFilter(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !discoverNoFilter(cfg) {
-		t.Fatal("default discover should keep all URLs with params")
+		t.Fatal("default discover should keep all .ch URLs with params")
 	}
 }
 
-func TestParseArgs_PresetDisablesNoFilter(t *testing.T) {
-	cfg, err := parseArgs([]string{"-D", "css.ch", "--preset", "insurance"})
+func TestParseArgs_PathFilterDisablesNoFilter(t *testing.T) {
+	cfg, err := parseArgs([]string{"-D", "css.ch", "--paths", "api"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if discoverNoFilter(cfg) {
-		t.Fatal("preset should enable filtering")
-	}
-}
-
-func TestParseArgs_NoFilterOverridesPreset(t *testing.T) {
-	cfg, err := parseArgs([]string{"-D", "css.ch", "--preset", "insurance", "--no-filter"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !discoverNoFilter(cfg) {
-		t.Fatal("--no-filter should override preset")
+		t.Fatal("paths filter should enable filtering")
 	}
 }
 
 func TestParseArgs_DiscoverDomain(t *testing.T) {
-	cfg, err := parseArgs([]string{"-D", "css.ch", "--preset", "insurance", "--url-threads", "32"})
+	cfg, err := parseArgs([]string{"-D", "css", "--url-threads", "32"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.discoverDomain != "css.ch" {
+	if cfg.discoverDomain != "css" {
 		t.Fatalf("domain: %q", cfg.discoverDomain)
-	}
-	if cfg.discoverPreset != "insurance" {
-		t.Fatalf("preset: %q", cfg.discoverPreset)
 	}
 	if cfg.urlConcurrency != 32 {
 		t.Fatalf("url threads: %d", cfg.urlConcurrency)
-	}
-}
-
-func TestParseArgs_DiscoverNoFilter(t *testing.T) {
-	cfg, err := parseArgs([]string{"-D", "target.com", "--no-filter", "--no-subs"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cfg.discoverNoFilter {
-		t.Fatal("no-filter expected")
-	}
-	if cfg.discoverSubs {
-		t.Fatal("subs should be false")
 	}
 }
 

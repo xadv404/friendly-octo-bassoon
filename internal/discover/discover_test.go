@@ -18,22 +18,21 @@ func (m *mockFetcher) FetchPage(_ context.Context, _ string, _ bool, page, _ int
 	return m.pages[page], nil
 }
 
-func TestRun_FiltersInsurancePreset(t *testing.T) {
+func TestRun_KeepsSwissURLsWithParams(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "scope.txt")
 
 	fetcher := &mockFetcher{pages: [][]string{{
-		"https://assureur.com/devis.php?id=1",
-		"https://assureur.com/static/about",
-		"https://assureur.com/page.php?policy_id=42",
-		"https://assureur.com/$.array-fill",
-		"http://assureur.com:80/product.php?cat=2",
+		"https://css.ch/page.php?id=1",
+		"https://css.ch/static/about",
+		"https://www.example.com/page.php?id=2",
+		"https://css.ch/$.array-fill",
+		"http://css.ch:80/product.php?cat=2",
 	}}}
 
 	result, err := Run(context.Background(), Options{
-		Domain:  "assureur.com",
+		Domain:  "css.ch",
 		Output:  out,
-		Preset:  "insurance",
 		Fetcher: fetcher,
 	})
 	if err != nil {
@@ -48,13 +47,38 @@ func TestRun_FiltersInsurancePreset(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := string(data)
-	for _, want := range []string{"devis.php?id=1", "policy_id=42"} {
+	for _, want := range []string{"page.php?id=1", "product.php?cat=2"} {
 		if !containsAll(content, want) {
 			t.Errorf("missing %q in:\n%s", want, content)
 		}
 	}
-	if containsAll(content, "static/about") {
-		t.Error("static page should be filtered out")
+	for _, reject := range []string{"example.com", "static/about"} {
+		if containsAll(content, reject) {
+			t.Errorf("should reject %q", reject)
+		}
+	}
+}
+
+func TestRun_ManualPathFilter(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "scope.txt")
+
+	fetcher := &mockFetcher{pages: [][]string{{
+		"https://css.ch/devis.php?id=1",
+		"https://css.ch/x.php?foo=1",
+	}}}
+
+	result, err := Run(context.Background(), Options{
+		Domain:  "css.ch",
+		Output:  out,
+		Paths:   []string{"devis"},
+		Fetcher: fetcher,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Kept != 1 {
+		t.Fatalf("kept %d want 1", result.Kept)
 	}
 }
 
@@ -63,12 +87,12 @@ func TestRun_NoFilter(t *testing.T) {
 	out := filepath.Join(dir, "scope.txt")
 
 	fetcher := &mockFetcher{pages: [][]string{{
-		"https://target.com/a.php?id=1",
-		"https://target.com/b.php",
+		"https://css.ch/a.php?id=1",
+		"https://css.ch/b.php",
 	}}}
 
 	result, err := Run(context.Background(), Options{
-		Domain:   "target.com",
+		Domain:   "css.ch",
 		Output:   out,
 		NoFilter: true,
 		Fetcher:  fetcher,
@@ -81,39 +105,35 @@ func TestRun_NoFilter(t *testing.T) {
 	}
 }
 
-func TestPassesFilters_PresetOR(t *testing.T) {
-	opts := Options{Preset: "insurance", Paths: Presets["insurance"].Paths, Params: Presets["insurance"].Params}
-
-	if !passesFilters("https://x.com/devis.php?id=1", opts) {
-		t.Error("path match expected")
-	}
-	if !passesFilters("https://x.com/x.php?policy_id=1", opts) {
-		t.Error("param match expected")
-	}
-	if passesFilters("https://x.com/x.php?foo=1", opts) {
-		t.Error("no insurance signal should fail")
-	}
-}
-
 func TestIsScannable_RejectsJunk(t *testing.T) {
 	junk := []string{
-		"https://x.com/$.foo",
+		"https://css.ch/$.foo",
 		"not-a-url",
-		"https://x.com/page",
+		"https://css.ch/page",
+		"https://example.com/page.php?id=1",
 	}
 	for _, u := range junk {
 		if isScannable(u) {
 			t.Errorf("should reject %q", u)
 		}
 	}
-	if !isScannable("https://x.com/page.php?id=1") {
-		t.Error("valid URL rejected")
+	if !isScannable("https://css.ch/page.php?id=1") {
+		t.Error("valid Swiss URL rejected")
+	}
+}
+
+func TestNormalizeSwissDomain(t *testing.T) {
+	if got := NormalizeSwissDomain("css"); got != "css.ch" {
+		t.Fatalf("got %q", got)
+	}
+	if got := NormalizeSwissDomain("www.CSS.CH"); got != "css.ch" {
+		t.Fatalf("got %q", got)
 	}
 }
 
 func TestNormalizeURL(t *testing.T) {
-	got := normalizeURL("http://assureur.com:80/devis.php?id=1")
-	want := "http://assureur.com/devis.php?id=1"
+	got := normalizeURL("http://css.ch:80/devis.php?id=1")
+	want := "http://css.ch/devis.php?id=1"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}

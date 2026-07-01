@@ -78,11 +78,6 @@ nom + prénom + date_naissance + adresse + email + téléphone
 L'**IBAN CH** est extrait en plus si disponible, mais n'est pas requis.
 
 ```bash
-# Scope assureur suisse
-sqli-hunter discover -d css.ch -o scope.txt
-sqli-hunter -l scope.txt --url-threads 64
-
-# Tout-en-un (découverte large par défaut)
 sqli-hunter css.ch --url-threads 64
 ```
 
@@ -96,34 +91,28 @@ sqli-hunter css.ch --url-threads 64
 
 ## Découverte d'URLs (`discover`)
 
-Collecte automatique via **Wayback Machine** (Internet Archive) — sans Google, sans binaire externe.
-
-**Par défaut** : toutes les URLs archivées avec paramètres (`?key=val`) — pas seulement assurance.
+Collecte automatique via **Wayback** — URLs **.ch** avec paramètres (`?key=val`), puis scan des vulnérabilités.
 
 ```bash
-# Toutes les URLs scannables (défaut)
-sqli-hunter discover -d target.com
+# Découverte + scan en une commande
 sqli-hunter css.ch --url-threads 64
 
-# Filtrage optionnel
-sqli-hunter discover -d assureur.com --preset insurance
-sqli-hunter discover -d target.com --preset bounty
-sqli-hunter discover -d target.com --preset sqli
+# Découverte seule
+sqli-hunter discover -d helsana.ch
 
-# Tout-en-un
-sqli-hunter discover -d target.com --scan
+# Liste manuelle
+sqli-hunter -l scope_css.ch.txt --url-threads 64
 ```
 
 | Option | Description |
 |--------|-------------|
-| `-d, --domain` | Domaine cible |
-| `--preset` | `bounty` (large), `insurance`, `sqli` — optionnel |
-| `--paths` | Mots-clés path (virgules) |
-| `--params` | Noms de paramètres query |
-| `--no-filter` | Force toutes URLs avec `?param=` (même avec preset) |
+| `-d, --domain` / `-D` | Domaine .ch (`css` → `css.ch`) |
+| `--paths` | Filtre manuel path (optionnel) |
+| `--params` | Filtre manuel paramètres (optionnel) |
+| `--no-filter` | Toutes URLs .ch avec `?param=` |
 | `--subs` / `--no-subs` | Sous-domaines [défaut: oui] |
-| `-o` | Fichier sortie [défaut: `scope_DOMAIN.txt`] |
-| `--scan` | Lance le scan SQLi après collecte |
+| `-o` | Fichier sortie [défaut: `scope_DOMAIN.ch.txt`] |
+| `--scan` | Lance le scan après collecte |
 
 Source : API CDX Wayback (`web.archive.org`). Ne fonctionne que sur des domaines **déjà archivés**.
 
