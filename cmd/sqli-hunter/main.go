@@ -14,11 +14,9 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
 	"github.com/sqli-hunter/sqli-hunter/internal/payloads"
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
-	"github.com/sqli-hunter/sqli-hunter/internal/targets"
-	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
 )
 
-const version = "1.9.2"
+const version = "1.10.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -37,7 +35,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg, err := parseArgs(os.Args[1:])
+	args := normalizeArgs(os.Args[1:])
+
+	cfg, err := parseArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "erreur: %v\n", err)
 		os.Exit(1)
@@ -52,65 +52,13 @@ func main() {
 		return
 	}
 
-	if cfg.targetURL == "" && cfg.listFile == "" {
-		fmt.Fprintln(os.Stderr, "erreur: -u ou -l requis")
+	if cfg.targetURL == "" && cfg.listFile == "" && cfg.discoverDomain == "" {
+		fmt.Fprintln(os.Stderr, "erreur: -u, -l ou -D requis")
 		os.Exit(1)
 	}
 
 	printer := output.New(cfg.noColor, cfg.verbose)
 	printer.Header(version)
-
-	opts := buildOptions(cfg)
-	listDefaults := targets.Defaults{
-		Method:  cfg.method,
-		Headers: cfg.headers,
-		Cookies: cfg.cookies,
-		Params:  cfg.params,
-		Data:    cfg.data,
-		JSON:    cfg.jsonBody,
-	}
-
-	runCfg := runner.Config{
-		Opts:           opts,
-		OutputDir:      cfg.outputDir,
-		UrlConcurrency: cfg.urlConcurrency,
-		ProgressEvery:  cfg.progressEvery,
-		ListDefaults:   listDefaults,
-	}
-
-	if cfg.listFile != "" {
-		count, err := urllist.Count(cfg.listFile)
-		if err != nil {
-			printer.Error(err.Error())
-			os.Exit(1)
-		}
-		if count == 0 {
-			printer.Error("liste vide")
-			os.Exit(1)
-		}
-		applyMassDefaults(&runCfg, count, cfg.massMode)
-		runCfg.ListFile = cfg.listFile
-		runCfg.UrlCount = count
-
-		printer.KV("mode", "mass scan (streaming)")
-		printer.KV("targets", fmt.Sprintf("%d urls (%s)", count, cfg.listFile))
-	} else {
-		target, err := targets.FromURL(cfg.targetURL, listDefaults)
-		if err != nil {
-			printer.Error(err.Error())
-			os.Exit(1)
-		}
-		runCfg.Targets = []models.ScanTarget{target}
-		printer.KV("target", truncate(target.URL, 70))
-	}
-
-	printer.ScanConfig(opts.Mode, opts.Categories, opts.IncludeWAF)
-	printer.KV("threads", fmt.Sprintf("scan %d · extract %d · urls %d",
-		opts.Threads, opts.ExtractThreads, runCfg.UrlConcurrency))
-	printer.KV("rate", fmt.Sprintf("%d ms", opts.RateLimitMs))
-	printer.KV("output", cfg.outputDir+"/DOMAIN/DOMAIN.{json,sql}")
-	printer.Rule()
-	fmt.Println()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -123,11 +71,50 @@ func main() {
 		cancel()
 	}()
 
-	r := &runner.Runner{Version: version, Printer: printer}
-	if _, err := r.Run(ctx, runCfg); err != nil {
+	if cfg.discoverDomain != "" {
+		scopeFile, count, err := discoverURLs(ctx, cfg, printer)
+		if err != nil {
+			printer.Error(err.Error())
+			os.Exit(1)
+		}
+		if count == 0 {
+			printer.Error("aucune URL trouvée")
+			os.Exit(1)
+		}
+		cfg.listFile = scopeFile
+		applyMassDefaultsToConfig(&cfg, count)
+	}
+
+	if err := executeScan(ctx, cfg, printer); err != nil {
 		printer.Error(err.Error())
 		os.Exit(1)
 	}
+}
+
+// normalizeArgs convertit un domaine positionnel en -D <domaine>.
+// Ex: sqli-hunter css.ch → sqli-hunter -D css.ch
+func normalizeArgs(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+	first := args[0]
+	if strings.HasPrefix(first, "-") {
+		return args
+	}
+	if strings.Contains(first, "://") {
+		return args
+	}
+	// domaine nu (css.ch, *.css.ch)
+	out := make([]string, 0, len(args)+1)
+	out = append(out, "-D", first)
+	return append(out, args[1:]...)
+}
+
+func applyMassDefaultsToConfig(cfg *config, urlCount int) {
+	tmp := runner.Config{UrlConcurrency: cfg.urlConcurrency, ProgressEvery: cfg.progressEvery}
+	applyMassDefaults(&tmp, urlCount, cfg.massMode)
+	cfg.urlConcurrency = tmp.UrlConcurrency
+	cfg.progressEvery = tmp.ProgressEvery
 }
 
 func applyMassDefaults(cfg *runner.Config, urlCount int, forceMass bool) {
@@ -149,6 +136,14 @@ func applyMassDefaults(cfg *runner.Config, urlCount int, forceMass bool) {
 type config struct {
 	targetURL      string
 	listFile       string
+	discoverDomain string
+	discoverOutput string
+	discoverPreset string
+	discoverPaths  string
+	discoverParams string
+	discoverSubs   bool
+	discoverNoFilter bool
+	discoverLimit  int
 	outputDir      string
 	method         string
 	params         map[string]string
@@ -187,6 +182,7 @@ func parseArgs(args []string) (config, error) {
 		urlConcurrency: 4,
 		rateLimit:      100,
 		outputDir:      "results",
+		discoverSubs:   true,
 		params:         make(map[string]string),
 		data:           make(map[string]string),
 		headers:        make(map[string]string),
@@ -212,6 +208,52 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("-l nécessite un fichier")
 			}
 			cfg.listFile = args[i]
+		case arg == "-D" || arg == "--domain":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("-D nécessite un domaine")
+			}
+			cfg.discoverDomain = args[i]
+		case arg == "--preset":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--preset nécessite une valeur")
+			}
+			cfg.discoverPreset = args[i]
+		case arg == "--paths":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--paths nécessite une valeur")
+			}
+			cfg.discoverPaths = args[i]
+		case arg == "--discover-params":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--discover-params nécessite une valeur")
+			}
+			cfg.discoverParams = args[i]
+		case arg == "--discover-output":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--discover-output nécessite un fichier")
+			}
+			cfg.discoverOutput = args[i]
+		case arg == "--subs":
+			cfg.discoverSubs = true
+		case arg == "--no-subs":
+			cfg.discoverSubs = false
+		case arg == "--no-filter":
+			cfg.discoverNoFilter = true
+		case arg == "--discover-limit":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--discover-limit nécessite une valeur")
+			}
+			v, err := strconv.Atoi(args[i])
+			if err != nil || v < 1 {
+				return cfg, fmt.Errorf("--discover-limit doit être >= 1")
+			}
+			cfg.discoverLimit = v
 		case arg == "-o" || arg == "--output":
 			i++
 			if i >= len(args) {
@@ -440,15 +482,19 @@ func printUsage() {
 	fmt.Print(`sqli-hunter — détection d'injections base de données
 
 Usage:
+  sqli-hunter <domaine> [options]          Découverte auto + scan
+  sqli-hunter -D <domaine> [options]       Idem (explicite)
   sqli-hunter -u <URL> [options]
   sqli-hunter -l <fichier> [options]
   sqli-hunter discover -d <domaine> [options]
 
-Découverte d'URLs (Wayback):
-  sqli-hunter discover -d assureur.com --preset insurance
-  sqli-hunter discover -d target.com --no-filter -o scope.txt
+Découverte automatique (Wayback → scan):
+  sqli-hunter css.ch --preset insurance
+  sqli-hunter -D assureur.com --no-filter --url-threads 64
+  sqli-hunter css.ch --preset sqli --full
 
 Cible:
+  -D, --domain <domaine>      Découvrir les URLs puis scanner [Wayback]
   -u, --url <URL>             URL unique avec paramètres
   -l, --list <fichier>        Fichier d'URLs (une par ligne, # commentaires)
   -o, --output <dir>          Répertoire de sortie [défaut: results]
@@ -458,6 +504,15 @@ Cible:
   -p, --param <nom=valeur>    Paramètre GET additionnel (mode -u)
   -d, --data <nom=valeur>     Paramètre POST (mode -u)
       --json <JSON>           Corps JSON (mode -u)
+
+Découverte (avec -D):
+      --preset <nom>          insurance, sqli
+      --paths <a,b,c>         Mots-clés dans le path/URL
+      --discover-params <a,b> Noms de paramètres query
+      --discover-output <f>   Fichier scope [défaut: scope_DOMAIN.txt]
+      --subs / --no-subs      Sous-domaines [défaut: oui]
+      --no-filter             Toute URL avec paramètres
+      --discover-limit <n>    Max URLs à garder
 
 Requête:
   -H, --header <Nom: Val>     Header HTTP (répétable)
@@ -486,6 +541,8 @@ Affichage:
       --version
 
 Exemples:
+  sqli-hunter css.ch --preset insurance
+  sqli-hunter -D target.com --url-threads 64 --full
   sqli-hunter -u "https://target.com/page?id=1"
   sqli-hunter -l urls.txt --url-threads 64
   sqli-hunter -l scope_50k.txt --mass --progress-every 500

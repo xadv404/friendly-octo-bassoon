@@ -8,22 +8,20 @@ import (
 
 	"github.com/sqli-hunter/sqli-hunter/internal/discover"
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
-	"github.com/sqli-hunter/sqli-hunter/internal/runner"
-	"github.com/sqli-hunter/sqli-hunter/internal/targets"
-	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
 )
 
 type discoverConfig struct {
-	domain   string
-	output   string
-	preset   string
-	paths    string
-	params   string
-	subs     bool
-	noFilter bool
-	limit    int
-	scan     bool
-	help     bool
+	domain    string
+	output    string
+	preset    string
+	paths     string
+	params    string
+	subs      bool
+	noFilter  bool
+	limit     int
+	scan      bool
+	scanExtra []string
+	help      bool
 }
 
 func runDiscover(args []string) {
@@ -90,12 +88,13 @@ func runDiscover(args []string) {
 		fmt.Println()
 		printer.KV("mode", "scan auto")
 		scanArgs := []string{"-l", result.Output, "--url-threads", "64"}
+		scanArgs = append(scanArgs, cfg.scanExtra...)
 		scanCfg, err := parseArgs(scanArgs)
 		if err != nil {
 			printer.Error(err.Error())
 			os.Exit(1)
 		}
-		runScan(scanCfg)
+		runScanWithSignals(scanCfg)
 	}
 }
 
@@ -154,6 +153,11 @@ func parseDiscoverArgs(args []string) (discoverConfig, error) {
 			cfg.limit = v
 		case arg == "--scan":
 			cfg.scan = true
+			// Arguments après -- sont transmis au scan
+			if i+1 < len(args) && args[i+1] == "--" {
+				cfg.scanExtra = args[i+2:]
+				i = len(args)
+			}
 		default:
 			return cfg, fmt.Errorf("argument inconnu : %s", arg)
 		}
@@ -182,54 +186,14 @@ Sortie:
   -o, --output <fichier>      Fichier scope [défaut: scope_DOMAIN.txt]
       --limit <n>             Max URLs à garder
       --scan                  Lancer le scan SQLi après découverte
+                              Options scan après -- :
+                              discover -d x.com --scan -- --full -H "Cookie: …"
 
 Exemples:
   sqli-hunter discover -d assureur.com --preset insurance
   sqli-hunter discover -d target.com --paths devis,sinistre --params id,policy_id
   sqli-hunter discover -d target.com --no-filter -o scope.txt
-  sqli-hunter discover -d target.com --preset insurance --scan
+  sqli-hunter discover -d target.com --preset insurance --scan -- --full
 
 `)
-}
-
-// runScan exécute le scan (extrait de main pour réutilisation après discover --scan).
-func runScan(cfg config) {
-	printer := output.New(cfg.noColor, cfg.verbose)
-	opts := buildOptions(cfg)
-	listDefaults := targets.Defaults{
-		Method:  cfg.method,
-		Headers: cfg.headers,
-		Cookies: cfg.cookies,
-		Params:  cfg.params,
-		Data:    cfg.data,
-		JSON:    cfg.jsonBody,
-	}
-
-	runCfg := runner.Config{
-		Opts:           opts,
-		OutputDir:      cfg.outputDir,
-		UrlConcurrency: cfg.urlConcurrency,
-		ProgressEvery:  cfg.progressEvery,
-		ListDefaults:   listDefaults,
-		ListFile:       cfg.listFile,
-	}
-
-	count, err := urllist.Count(cfg.listFile)
-	if err != nil {
-		printer.Error(err.Error())
-		os.Exit(1)
-	}
-	runCfg.UrlCount = count
-	applyMassDefaults(&runCfg, count, cfg.massMode)
-
-	printer.ScanConfig(opts.Mode, opts.Categories, opts.IncludeWAF)
-	printer.Rule()
-	fmt.Println()
-
-	ctx := context.Background()
-	r := &runner.Runner{Version: version, Printer: printer}
-	if _, err := r.Run(ctx, runCfg); err != nil {
-		printer.Error(err.Error())
-		os.Exit(1)
-	}
 }
