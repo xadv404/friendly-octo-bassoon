@@ -92,6 +92,13 @@ func TestHasMinimumPIIColumns(t *testing.T) {
 	if !HasMinimumPIIColumns(full) {
 		t.Fatal("all required columns should pass")
 	}
+	split := map[PIIColumnKind]string{
+		PIINom: "nachname", PIIPrenom: "vorname", PIIDOB: "geburtsdatum",
+		PIIPLZ: "plz", PIIOrt: "ort", PIIEmail: "email", PIIPhone: "telefon",
+	}
+	if !HasMinimumPIIColumns(split) {
+		t.Fatal("plz+ort split columns should pass")
+	}
 	partial := map[PIIColumnKind]string{PIIEmail: "email", PIIPhone: "telefon"}
 	if HasMinimumPIIColumns(partial) {
 		t.Fatal("email+phone only should not pass column check")
@@ -173,12 +180,12 @@ func TestPII_NoFalsePositives(t *testing.T) {
 }
 
 func TestSwissPhone(t *testing.T) {
-	for _, p := range []string{"0791234567", "+41 79 123 45 67", "044 123 45 67", "0041 79 123 45 67"} {
+	for _, p := range []string{"0791234567", "+41 79 123 45 67", "044 123 45 67", "0041 79 123 45 67", "0612345678"} {
 		if !isValidPhone(p) {
 			t.Errorf("expected valid CH phone %q", p)
 		}
 	}
-	for _, p := range []string{"0612345678", "+33612345678", "0999999999", "12345", "802.11", "8.0.32"} {
+	for _, p := range []string{"+33612345678", "0999999999", "12345", "802.11", "8.0.32"} {
 		if isValidPhone(p) {
 			t.Errorf("expected invalid phone %q", p)
 		}
@@ -218,7 +225,7 @@ func TestSwissEmail(t *testing.T) {
 }
 
 func TestSwissNames(t *testing.T) {
-	for _, n := range []string{"Meier", "Dupont-Jones", "Müller"} {
+	for _, n := range []string{"Meier", "Dupont-Jones", "Müller", "Li", "Ng"} {
 		if !isValidName(n) {
 			t.Errorf("valid name rejected: %s", n)
 		}
@@ -231,8 +238,10 @@ func TestSwissNames(t *testing.T) {
 }
 
 func TestSwissDOB(t *testing.T) {
-	if !isValidDOB("1985-03-12") {
-		t.Error("valid dob rejected")
+	for _, d := range []string{"1985-03-12", "15.05.1990", "01/01/2000"} {
+		if !isValidDOB(d) {
+			t.Errorf("valid dob rejected: %s", d)
+		}
 	}
 	for _, d := range []string{"2099-01-01", "1850-01-01", "invalid", "99-99-99"} {
 		if isValidDOB(d) {

@@ -107,18 +107,22 @@ func tablesExpr(dbms string) string {
 
 func piiDumpExpr(dbms, table string, cols map[PIIColumnKind]string) string {
 	var parts []string
-	order := []PIIColumnKind{PIINom, PIIPrenom, PIIEmail, PIIPhone, PIIDOB, PIIAddress, PIIIBAN}
+	simple := []PIIColumnKind{PIINom, PIIPrenom, PIIEmail, PIIPhone, PIIDOB}
 	labels := map[PIIColumnKind]string{
 		PIINom: "nom", PIIPrenom: "prenom", PIIEmail: "email", PIIPhone: "tel",
 		PIIDOB: "naissance", PIIAddress: "adresse", PIIIBAN: "iban",
 	}
 
-	for _, kind := range order {
+	for _, kind := range simple {
 		col, ok := cols[kind]
 		if !ok {
 			continue
 		}
 		parts = append(parts, fmt.Sprintf(`'%s=',IFNULL(%s,'')`, labels[kind], quoteIdent(dbms, col)))
+	}
+	parts = append(parts, fmt.Sprintf(`'adresse=',IFNULL(%s,'')`, addressSQLExpr(dbms, cols)))
+	if col, ok := cols[PIIIBAN]; ok {
+		parts = append(parts, fmt.Sprintf(`'iban=',IFNULL(%s,'')`, quoteIdent(dbms, col)))
 	}
 	if len(parts) == 0 {
 		return `NULL`

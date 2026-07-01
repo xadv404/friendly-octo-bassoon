@@ -78,9 +78,9 @@ func writePIIField(b *strings.Builder, key, val string) {
 }
 
 var (
-	rePIIEmail = regexp.MustCompile(`(?i)[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}`)
+	rePIIEmail = regexp.MustCompile(`(?i)\b[a-z0-9](?:[a-z0-9._%+\-]*[a-z0-9])?@[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?)+\b`)
 	rePIIDOB   = regexp.MustCompile(`\b(?:\d{4}[-./]\d{2}[-./]\d{2}|\d{2}[-./]\d{2}[-./]\d{4})\b`)
-	rePIIName  = regexp.MustCompile(`^[\p{L}][\p{L}'\-\s]{1,48}[\p{L}]$`)
+	rePIIName  = regexp.MustCompile(`^[\p{L}][\p{L}'\-\s]{0,48}[\p{L}]$`)
 )
 
 // rePIIPhone, rePIIIBAN, rePIIAddr — initialisés dans pii_region.go (profil CH).
@@ -117,33 +117,9 @@ func IsUserTable(name string) bool {
 	return userTablePattern.MatchString(name)
 }
 
-// SelectPIIColumns retourne colonne SQL → type PII pour une table.
+// SelectPIIColumns retourne colonne SQL → type PII pour une table (inclut plz/ort/rue).
 func SelectPIIColumns(columns []string) map[PIIColumnKind]string {
-	out := make(map[PIIColumnKind]string)
-	for _, col := range columns {
-		col = strings.TrimSpace(col)
-		if col == "" {
-			continue
-		}
-		kind, ok := ClassifyColumn(col)
-		if !ok {
-			continue
-		}
-		if _, exists := out[kind]; !exists {
-			out[kind] = col
-		}
-	}
-	return out
-}
-
-// HasMinimumPIIColumns vérifie que la table expose toutes les colonnes requises.
-func HasMinimumPIIColumns(cols map[PIIColumnKind]string) bool {
-	for _, kind := range []PIIColumnKind{PIINom, PIIPrenom, PIIDOB, PIIAddress, PIIEmail, PIIPhone} {
-		if _, ok := cols[kind]; !ok {
-			return false
-		}
-	}
-	return true
+	return SelectPIIColumnsExtended(columns)
 }
 
 // RecordMeetsMinimum : nom, prénom, naissance, adresse, email, téléphone obligatoires — IBAN optionnel.
@@ -172,6 +148,7 @@ func ParseLabeledPII(raw, table string) []PIIRecord {
 			continue
 		}
 		r := PIIRecord{Table: table, Raw: chunk}
+		var street, plz, ort string
 		for _, part := range strings.Split(chunk, "|") {
 			part = strings.TrimSpace(part)
 			idx := strings.Index(part, "=")
@@ -200,12 +177,23 @@ func ParseLabeledPII(raw, table string) []PIIRecord {
 				if isValidDOB(val) {
 					r.DOB = strings.TrimSpace(val)
 				}
-			case "adresse", "address", "addr", "strasse", "ort":
+			case "adresse", "address", "addr":
 				if isValidAddress(val) {
 					r.Address = val
 				}
+			case "strasse", "rue", "street":
+				street = val
+			case "plz", "npa", "zip", "postcode", "code_postal":
+				plz = val
+			case "ort", "ville", "city", "gemeinde":
+				ort = val
 			case "iban", "konto":
 				r.IBAN = extractIBAN(val)
+			}
+		}
+		if r.Address == "" {
+			if merged := mergeAddressParts(street, plz, ort); isValidAddress(merged) {
+				r.Address = merged
 			}
 		}
 		sanitizeRecord(&r)
@@ -249,9 +237,18 @@ func ScanPIIInText(body string) []PIIRecord {
 			}
 		}
 	}
-	for _, key := range []string{`"adresse"`, `"address"`, `"strasse"`, `"ort"`} {
+	for _, key := range []string{`"adresse"`, `"address"`} {
 		if v := jsonStringValue(body, key); v != "" && isValidAddress(v) {
 			r.Address = v
+			break
+		}
+	}
+	if r.Address == "" {
+		street := firstJSON(body, `"strasse"`, `"rue"`, `"street"`)
+		plz := firstJSON(body, `"plz"`, `"npa"`, `"zip"`)
+		ort := firstJSON(body, `"ort"`, `"ville"`, `"city"`)
+		if merged := mergeAddressParts(street, plz, ort); isValidAddress(merged) {
+			r.Address = merged
 		}
 	}
 
@@ -284,6 +281,34 @@ func jsonStringValue(body, key string) string {
 		return rest[1 : end+1]
 	}
 	return ""
+}
+
+func firstJSON(body string, keys ...string) string {
+	for _, key := range keys {
+		if v := jsonStringValue(body, key); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func mergeAddressParts(street, plz, ort string) string {
+	street = strings.TrimSpace(street)
+	plz = strings.TrimSpace(plz)
+	ort = strings.TrimSpace(ort)
+	var parts []string
+	if street != "" {
+		parts = append(parts, street)
+	}
+	switch {
+	case plz != "" && ort != "":
+		parts = append(parts, plz+" "+ort)
+	case plz != "":
+		parts = append(parts, plz)
+	case ort != "":
+		parts = append(parts, ort)
+	}
+	return strings.Join(parts, ", ")
 }
 
 func normalizePhone(s string) string {

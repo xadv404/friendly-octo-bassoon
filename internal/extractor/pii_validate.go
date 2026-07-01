@@ -18,12 +18,12 @@ var swissMobilePrefixes = []string{"075", "076", "077", "078", "079"}
 
 // Indicatifs régionaux suisses (0xx).
 var swissLandlinePrefixes = []string{
-	"21", "22", "24", "26", "27",
+	"21", "22", "23", "24", "25", "26", "27",
 	"31", "32", "33", "34",
-	"41", "43", "44",
-	"51", "52", "55", "56", "58",
+	"41", "42", "43", "44",
+	"51", "52", "53", "54", "55", "56", "57", "58", "59",
 	"61", "62",
-	"71", "81", "91",
+	"71", "72", "73", "74", "81", "91",
 }
 
 var emailDomainBlocklist = []string{
@@ -72,14 +72,13 @@ func extractEmail(s string) string {
 // extractPhone trouve et valide un téléphone CH dans une chaîne.
 func extractPhone(s string) string {
 	s = strings.TrimSpace(s)
-	if isValidPhone(s) {
+	if isValidPhone(s) && !isPhoneInVersionContext(s, s) {
 		return normalizePhone(s)
 	}
-	// Tenter extraction depuis texte (éviter sous-chaînes trop courtes)
 	if rePIIPhone != nil {
 		candidates := rePIIPhone.FindAllString(s, -1)
 		for _, c := range candidates {
-			if isValidPhone(c) {
+			if isValidPhone(c) && !isPhoneInVersionContext(s, c) {
 				return normalizePhone(c)
 			}
 		}
@@ -145,9 +144,6 @@ func isValidPhone(s string) bool {
 	if strings.HasPrefix(n, "+33") || strings.HasPrefix(n, "0033") {
 		return false
 	}
-	if strings.HasPrefix(n, "06") && len(n) == 10 {
-		return false
-	}
 	return isValidSwissNationalNumber(n)
 }
 
@@ -164,6 +160,9 @@ func isValidSwissNationalNumber(n string) bool {
 		return false
 	}
 	if len(national) != 10 || !isAllDigits(national) {
+		return false
+	}
+	if national == "0999999999" || national == "0000000000" {
 		return false
 	}
 	prefix3 := national[:3]
@@ -288,15 +287,34 @@ func isValidAddress(s string) bool {
 	if isSQLNoise(s) || isPIINoise(s) {
 		return false
 	}
-	// NPA suisse + localité
 	if rePIIAddr != nil && rePIIAddr.MatchString(s) {
 		return true
 	}
-	// Rue explicite + au moins un chiffre (n° maison)
-	if reStreetCH.MatchString(s) {
-		return regexp.MustCompile(`\d`).MatchString(s)
+	if reStreetCH.MatchString(s) && regexp.MustCompile(`\d`).MatchString(s) {
+		return true
+	}
+	// Rue française/internationale : "12 rue de Paris"
+	if regexp.MustCompile(`(?i)^\d{1,4}\s+(?:rue|chemin|avenue|route|via)\b`).MatchString(s) {
+		return true
 	}
 	return false
+}
+
+func isPhoneInVersionContext(src, match string) bool {
+	idx := strings.Index(src, match)
+	if idx < 0 {
+		return false
+	}
+	start := idx
+	for start > 0 && (src[start-1] == '.' || src[start-1] == '-' || unicode.IsDigit(rune(src[start-1]))) {
+		start--
+	}
+	end := idx + len(match)
+	for end < len(src) && (src[end] == '.' || src[end] == '-' || unicode.IsDigit(rune(src[end]))) {
+		end++
+	}
+	segment := src[start:end]
+	return regexp.MustCompile(`\d+\.\d+\.\d+`).MatchString(segment)
 }
 
 func isPIINoise(s string) bool {
@@ -310,7 +328,7 @@ func isPIINoise(s string) bool {
 		"password", "token", "session", "cookie", "bearer",
 	}
 	for _, n := range noise {
-		if lower == n || strings.Contains(lower, n) {
+		if lower == n {
 			return true
 		}
 	}
