@@ -51,6 +51,34 @@ Dès qu'une vulnérabilité est détectée, l'outil lance automatiquement l'extr
 - Tables (`information_schema`, `sqlite_master`)
 - Dump NoSQL (collections MongoDB)
 
+## Découverte d'URLs (`discover`)
+
+Collecte automatique via **Wayback Machine** (Internet Archive) — sans Google, sans binaire externe.
+
+```bash
+# Assurances — preset avec filtres devis/sinistre/contrat/policy...
+sqli-hunter discover -d assureur.com --preset insurance
+
+# Puis scan
+sqli-hunter -l scope_assureur.com.txt --url-threads 64
+
+# Tout-en-un
+sqli-hunter discover -d assureur.com --preset insurance --scan
+```
+
+| Option | Description |
+|--------|-------------|
+| `-d, --domain` | Domaine cible |
+| `--preset` | `insurance`, `sqli` |
+| `--paths` | Mots-clés path (virgules) |
+| `--params` | Noms de paramètres query |
+| `--no-filter` | Toute URL avec `?param=` |
+| `--subs` / `--no-subs` | Sous-domaines [défaut: oui] |
+| `-o` | Fichier sortie [défaut: `scope_DOMAIN.txt`] |
+| `--scan` | Lance le scan SQLi après collecte |
+
+Source : API CDX Wayback (`web.archive.org`). Ne fonctionne que sur des domaines **déjà archivés**.
+
 ## Scan massif (1k – 100k URLs)
 
 Le mode `-l` utilise le **streaming** : les URLs ne sont pas chargées en mémoire.

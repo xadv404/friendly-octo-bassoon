@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
+	"encoding/json"
 	"strconv"
 	"strings"
 	"syscall"
@@ -18,9 +18,20 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
 )
 
-const version = "1.7.0"
+const version = "1.8.0"
 
 func main() {
+	if len(os.Args) >= 2 {
+		switch os.Args[1] {
+		case "discover":
+			runDiscover(os.Args[2:])
+			return
+		case "-h", "--help":
+			printUsage()
+			return
+		}
+	}
+
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)
@@ -427,6 +438,11 @@ func printUsage() {
 Usage:
   sqli-hunter -u <URL> [options]
   sqli-hunter -l <fichier> [options]
+  sqli-hunter discover -d <domaine> [options]
+
+Découverte d'URLs (Wayback):
+  sqli-hunter discover -d assureur.com --preset insurance
+  sqli-hunter discover -d target.com --no-filter -o scope.txt
 
 Cible:
   -u, --url <URL>             URL unique avec paramètres
