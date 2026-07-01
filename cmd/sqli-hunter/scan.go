@@ -102,6 +102,8 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	printer.KV("discover", cfg.discoverDomain)
 	if cfg.discoverPreset != "" {
 		printer.KV("preset", cfg.discoverPreset)
+	} else if discoverNoFilter(cfg) {
+		printer.KV("filtre", "toutes URLs avec paramètres")
 	}
 	if cfg.discoverPaths != "" {
 		printer.KV("paths", cfg.discoverPaths)
@@ -120,7 +122,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		Paths:    discover.ParseList(cfg.discoverPaths),
 		Params:   discover.ParseList(cfg.discoverParams),
 		Preset:   cfg.discoverPreset,
-		NoFilter: cfg.discoverNoFilter,
+		NoFilter: discoverNoFilter(cfg),
 		Limit:    cfg.discoverLimit,
 		OnProgress: func(fetched, kept, page int) {
 			fmt.Fprintf(os.Stderr, "\r  wayback page %d — %d urls lues, %d gardées", page+1, fetched, kept)
@@ -138,4 +140,16 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	fmt.Println()
 
 	return result.Output, result.Kept, nil
+}
+
+// discoverNoFilter : par défaut toutes les URLs avec paramètres (?key=val).
+// Un --preset ou --paths/--discover-params active le filtrage ; --no-filter force tout garder.
+func discoverNoFilter(cfg config) bool {
+	if cfg.discoverNoFilter {
+		return true
+	}
+	if cfg.discoverPreset != "" || cfg.discoverPaths != "" || cfg.discoverParams != "" {
+		return false
+	}
+	return true
 }

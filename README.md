@@ -79,8 +79,11 @@ L'**IBAN CH** est extrait en plus si disponible, mais n'est pas requis.
 
 ```bash
 # Scope assureur suisse
-sqli-hunter discover -d css.ch --preset insurance -o scope.txt
+sqli-hunter discover -d css.ch -o scope.txt
 sqli-hunter -l scope.txt --url-threads 64
+
+# Tout-en-un (découverte large par défaut)
+sqli-hunter css.ch --url-threads 64
 ```
 
 ### Données extraites (--extract-meta)
@@ -95,24 +98,29 @@ sqli-hunter -l scope.txt --url-threads 64
 
 Collecte automatique via **Wayback Machine** (Internet Archive) — sans Google, sans binaire externe.
 
-```bash
-# Assurances — preset avec filtres devis/sinistre/contrat/policy...
-sqli-hunter discover -d assureur.com --preset insurance
+**Par défaut** : toutes les URLs archivées avec paramètres (`?key=val`) — pas seulement assurance.
 
-# Puis scan
-sqli-hunter -l scope_assureur.com.txt --url-threads 64
+```bash
+# Toutes les URLs scannables (défaut)
+sqli-hunter discover -d target.com
+sqli-hunter css.ch --url-threads 64
+
+# Filtrage optionnel
+sqli-hunter discover -d assureur.com --preset insurance
+sqli-hunter discover -d target.com --preset bounty
+sqli-hunter discover -d target.com --preset sqli
 
 # Tout-en-un
-sqli-hunter discover -d assureur.com --preset insurance --scan
+sqli-hunter discover -d target.com --scan
 ```
 
 | Option | Description |
 |--------|-------------|
 | `-d, --domain` | Domaine cible |
-| `--preset` | `insurance`, `sqli` |
+| `--preset` | `bounty` (large), `insurance`, `sqli` — optionnel |
 | `--paths` | Mots-clés path (virgules) |
 | `--params` | Noms de paramètres query |
-| `--no-filter` | Toute URL avec `?param=` |
+| `--no-filter` | Force toutes URLs avec `?param=` (même avec preset) |
 | `--subs` / `--no-subs` | Sous-domaines [défaut: oui] |
 | `-o` | Fichier sortie [défaut: `scope_DOMAIN.txt`] |
 | `--scan` | Lance le scan SQLi après collecte |

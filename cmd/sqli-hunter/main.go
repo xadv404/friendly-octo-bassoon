@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.10.0"
+const version = "1.10.1"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -488,13 +488,14 @@ Usage:
   sqli-hunter -l <fichier> [options]
   sqli-hunter discover -d <domaine> [options]
 
-Découverte automatique (Wayback → scan):
-  sqli-hunter css.ch --preset insurance
-  sqli-hunter -D assureur.com --no-filter --url-threads 64
-  sqli-hunter css.ch --preset sqli --full
+Découverte automatique (Wayback → scan) :
+  sqli-hunter css.ch
+  sqli-hunter css.ch --url-threads 64 --full
+  sqli-hunter -D target.com --preset bounty
 
 Cible:
   -D, --domain <domaine>      Découvrir les URLs puis scanner [Wayback]
+                              Défaut : toutes URLs avec ?param= (pas seulement assurance)
   -u, --url <URL>             URL unique avec paramètres
   -l, --list <fichier>        Fichier d'URLs (une par ligne, # commentaires)
   -o, --output <dir>          Répertoire de sortie [défaut: results]
@@ -505,13 +506,13 @@ Cible:
   -d, --data <nom=valeur>     Paramètre POST (mode -u)
       --json <JSON>           Corps JSON (mode -u)
 
-Découverte (avec -D):
-      --preset <nom>          insurance, sqli
+Découverte (avec -D) :
+      --preset <nom>          bounty, insurance, sqli (optionnel)
       --paths <a,b,c>         Mots-clés dans le path/URL
       --discover-params <a,b> Noms de paramètres query
       --discover-output <f>   Fichier scope [défaut: scope_DOMAIN.txt]
       --subs / --no-subs      Sous-domaines [défaut: oui]
-      --no-filter             Toute URL avec paramètres
+      --no-filter             Force toutes URLs avec paramètres (même avec --preset)
       --discover-limit <n>    Max URLs à garder
 
 Requête:
@@ -541,8 +542,9 @@ Affichage:
       --version
 
 Exemples:
+  sqli-hunter css.ch --url-threads 64
   sqli-hunter css.ch --preset insurance
-  sqli-hunter -D target.com --url-threads 64 --full
+  sqli-hunter -D target.com --preset bounty --full
   sqli-hunter -u "https://target.com/page?id=1"
   sqli-hunter -l urls.txt --url-threads 64
   sqli-hunter -l scope_50k.txt --mass --progress-every 500

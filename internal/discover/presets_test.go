@@ -20,4 +20,10 @@ func TestPresetNames(t *testing.T) {
 	if !strings.Contains(strings.Join(names, ","), "insurance") {
 		t.Fatal("insurance preset missing")
 	}
+	if _, ok := Presets["bounty"]; !ok {
+		t.Fatal("bounty preset missing")
+	}
+	if len(Presets["bounty"].Paths) <= len(Presets["sqli"].Paths) {
+		t.Fatal("bounty should be broader than sqli")
+	}
 }

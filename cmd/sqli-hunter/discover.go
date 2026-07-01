@@ -46,6 +46,8 @@ func runDiscover(args []string) {
 	printer.KV("domaine", cfg.domain)
 	if cfg.preset != "" {
 		printer.KV("preset", cfg.preset)
+	} else if discoverNoFilterDiscover(cfg) {
+		printer.KV("filtre", "toutes URLs avec paramètres")
 	}
 	if cfg.paths != "" {
 		printer.KV("paths", cfg.paths)
@@ -65,7 +67,7 @@ func runDiscover(args []string) {
 		Paths:    discover.ParseList(cfg.paths),
 		Params:   discover.ParseList(cfg.params),
 		Preset:   cfg.preset,
-		NoFilter: cfg.noFilter,
+		NoFilter: discoverNoFilterDiscover(cfg),
 		Limit:    cfg.limit,
 		OnProgress: func(fetched, kept, page int) {
 			fmt.Fprintf(os.Stderr, "\r  wayback page %d — %d urls lues, %d gardées", page+1, fetched, kept)
@@ -165,6 +167,16 @@ func parseDiscoverArgs(args []string) (discoverConfig, error) {
 	return cfg, nil
 }
 
+func discoverNoFilterDiscover(cfg discoverConfig) bool {
+	if cfg.noFilter {
+		return true
+	}
+	if cfg.preset != "" || cfg.paths != "" || cfg.params != "" {
+		return false
+	}
+	return true
+}
+
 func printDiscoverUsage() {
 	fmt.Print(`sqli-hunter discover — collecte d'URLs via Wayback (Internet Archive)
 
@@ -176,8 +188,8 @@ Source:
       --subs                  Inclure sous-domaines [défaut: oui]
       --no-subs               Domaine exact uniquement
 
-Filtres:
-      --preset <nom>          Preset: insurance, sqli
+Filtres (optionnels — sans preset : toutes les URLs avec ?param=) :
+      --preset <nom>          bounty, insurance, sqli
       --paths <a,b,c>         Mots-clés dans le path/URL
       --params <a,b,c>        Noms de paramètres query
       --no-filter             Toute URL avec paramètres (?key=val)
@@ -190,10 +202,10 @@ Sortie:
                               discover -d x.com --scan -- --full -H "Cookie: …"
 
 Exemples:
+  sqli-hunter discover -d target.com
   sqli-hunter discover -d assureur.com --preset insurance
   sqli-hunter discover -d target.com --paths devis,sinistre --params id,policy_id
-  sqli-hunter discover -d target.com --no-filter -o scope.txt
-  sqli-hunter discover -d target.com --preset insurance --scan -- --full
+  sqli-hunter discover -d target.com --preset bounty --scan -- --full
 
 `)
 }

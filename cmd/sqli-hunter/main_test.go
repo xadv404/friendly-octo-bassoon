@@ -29,6 +29,36 @@ func TestNormalizeArgs_PreservesURL(t *testing.T) {
 	}
 }
 
+func TestParseArgs_DiscoverDefaultNoFilter(t *testing.T) {
+	cfg, err := parseArgs([]string{"-D", "css.ch"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !discoverNoFilter(cfg) {
+		t.Fatal("default discover should keep all URLs with params")
+	}
+}
+
+func TestParseArgs_PresetDisablesNoFilter(t *testing.T) {
+	cfg, err := parseArgs([]string{"-D", "css.ch", "--preset", "insurance"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if discoverNoFilter(cfg) {
+		t.Fatal("preset should enable filtering")
+	}
+}
+
+func TestParseArgs_NoFilterOverridesPreset(t *testing.T) {
+	cfg, err := parseArgs([]string{"-D", "css.ch", "--preset", "insurance", "--no-filter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !discoverNoFilter(cfg) {
+		t.Fatal("--no-filter should override preset")
+	}
+}
+
 func TestParseArgs_DiscoverDomain(t *testing.T) {
 	cfg, err := parseArgs([]string{"-D", "css.ch", "--preset", "insurance", "--url-threads", "32"})
 	if err != nil {
