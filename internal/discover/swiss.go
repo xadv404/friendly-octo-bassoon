@@ -5,11 +5,24 @@ import (
 	"strings"
 )
 
-// NormalizeSwissDomain normalise un domaine cible suisse (css → css.ch).
+// IsSwissWide indique une découverte sur tout le TLD .ch (pas un seul domaine).
+func IsSwissWide(d string) bool {
+	switch strings.ToLower(strings.TrimSpace(d)) {
+	case "ch", ".ch", "*", "suisse", "swiss", "all":
+		return true
+	default:
+		return false
+	}
+}
+
+// NormalizeSwissDomain normalise un domaine cible suisse (css → css.ch, ch → ch).
 func NormalizeSwissDomain(d string) string {
 	d = strings.TrimPrefix(strings.TrimSpace(d), "*.")
 	d = strings.TrimPrefix(d, "www.")
 	lower := strings.ToLower(d)
+	if IsSwissWide(lower) {
+		return "ch"
+	}
 	if !strings.Contains(lower, ".") {
 		return lower + ".ch"
 	}

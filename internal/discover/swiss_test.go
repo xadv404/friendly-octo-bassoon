@@ -23,3 +23,26 @@ func TestIsSwissURL(t *testing.T) {
 		t.Fatal("example.com should be rejected")
 	}
 }
+
+func TestIsSwissWide(t *testing.T) {
+	for _, d := range []string{"ch", ".ch", "*", "suisse", "swiss", "all"} {
+		if !IsSwissWide(d) {
+			t.Errorf("expected wide mode for %q", d)
+		}
+	}
+	if IsSwissWide("css.ch") {
+		t.Error("css.ch should not be wide mode")
+	}
+}
+
+func TestNormalizeSwissDomainWide(t *testing.T) {
+	if got := NormalizeSwissDomain("css"); got != "css.ch" {
+		t.Fatalf("got %q", got)
+	}
+	if got := NormalizeSwissDomain("ch"); got != "ch" {
+		t.Fatalf("got %q want ch", got)
+	}
+	if got := NormalizeSwissDomain("suisse"); got != "ch" {
+		t.Fatalf("got %q want ch", got)
+	}
+}

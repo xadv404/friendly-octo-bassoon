@@ -29,9 +29,14 @@ func newWaybackClient() *waybackClient {
 }
 
 func (w *waybackClient) FetchPage(ctx context.Context, domain string, subs bool, page, limit int) ([]string, error) {
-	pattern := domain + "/*"
-	if subs {
+	var pattern string
+	switch {
+	case IsSwissWide(domain):
+		pattern = "*.ch/*"
+	case subs:
 		pattern = "*." + domain + "/*"
+	default:
+		pattern = domain + "/*"
 	}
 
 	q := url.Values{}

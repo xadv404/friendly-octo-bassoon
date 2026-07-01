@@ -42,7 +42,7 @@ func runDiscover(args []string) {
 	printer := output.New(false, false)
 	printer.Header(version)
 	printer.KV("commande", "discover")
-	printer.KV("domaine", discover.NormalizeSwissDomain(cfg.domain))
+	printer.KV("domaine", discoverLabel(cfg.domain))
 	printer.KV("profil", "urls .ch avec paramètres")
 	if cfg.paths != "" {
 		printer.KV("paths", cfg.paths)
@@ -189,8 +189,8 @@ Sortie:
                               discover -d x.ch --scan -- --full
 
 Exemples:
+  sqli-hunter discover -d ch --limit 500
   sqli-hunter discover -d css.ch
-  sqli-hunter discover -d helsana --limit 500
   sqli-hunter discover -d css.ch --scan -- --url-threads 64
 
 `)

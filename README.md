@@ -94,19 +94,19 @@ sqli-hunter css.ch --url-threads 64
 Collecte automatique via **Wayback** — URLs **.ch** avec paramètres (`?key=val`), puis scan des vulnérabilités.
 
 ```bash
-# Découverte + scan en une commande
+# Tout le .ch (Wayback)
+sqli-hunter ch --discover-limit 1000 --url-threads 64
+
+# Un seul domaine
 sqli-hunter css.ch --url-threads 64
 
-# Découverte seule
-sqli-hunter discover -d helsana.ch
-
 # Liste manuelle
-sqli-hunter -l scope_css.ch.txt --url-threads 64
+sqli-hunter -l scope_ch.txt --url-threads 64
 ```
 
 | Option | Description |
 |--------|-------------|
-| `-d, --domain` / `-D` | Domaine .ch (`css` → `css.ch`) |
+| `-d, --domain` / `-D` | `ch` = tout le .ch · `css` = css.ch |
 | `--paths` | Filtre manuel path (optionnel) |
 | `--params` | Filtre manuel paramètres (optionnel) |
 | `--no-filter` | Toutes URLs .ch avec `?param=` |

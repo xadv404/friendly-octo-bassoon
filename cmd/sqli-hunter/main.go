@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.11.0"
+const version = "1.12.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -482,12 +482,12 @@ Usage:
   sqli-hunter discover -d <domaine.ch> [options]
 
 Découverte automatique (URLs .ch avec paramètres → scan vulnérabilités) :
-  sqli-hunter css
-  sqli-hunter css.ch --url-threads 64 --full
+  sqli-hunter ch              Tout le .ch (Wayback)
+  sqli-hunter css.ch          Un seul domaine
+  sqli-hunter ch --discover-limit 1000 --url-threads 64
 
 Cible:
-  -D, --domain <domaine>      Domaine .ch — découvre puis scanne [Wayback]
-                              css → css.ch automatique
+  -D, --domain <domaine>      ch = tout le .ch · css = css.ch · css.ch = un domaine
   -u, --url <URL>             URL unique avec paramètres
   -l, --list <fichier>        Fichier d'URLs (une par ligne, # commentaires)
   -o, --output <dir>          Répertoire de sortie [défaut: results]
@@ -533,6 +533,7 @@ Affichage:
       --version
 
 Exemples:
+  sqli-hunter ch --discover-limit 500 --url-threads 64
   sqli-hunter css.ch --url-threads 64
   sqli-hunter helsana --full
   sqli-hunter -u "https://target.ch/page?id=1"
