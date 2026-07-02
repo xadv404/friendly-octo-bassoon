@@ -67,6 +67,12 @@ func WriteSites(baseDir, toolVersion string, targets []TargetResult) ([]string, 
 		}
 		written = append(written, sqlPath)
 	}
+
+	emailFiles, err := WriteEmailsFromTargets(baseDir, targets)
+	if err != nil {
+		return written, err
+	}
+	written = append(written, emailFiles...)
 	return written, nil
 }
 

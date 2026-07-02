@@ -57,7 +57,7 @@ Exemple de sortie :
 email: hans.meier@bluewin.ch
 ```
 
-**Seuil minimum** : un email valide suffit.
+**Emails par fournisseur** — un fichier `.txt` par domaine email (`gmail.com.txt`, `bluewin.ch.txt`…), une adresse par ligne dans `results/emails/`.
 
 ```bash
 sqli-hunter css.ch --url-threads 64
@@ -126,12 +126,13 @@ Par défaut, les rapports sont écrits dans `results/` :
 
 ```
 results/
+  emails/
+    bluewin.ch.txt
+    gmail.com.txt
+    icloud.com.txt
   target.com/
-    target.com.json    ← rapport complet (vulns + extractions)
-    target.com.sql     ← dump commenté des données extraites
-  api.shop.io/
-    api.shop.io.json
-    api.shop.io.sql
+    target.com.json
+    target.com.sql
 ```
 
 Les URLs d'un même domaine sont regroupées dans un seul rapport.

@@ -15,12 +15,13 @@ import (
 
 // SiteStore écrit les résultats au fil de l'eau (adapté 1k–100k URLs).
 type SiteStore struct {
-	baseDir    string
-	version    string
-	mu         sync.Mutex
-	domains    map[string]*domainWriter
+	baseDir     string
+	version     string
+	mu          sync.Mutex
+	domains     map[string]*domainWriter
 	extractions map[string][]models.ExtractedData // keyed by finding URL
-	extMu      sync.Mutex
+	extMu       sync.Mutex
+	emails      *EmailWriter
 }
 
 type domainWriter struct {
@@ -42,11 +43,16 @@ func NewSiteStore(baseDir, version string) (*SiteStore, error) {
 	if err := os.MkdirAll(baseDir, 0755); err != nil {
 		return nil, err
 	}
+	emails, err := NewEmailWriter(baseDir)
+	if err != nil {
+		return nil, err
+	}
 	return &SiteStore{
 		baseDir:     baseDir,
 		version:     version,
 		domains:     make(map[string]*domainWriter),
 		extractions: make(map[string][]models.ExtractedData),
+		emails:      emails,
 	}, nil
 }
 
@@ -55,6 +61,11 @@ func (s *SiteStore) AppendExtraction(findingURL string, d models.ExtractedData) 
 	s.extMu.Lock()
 	s.extractions[findingURL] = append(s.extractions[findingURL], d)
 	s.extMu.Unlock()
+	if d.DataType == models.DataPII {
+		if em := EmailFromExtraction(d); em != "" {
+			_ = s.emails.Append(em)
+		}
+	}
 }
 
 func (s *SiteStore) takeExtractions(url string) []models.ExtractedData {
@@ -173,6 +184,13 @@ func (s *SiteStore) Finalize() ([]string, error) {
 		written = append(written, sqlPath)
 
 		os.Remove(filepath.Join(dw.dir, domain+".jsonl"))
+	}
+	if s.emails != nil {
+		emailFiles, err := s.emails.Close()
+		if err != nil {
+			return written, err
+		}
+		written = append(written, emailFiles...)
 	}
 	return written, nil
 }
