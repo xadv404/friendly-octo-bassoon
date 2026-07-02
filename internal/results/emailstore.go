@@ -39,7 +39,7 @@ func EmailsDir(baseDir string) string {
 	return filepath.Join(baseDir, "emails")
 }
 
-// ListProviders liste les fournisseurs disponibles avec le nombre d'emails.
+// ListProviders liste les fournisseurs disponibles (emails uniques non livrés).
 func ListProviders(baseDir string) ([]ProviderInfo, error) {
 	dir := EmailsDir(baseDir)
 	entries, err := os.ReadDir(dir)
@@ -49,6 +49,7 @@ func ListProviders(baseDir string) ([]ProviderInfo, error) {
 		}
 		return nil, err
 	}
+	delivered, _ := NewDeliveredRegistry(baseDir)
 
 	var out []ProviderInfo
 	for _, e := range entries {
@@ -56,9 +57,12 @@ func ListProviders(baseDir string) ([]ProviderInfo, error) {
 			continue
 		}
 		provider := strings.TrimSuffix(e.Name(), ".txt")
-		n, err := countLines(filepath.Join(dir, e.Name()))
+		n, err := countUniqueEmails(filepath.Join(dir, e.Name()), delivered)
 		if err != nil {
 			return nil, err
+		}
+		if n == 0 {
+			continue
 		}
 		out = append(out, ProviderInfo{Provider: provider, Count: n})
 	}
@@ -124,6 +128,8 @@ func ReadProviderEmails(baseDir, provider string, limit int) ([]string, error) {
 	defer f.Close()
 
 	var emails []string
+	seen := make(map[string]struct{})
+	delivered, _ := NewDeliveredRegistry(baseDir)
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 64*1024), 1024*1024)
 	for sc.Scan() {
@@ -134,6 +140,13 @@ func ReadProviderEmails(baseDir, provider string, limit int) ([]string, error) {
 		if !extractor.ValidEmail(line) {
 			continue
 		}
+		if delivered != nil && delivered.Contains(line) {
+			continue
+		}
+		if _, ok := seen[line]; ok {
+			continue
+		}
+		seen[line] = struct{}{}
 		emails = append(emails, line)
 		if limit > 0 && len(emails) >= limit {
 			break

@@ -30,6 +30,11 @@ func main() {
 		log.Fatal(err)
 	}
 	bot.Debug = os.Getenv("TELEGRAM_DEBUG") == "1"
+
+	if err := results.CompactAllEmails(cfg.resultsDir); err != nil {
+		log.Printf("compact emails: %v", err)
+	}
+
 	if len(cfg.allowed) == 0 {
 		log.Println("ATTENTION: TELEGRAM_ALLOWED_IDS vide — seul /myid accessible jusqu'à config")
 	} else {
@@ -42,6 +47,10 @@ func main() {
 	updates := bot.GetUpdatesChan(u)
 
 	for update := range updates {
+		if update.CallbackQuery != nil {
+			handleCallback(bot, cfg, update.CallbackQuery)
+			continue
+		}
 		if update.Message == nil {
 			continue
 		}
@@ -55,7 +64,6 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg config, msg *tgbotapi.Message) {
 		return
 	}
 
-	// /myid toujours accessible pour configurer la whitelist
 	if text == "/myid" {
 		reply(bot, msg.Chat.ID, fmt.Sprintf("Ton ID Telegram: `%d`\n\nAjoute-le dans `TELEGRAM_ALLOWED_IDS` de tg-bot.env", msg.From.ID))
 		return
@@ -67,7 +75,9 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg config, msg *tgbotapi.Message) {
 	}
 
 	switch {
-	case text == "/start", text == "/help":
+	case text == "/start":
+		sendStart(bot, cfg, msg.Chat.ID)
+	case text == "/help":
 		reply(bot, msg.Chat.ID, helpText())
 	case text == "/list":
 		sendList(bot, cfg, msg.Chat.ID)
@@ -78,8 +88,137 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg config, msg *tgbotapi.Message) {
 			sendEmails(bot, cfg, msg.Chat.ID, count, provider)
 			return
 		}
-		reply(bot, msg.Chat.ID, "Format: `100 gmail` ou `/get 100 gmail`")
+		reply(bot, msg.Chat.ID, "Format: `100 gmail` ou bouton Extraire")
 	}
+}
+
+func sendStart(bot *tgbotapi.BotAPI, cfg config, chatID int64) {
+	text := stockMessage(cfg)
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📥 Extraire", "menu:extract"),
+		),
+	)
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ParseMode = "Markdown"
+	msg.ReplyMarkup = keyboard
+	if _, err := bot.Send(msg); err != nil {
+		msg.ParseMode = ""
+		_, _ = bot.Send(msg)
+	}
+}
+
+func stockMessage(cfg config) string {
+	list, err := results.ListProviders(cfg.resultsDir)
+	if err != nil || len(list) == 0 {
+		return "Stock emails: *vide*\n\nLance `sqli-hunter daily` pour alimenter."
+	}
+	var b strings.Builder
+	b.WriteString("*Stock disponible* (uniques, non livrés)\n\n")
+	total := 0
+	for _, p := range list {
+		fmt.Fprintf(&b, "• `%s` — %d\n", p.Provider, p.Count)
+		total += p.Count
+	}
+	fmt.Fprintf(&b, "\n*Total:* %d emails", total)
+	return b.String()
+}
+
+func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery) {
+	if cq.Message == nil {
+		return
+	}
+	chatID := cq.Message.Chat.ID
+	data := cq.Data
+
+	if !cfg.authorized(cq.From.ID) {
+		answerCallback(bot, cq.ID, "Accès refusé")
+		return
+	}
+
+	switch {
+	case data == "menu:start":
+		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, stockMessage(cfg))
+		kb := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📥 Extraire", "menu:extract")),
+		)
+		edit.ReplyMarkup = &kb
+		edit.ParseMode = "Markdown"
+		_, _ = bot.Send(edit)
+		answerCallback(bot, cq.ID, "")
+	case data == "menu:extract":
+		list, err := results.ListProviders(cfg.resultsDir)
+		if err != nil || len(list) == 0 {
+			answerCallback(bot, cq.ID, "Stock vide")
+			reply(bot, chatID, "Stock vide.")
+			return
+		}
+		var rows [][]tgbotapi.InlineKeyboardButton
+		var row []tgbotapi.InlineKeyboardButton
+		for i, p := range list {
+			label := fmt.Sprintf("%s (%d)", shortProvider(p.Provider), p.Count)
+			row = append(row, tgbotapi.NewInlineKeyboardButtonData(label, "prov:"+p.Provider))
+			if len(row) == 2 || i == len(list)-1 {
+				rows = append(rows, row)
+				row = nil
+			}
+		}
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("← Retour", "menu:start"),
+		))
+		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, "Choisis un fournisseur :")
+		edit.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
+		_, _ = bot.Send(edit)
+		answerCallback(bot, cq.ID, "")
+	case strings.HasPrefix(data, "prov:"):
+		provider := strings.TrimPrefix(data, "prov:")
+		qtyKeyboard := quantityKeyboard(provider)
+		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, fmt.Sprintf("Combien pour *%s* ?", provider))
+		edit.ParseMode = "Markdown"
+		edit.ReplyMarkup = &qtyKeyboard
+		_, _ = bot.Send(edit)
+		answerCallback(bot, cq.ID, "")
+	case strings.HasPrefix(data, "qty:"):
+		parts := strings.Split(strings.TrimPrefix(data, "qty:"), ":")
+		if len(parts) != 2 {
+			answerCallback(bot, cq.ID, "Erreur")
+			return
+		}
+		provider := parts[0]
+		count, err := strconv.Atoi(parts[1])
+		if err != nil || count <= 0 {
+			answerCallback(bot, cq.ID, "Quantité invalide")
+			return
+		}
+		answerCallback(bot, cq.ID, "Envoi…")
+		sendEmails(bot, cfg, chatID, count, provider)
+	default:
+		answerCallback(bot, cq.ID, "")
+	}
+}
+
+func quantityKeyboard(provider string) tgbotapi.InlineKeyboardMarkup {
+	counts := []int{10, 50, 100, 500, 1000}
+	var rows [][]tgbotapi.InlineKeyboardButton
+	var row []tgbotapi.InlineKeyboardButton
+	for i, n := range counts {
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(n), fmt.Sprintf("qty:%s:%d", provider, n)))
+		if len(row) == 3 || i == len(counts)-1 {
+			rows = append(rows, row)
+			row = nil
+		}
+	}
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("← Fournisseurs", "menu:extract"),
+	))
+	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
+}
+
+func shortProvider(p string) string {
+	if i := strings.Index(p, "."); i > 0 {
+		return p[:i]
+	}
+	return p
 }
 
 func handleGet(bot *tgbotapi.BotAPI, cfg config, chatID int64, args string) {
@@ -97,23 +236,7 @@ func handleGet(bot *tgbotapi.BotAPI, cfg config, chatID int64, args string) {
 }
 
 func sendList(bot *tgbotapi.BotAPI, cfg config, chatID int64) {
-	list, err := results.ListProviders(cfg.resultsDir)
-	if err != nil {
-		reply(bot, chatID, "Erreur: "+err.Error())
-		return
-	}
-	if len(list) == 0 {
-		reply(bot, chatID, "Aucun email dans "+results.EmailsDir(cfg.resultsDir))
-		return
-	}
-
-	var b strings.Builder
-	b.WriteString("Fournisseurs disponibles:\n")
-	for _, p := range list {
-		fmt.Fprintf(&b, "• %s — %d emails\n", p.Provider, p.Count)
-	}
-	b.WriteString("\nExemple: `100 gmail`")
-	reply(bot, chatID, b.String())
+	reply(bot, chatID, stockMessage(cfg))
 }
 
 func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, providerQuery string) {
@@ -122,20 +245,14 @@ func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, provi
 		return
 	}
 
-	provider, err := results.ResolveProvider(cfg.resultsDir, providerQuery)
+	taken, err := results.TakeEmailsForBot(cfg.resultsDir, providerQuery, count)
 	if err != nil {
 		reply(bot, chatID, err.Error())
 		return
 	}
 
-	emails, err := results.ReadProviderEmails(cfg.resultsDir, provider, count)
-	if err != nil {
-		reply(bot, chatID, err.Error())
-		return
-	}
-
-	body := strings.Join(emails, "\n") + "\n"
-	filename := fmt.Sprintf("%s_%d.txt", provider, len(emails))
+	body := strings.Join(taken.Emails, "\n") + "\n"
+	filename := fmt.Sprintf("%s_%d.txt", taken.Provider, len(taken.Emails))
 	tmpPath := filepath.Join(os.TempDir(), filename)
 	defer os.Remove(tmpPath)
 
@@ -145,14 +262,19 @@ func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, provi
 	}
 
 	doc := tgbotapi.NewDocument(chatID, tgbotapi.FilePath(tmpPath))
-	doc.Caption = fmt.Sprintf("%d × %s", len(emails), provider)
+	doc.Caption = fmt.Sprintf("%d × %s (retirés du stock)", len(taken.Emails), taken.Provider)
 
 	if _, err := bot.Send(doc); err != nil {
 		reply(bot, chatID, "Envoi échoué: "+err.Error())
 		return
 	}
 
-	log.Printf("sent %d %s to user %d", len(emails), provider, chatID)
+	log.Printf("bot delivered %d %s to %d", len(taken.Emails), taken.Provider, chatID)
+}
+
+func answerCallback(bot *tgbotapi.BotAPI, id, text string) {
+	cb := tgbotapi.NewCallback(id, text)
+	_, _ = bot.Request(cb)
 }
 
 func reply(bot *tgbotapi.BotAPI, chatID int64, text string) {
@@ -166,17 +288,12 @@ func reply(bot *tgbotapi.BotAPI, chatID int64, text string) {
 
 func helpText() string {
 	return strings.TrimSpace(`
-Bot emails sqli-hunter (accès whitelist)
+Bot emails sqli-hunter
 
-Commandes:
-/myid — affiche ton ID Telegram
-/list — fournisseurs disponibles
-/get 100 gmail — envoie un .txt avec 100 emails
-100 gmail — raccourci
+/start — stock + bouton Extraire
+/list — stock disponible
+100 gmail — envoie et retire du stock
 
-Config: tg-bot.env (non versionné)
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_ALLOWED_IDS=123456789
-RESULTS_DIR=results
+Les doublons et emails déjà livrés sont ignorés.
 `)
 }
