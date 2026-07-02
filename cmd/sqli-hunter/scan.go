@@ -120,6 +120,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		}
 		persistCursor = true
 		printer.KV("curseur", fmt.Sprintf("page %d (rotation daily)", pageBase))
+		printer.KV("fresh-pass", "page 0 des top dorks")
 	}
 	if discover.IsSearchEngineSource(discover.ParseSource(cfg.discoverSource)) {
 		printer.KV("source", discover.DiscoverBackendLabel(discover.ParseSource(cfg.discoverSource)))
@@ -140,6 +141,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		AllowEmpty:    cfg.allowEmptyDiscover,
 		PageBase:      pageBase,
 		PersistCursor: persistCursor,
+		FreshPass:     persistCursor,
 		OnProgress: func(fetched, kept, page int) {
 			src := cfg.discoverSource
 			if src == "" {

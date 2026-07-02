@@ -39,6 +39,19 @@ func newBingClient(daySeed int) *bingClient {
 }
 
 // FetchPage exécute un dork Bing (absolutePage = curseur global + offset run).
+func (b *bingClient) FetchDork(ctx context.Context, dork string, start int) ([]string, error) {
+	if start < 0 {
+		start = 0
+	}
+	bingFirst := start + 1
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(b.delay):
+	}
+	return b.search(ctx, dork, bingFirst)
+}
+
 func (b *bingClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
 	dorks := DailyDorkOrder(BuildVulnDorks(domain, subs), b.daySeed)
 	if len(dorks) == 0 {

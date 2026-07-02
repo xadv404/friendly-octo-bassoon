@@ -18,6 +18,18 @@ func (m *mockFetcher) FetchPage(_ context.Context, _ string, _ bool, absolutePag
 	return m.pages[absolutePage], nil
 }
 
+type mockDorkFetcher struct {
+	mockFetcher
+	fresh map[string][]string
+}
+
+func (m *mockDorkFetcher) FetchDork(_ context.Context, dork string, start int) ([]string, error) {
+	if start != 0 || m.fresh == nil {
+		return nil, nil
+	}
+	return m.fresh[dork], nil
+}
+
 func TestRun_KeepsSwissURLsWithParams(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "scope.txt")
@@ -102,6 +114,33 @@ func TestRun_NoFilter(t *testing.T) {
 	}
 	if result.Kept != 1 {
 		t.Fatalf("kept %d want 1", result.Kept)
+	}
+}
+
+func TestRun_FreshPass(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "scope.txt")
+
+	fetcher := &mockDorkFetcher{
+		fresh: map[string][]string{
+			"site:css.ch inurl:view.php inurl:?": {"https://css.ch/view.php?id=1"},
+		},
+		mockFetcher: mockFetcher{pages: [][]string{
+			{"https://css.ch/page.php?id=2"},
+		}},
+	}
+
+	result, err := Run(context.Background(), Options{
+		Domain:    "css.ch",
+		Output:    out,
+		Fetcher:   fetcher,
+		FreshPass: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Kept != 2 {
+		t.Fatalf("kept %d want 2", result.Kept)
 	}
 }
 

@@ -73,7 +73,7 @@ func runDaily(args []string) {
 }
 
 func parseDailyArgs(args []string) (config, error) {
-	scanArgs := append([]string{"-D", "ch", "--mass", "--url-threads", "64", "--discover-limit", "2000"}, args...)
+	scanArgs := append([]string{"-D", "ch", "--mass", "--url-threads", "64", "--discover-limit", "5000"}, args...)
 	return parseArgs(scanArgs)
 }
 
