@@ -7,9 +7,12 @@ import (
 )
 
 var (
-	reGoogleURL      = regexp.MustCompile(`(?i)/url\?q=([^&"']+)`)
+	reGoogleURL      = regexp.MustCompile(`(?i)/url\?(?:[^"']*&)?q=([^&"']+)`)
 	reGoogleDirectCH = regexp.MustCompile(`(?i)https?://[a-zA-Z0-9._\-]+\.ch[^\s"'<>\\]*`)
-	reGoogleSkip     = regexp.MustCompile(`(?i)(google\.|gstatic\.com|youtube\.com|webcache)`)
+	reGoogleSkip     = regexp.MustCompile(`(?i)(google\.|gstatic\.com|youtube\.com|webcache|googleusercontent)`)
+	reGoogleJSONURL  = regexp.MustCompile(`"(?:url|link|ou)":"(https?://[^"\\]+)"`)
+	reGoogleJSONArray = regexp.MustCompile(`\["(https?://[^"\\]+\.ch[^"\\]*)"(?:,|\])`)
+	reGoogleDataHref = regexp.MustCompile(`(?i)data-href="(https?://[^"]+)"`)
 )
 
 func parseGoogleResults(html string) []string {
@@ -25,6 +28,8 @@ func parseGoogleResults(html string) []string {
 		if err == nil && decoded != "" {
 			raw = decoded
 		}
+		raw = strings.ReplaceAll(raw, `\u0026`, "&")
+		raw = strings.ReplaceAll(raw, `\u003d`, "=")
 		raw = strings.TrimRight(raw, `.,;)`)
 		if !strings.HasPrefix(raw, "http://") && !strings.HasPrefix(raw, "https://") {
 			return
@@ -40,6 +45,15 @@ func parseGoogleResults(html string) []string {
 	}
 
 	for _, m := range reGoogleURL.FindAllStringSubmatch(html, -1) {
+		add(m[1])
+	}
+	for _, m := range reGoogleJSONURL.FindAllStringSubmatch(html, -1) {
+		add(m[1])
+	}
+	for _, m := range reGoogleJSONArray.FindAllStringSubmatch(html, -1) {
+		add(m[1])
+	}
+	for _, m := range reGoogleDataHref.FindAllStringSubmatch(html, -1) {
 		add(m[1])
 	}
 	if len(out) == 0 {
