@@ -131,6 +131,9 @@ func (g *googleClient) searchHTML(ctx context.Context, query string, start int) 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return nil, fmt.Errorf("google HTTP 429 (nouvelle IP au prochain essai)")
+		}
 		return nil, fmt.Errorf("google HTTP %d", resp.StatusCode)
 	}
 
