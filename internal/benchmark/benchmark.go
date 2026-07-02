@@ -14,13 +14,13 @@ import (
 
 // Result représente le résultat complet du benchmark.
 type Result struct {
-	Total       int
-	Passed      int
-	Failed      []string
-	FalsePos    []string
-	Findings    int
-	ByContext   map[string]ContextResult
-	Scenarios   []ScenarioResult
+	Total     int
+	Passed    int
+	Failed    []string
+	FalsePos  []string
+	Findings  int
+	ByContext map[string]ContextResult
+	Scenarios []ScenarioResult
 }
 
 // ContextResult résultat par contexte applicatif.

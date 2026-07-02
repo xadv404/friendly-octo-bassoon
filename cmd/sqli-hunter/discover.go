@@ -11,19 +11,19 @@ import (
 )
 
 type discoverConfig struct {
-	domain    string
-	output    string
-	paths     string
-	params    string
-	subs      bool
-	noFilter  bool
-	limit     int
-	source    string
-	rescan    bool
+	domain     string
+	output     string
+	paths      string
+	params     string
+	subs       bool
+	noFilter   bool
+	limit      int
+	source     string
+	rescan     bool
 	resultsDir string
-	scan      bool
-	scanExtra []string
-	help      bool
+	scan       bool
+	scanExtra  []string
+	help       bool
 }
 
 func runDiscover(args []string) {

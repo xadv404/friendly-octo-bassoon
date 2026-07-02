@@ -41,14 +41,14 @@ type TargetResult struct {
 
 // Report rapport global.
 type Report struct {
-	Version     string   `json:"version"`
-	Scanned     int      `json:"scanned"`
-	Vulnerable  int      `json:"vulnerable"`
-	Findings    int      `json:"findings"`
-	Extractions int      `json:"extractions"`
-	DurationMs  int64    `json:"duration_ms"`
+	Version     string         `json:"version"`
+	Scanned     int            `json:"scanned"`
+	Vulnerable  int            `json:"vulnerable"`
+	Findings    int            `json:"findings"`
+	Extractions int            `json:"extractions"`
+	DurationMs  int64          `json:"duration_ms"`
 	Results     []TargetResult `json:"results,omitempty"`
-	OutputFiles []string `json:"output_files,omitempty"`
+	OutputFiles []string       `json:"output_files,omitempty"`
 }
 
 // Runner orchestre scan + extraction.

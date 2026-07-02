@@ -18,9 +18,9 @@ const (
 )
 
 var (
-	reBingHref  = regexp.MustCompile(`(?i)<a[^>]+href="([^"]+)"`)
-	reBingCite  = regexp.MustCompile(`(?i)<cite[^>]*>([^<]+)</cite>`)
-	reBingSkip  = regexp.MustCompile(`(?i)(bing\.com|microsoft\.com|msn\.com|live\.com)`)
+	reBingHref = regexp.MustCompile(`(?i)<a[^>]+href="([^"]+)"`)
+	reBingCite = regexp.MustCompile(`(?i)<cite[^>]*>([^<]+)</cite>`)
+	reBingSkip = regexp.MustCompile(`(?i)(bing\.com|microsoft\.com|msn\.com|live\.com)`)
 )
 
 // bingClient collecte des URLs via Bing (proxyless).

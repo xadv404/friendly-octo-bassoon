@@ -13,31 +13,31 @@ func TestDetectNoSQL_RealWorldCases(t *testing.T) {
 		payload  string
 	}{
 		{
-			name: "juice shop login bypass",
+			name:     "juice shop login bypass",
 			baseline: `{"error":"invalid credentials"}`,
 			body:     `{"token":"eyJ","user":{"email":"admin@corp.com","role":"admin"}}`,
 			payload:  `{"$gt":""}`,
 		},
 		{
-			name: "password reset dump",
+			name:     "password reset dump",
 			baseline: `{"message":"email not found"}`,
 			body:     `{"users":[{"email":"admin@corp.com"},{"email":"user@test.com"}]}`,
 			payload:  `{"$ne":null}`,
 		},
 		{
-			name: "mongo error $where",
+			name:     "mongo error $where",
 			baseline: "",
 			body:     "MongoError: $where is not allowed in this context",
 			payload:  `{"$where":"1==1"}`,
 		},
 		{
-			name: "tenant regex dump",
+			name:     "tenant regex dump",
 			baseline: `{"tenants":[]}`,
 			body:     `{"tenants":[{"name":"Acme Corp","plan":"enterprise"}]}`,
 			payload:  `{"$regex":".*"}`,
 		},
 		{
-			name: "large response dump",
+			name:     "large response dump",
 			baseline: `{"error":"not found"}`,
 			body:     `{"orders":[{"id":"1"},{"id":"2"},{"id":"3"}]}` + string(make([]byte, 200)),
 			payload:  `{"$gt":""}`,

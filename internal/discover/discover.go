@@ -36,19 +36,21 @@ type CDXFetcher interface {
 
 // Options configure la découverte d'URLs.
 type Options struct {
-	Domain     string
-	Output     string
-	Subs       bool
-	Paths      []string
-	Params     []string
-	NoFilter   bool
-	Limit      int
-	PageSize   int
-	Source     Source
-	ResultsDir string
-	SkipDumped bool
-	Fetcher    CDXFetcher
-	OnProgress func(fetched, kept int, page int)
+	Domain      string
+	Output      string
+	Subs        bool
+	Paths       []string
+	Params      []string
+	NoFilter    bool
+	Limit       int
+	PageSize    int
+	Source      Source
+	ResultsDir  string
+	SkipDumped  bool
+	SkipScanned bool
+	AllowEmpty  bool // pas d'erreur si 0 URL (mode daily)
+	Fetcher     CDXFetcher
+	OnProgress  func(fetched, kept int, page int)
 }
 
 // Result résumé d'une découverte.
@@ -77,25 +79,29 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	scanned, err := loadScannedSkipper(opts)
+	if err != nil {
+		return Result{}, err
+	}
 
 	if IsSwissWide(opts.Domain) {
 		if opts.Source == SourceWayback {
 			return Result{}, fmt.Errorf("découverte large: utilise --source bing (wayback ne supporte pas la chasse aux URLs vuln sans domaine cible)")
 		}
-		return runVulnHunt(ctx, opts, skipper)
+		return runVulnHunt(ctx, opts, skipper, scanned)
 	}
 	if !strings.HasSuffix(opts.Domain, ".ch") {
 		return Result{}, fmt.Errorf("domaine .ch requis ou ch pour chasse aux URLs vulnérables")
 	}
 	if opts.Source == SourceBing {
-		return runVulnHunt(ctx, opts, skipper)
+		return runVulnHunt(ctx, opts, skipper, scanned)
 	}
-	return runSingleDomain(ctx, opts, skipper)
+	return runSingleDomain(ctx, opts, skipper, scanned)
 }
 
 // runVulnHunt collecte des URLs vulnérables via dorks Bing (pas de liste de sites prédéfinie).
-func runVulnHunt(ctx context.Context, opts Options, skipper *results.DumpRegistry) (Result, error) {
-	return runSingleDomain(ctx, opts, skipper)
+func runVulnHunt(ctx context.Context, opts Options, skipper *results.DumpRegistry, scanned *results.ScannedRegistry) (Result, error) {
+	return runSingleDomain(ctx, opts, skipper, scanned)
 }
 
 func loadDumpSkipper(opts Options) (*results.DumpRegistry, error) {
@@ -109,6 +115,17 @@ func loadDumpSkipper(opts Options) (*results.DumpRegistry, error) {
 	return results.NewDumpRegistry(dir)
 }
 
+func loadScannedSkipper(opts Options) (*results.ScannedRegistry, error) {
+	if !opts.SkipScanned {
+		return nil, nil
+	}
+	dir := opts.ResultsDir
+	if dir == "" {
+		dir = "results"
+	}
+	return results.NewScannedRegistry(dir)
+}
+
 func runSwissWide(ctx context.Context, opts Options, skipper *results.DumpRegistry) (Result, error) {
 	return Result{}, fmt.Errorf("mode seeds désactivé — utilise: sqli-hunter ch --source bing")
 }
@@ -119,7 +136,7 @@ type collectResult struct {
 	Skipped int
 }
 
-func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen map[string]struct{}, skipper *results.DumpRegistry, w *bufio.Writer) (collectResult, error) {
+func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen map[string]struct{}, skipper *results.DumpRegistry, scanned *results.ScannedRegistry, w *bufio.Writer) (collectResult, error) {
 	pageSize := opts.PageSize
 	if pageSize <= 0 {
 		pageSize = 5000
@@ -143,6 +160,10 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 		for _, raw := range batch {
 			norm := normalizeURL(raw)
 			if shouldSkipDumped(norm, skipper) {
+				skipped++
+				continue
+			}
+			if shouldSkipScanned(norm, scanned) {
 				skipped++
 				continue
 			}
@@ -172,7 +193,7 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 	return collectResult{fetched, kept, skipped}, nil
 }
 
-func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpRegistry) (Result, error) {
+func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpRegistry, scanned *results.ScannedRegistry) (Result, error) {
 	if skipper != nil && !IsSwissWide(opts.Domain) && skipper.Contains(opts.Domain) {
 		return Result{}, fmt.Errorf("domaine %s déjà dumpé (utilise --rescan pour forcer)", opts.Domain)
 	}
@@ -224,6 +245,10 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 				skipped++
 				continue
 			}
+			if shouldSkipScanned(norm, scanned) {
+				skipped++
+				continue
+			}
 			if !passesFilters(norm, opts) {
 				continue
 			}
@@ -252,11 +277,21 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 	}
 
 	if kept == 0 {
+		if opts.AllowEmpty {
+			return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath}, nil
+		}
 		return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath},
 			fmt.Errorf("aucune URL .ch scannable trouvée pour %s", opts.Domain)
 	}
 
 	return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath}, nil
+}
+
+func shouldSkipScanned(raw string, scanned *results.ScannedRegistry) bool {
+	if scanned == nil {
+		return false
+	}
+	return scanned.Contains(raw)
 }
 
 func shouldSkipDumped(raw string, skipper *results.DumpRegistry) bool {

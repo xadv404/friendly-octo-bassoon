@@ -198,7 +198,7 @@ func booleanHandler(param string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := getParam(r, param)
 		if isBooleanTrue(v) {
-			fmt.Fprint(w, strings.Repeat("result ", 50) + "total: 847 items in database")
+			fmt.Fprint(w, strings.Repeat("result ", 50)+"total: 847 items in database")
 			return
 		}
 		if isBooleanFalse(v) {

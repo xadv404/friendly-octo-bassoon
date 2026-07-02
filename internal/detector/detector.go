@@ -25,10 +25,10 @@ func init() {
 
 // SQLErrorResult contient le résultat d'une détection d'erreur SQL.
 type SQLErrorResult struct {
-	Found    bool
-	DBMS     string
-	Pattern  string
-	Snippet  string
+	Found   bool
+	DBMS    string
+	Pattern string
+	Snippet string
 }
 
 // DetectSQLError cherche des erreurs SQL dans le corps de la réponse.

@@ -1,6 +1,7 @@
 package results
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,23 +14,69 @@ import (
 
 // EmailWriter écrit les emails extraits dans un fichier par fournisseur (gmail.com.txt, bluewin.ch.txt…).
 type EmailWriter struct {
-	dir   string
-	mu    sync.Mutex
-	seen  map[string]map[string]struct{}
-	files map[string]*os.File
+	dir      string
+	mu       sync.Mutex
+	seen     map[string]map[string]struct{}
+	files    map[string]*os.File
+	newCount int
 }
 
-// NewEmailWriter crée results/emails/.
+// NewEmailWriter crée results/emails/ et charge les emails existants (dédup inter-jours).
 func NewEmailWriter(baseDir string) (*EmailWriter, error) {
 	dir := filepath.Join(baseDir, "emails")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
-	return &EmailWriter{
+	w := &EmailWriter{
 		dir:   dir,
 		seen:  make(map[string]map[string]struct{}),
 		files: make(map[string]*os.File),
-	}, nil
+	}
+	if err := w.loadExisting(); err != nil {
+		return nil, err
+	}
+	return w, nil
+}
+
+func (w *EmailWriter) loadExisting() error {
+	entries, err := os.ReadDir(w.dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".txt") {
+			continue
+		}
+		provider := strings.TrimSuffix(e.Name(), ".txt")
+		path := filepath.Join(w.dir, e.Name())
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		sc := bufio.NewScanner(f)
+		for sc.Scan() {
+			em := strings.ToLower(strings.TrimSpace(sc.Text()))
+			if em == "" || !extractor.ValidEmail(em) {
+				continue
+			}
+			if w.seen[provider] == nil {
+				w.seen[provider] = make(map[string]struct{})
+			}
+			w.seen[provider][em] = struct{}{}
+		}
+		f.Close()
+		if err := sc.Err(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// NewCount emails nouveaux écrits lors de cette session.
+func (w *EmailWriter) NewCount() int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.newCount
 }
 
 // Append ajoute un email dans le fichier du fournisseur (@domain).
@@ -53,6 +100,7 @@ func (w *EmailWriter) Append(email string) error {
 		return nil
 	}
 	w.seen[provider][email] = struct{}{}
+	w.newCount++
 
 	f, ok := w.files[provider]
 	if !ok {

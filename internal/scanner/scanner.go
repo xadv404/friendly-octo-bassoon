@@ -141,8 +141,8 @@ func (s *Scanner) testError(ctx context.Context, target models.ScanTarget, param
 		return &models.Finding{
 			URL: resp.URL, Parameter: param, Payload: payload,
 			VulnType: models.SQLiError, Confidence: confidence,
-			Evidence: "erreur SQL — accès DB probable: " + sqlErr.Snippet,
-			DBMS: sqlErr.DBMS,
+			Evidence:       "erreur SQL — accès DB probable: " + sqlErr.Snippet,
+			DBMS:           sqlErr.DBMS,
 			ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 		}, 1
 	}
@@ -152,7 +152,7 @@ func (s *Scanner) testError(ctx context.Context, target models.ScanTarget, param
 			return &models.Finding{
 				URL: resp.URL, Parameter: param, Payload: payload,
 				VulnType: models.SQLiError, Confidence: models.High,
-				Evidence: desc,
+				Evidence:       desc,
 				ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 			}, 1
 		}
@@ -182,7 +182,7 @@ func (s *Scanner) testUnion(ctx context.Context, target models.ScanTarget, param
 		return &models.Finding{
 			URL: resp.URL, Parameter: param, Payload: payload,
 			VulnType: models.SQLiUnion, Confidence: models.Confirmed,
-			Evidence: "données DB extraites via UNION (version/schéma)",
+			Evidence:       "données DB extraites via UNION (version/schéma)",
 			ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 		}, 1
 	}
@@ -210,7 +210,7 @@ func (s *Scanner) testBoolean(ctx context.Context, target models.ScanTarget, par
 	return &models.Finding{
 		URL: trueResp.URL, Parameter: param, Payload: trueP + " | " + falseP,
 		VulnType: models.SQLiBoolean, Confidence: models.Medium,
-		Evidence: "injection boolean — requêtes DB manipulables: " + evidence,
+		Evidence:       "injection boolean — requêtes DB manipulables: " + evidence,
 		ResponseTimeMs: float64(trueResp.Duration.Milliseconds()), StatusCode: trueResp.StatusCode,
 	}, 2
 }
@@ -239,7 +239,7 @@ func (s *Scanner) testTime(ctx context.Context, target models.ScanTarget, param,
 		return &models.Finding{
 			URL: resp.URL, Parameter: param, Payload: payload,
 			VulnType: models.SQLiTime, Confidence: confidence,
-			Evidence: fmt.Sprintf("time-based — requête DB exécutée (%.0fms)", ms),
+			Evidence:       fmt.Sprintf("time-based — requête DB exécutée (%.0fms)", ms),
 			ResponseTimeMs: ms, StatusCode: resp.StatusCode,
 		}, 1
 	}
@@ -263,8 +263,8 @@ func (s *Scanner) testNoSQL(ctx context.Context, target models.ScanTarget, param
 	return &models.Finding{
 		URL: resp.URL, Parameter: param, Payload: payload,
 		VulnType: models.NoSQL, Confidence: models.High,
-		Evidence: nosql.Evidence + ": " + nosql.Snippet,
-		DBMS: "nosql",
+		Evidence:       nosql.Evidence + ": " + nosql.Snippet,
+		DBMS:           "nosql",
 		ResponseTimeMs: float64(resp.Duration.Milliseconds()), StatusCode: resp.StatusCode,
 	}, 1
 }

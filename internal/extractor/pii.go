@@ -13,26 +13,26 @@ import (
 type PIIColumnKind string
 
 const (
-	PIINom      PIIColumnKind = "nom"
-	PIIPrenom   PIIColumnKind = "prenom"
-	PIIEmail    PIIColumnKind = "email"
-	PIIPhone    PIIColumnKind = "phone"
-	PIIDOB      PIIColumnKind = "dob"
-	PIIAddress  PIIColumnKind = "address"
-	PIIIBAN     PIIColumnKind = "iban"
+	PIINom     PIIColumnKind = "nom"
+	PIIPrenom  PIIColumnKind = "prenom"
+	PIIEmail   PIIColumnKind = "email"
+	PIIPhone   PIIColumnKind = "phone"
+	PIIDOB     PIIColumnKind = "dob"
+	PIIAddress PIIColumnKind = "address"
+	PIIIBAN    PIIColumnKind = "iban"
 )
 
 // PIIRecord enregistrement utilisateur extrait.
 type PIIRecord struct {
-	Nom      string
-	Prenom   string
-	Email    string
-	Phone    string
-	DOB      string
-	Address  string
-	IBAN     string
-	Table    string
-	Raw      string
+	Nom     string
+	Prenom  string
+	Email   string
+	Phone   string
+	DOB     string
+	Address string
+	IBAN    string
+	Table   string
+	Raw     string
 }
 
 // ToModel convertit en structure exportable JSON/SQL.
@@ -78,13 +78,13 @@ var (
 // rePIIPhone, rePIIIBAN, rePIIAddr — initialisés dans pii_region.go (profil CH).
 
 var columnPatterns = map[PIIColumnKind]*regexp.Regexp{
-	PIINom: regexp.MustCompile(`(?i)(?:^|_)(?:nom|nachname|lastname|last_name|surname|family_name)(?:$|_)`),
-	PIIPrenom: regexp.MustCompile(`(?i)(?:^|_)(?:prenom|vorname|firstname|first_name|given_name)(?:$|_)`),
-	PIIEmail: regexp.MustCompile(`(?i)(?:^|_)(?:email|e_mail|mail|courriel|email_address)(?:$|_)`),
-	PIIPhone: regexp.MustCompile(`(?i)(?:^|_)(?:tel|telefon|telephone|phone|mobile|gsm|handy|numero|num_tel|phone_number|natel)(?:$|_)`),
-	PIIDOB: regexp.MustCompile(`(?i)(?:^|_)(?:date_naissance|geburtsdatum|birthdate|birth_date|dob|naissance|date_of_birth)(?:$|_)`),
+	PIINom:     regexp.MustCompile(`(?i)(?:^|_)(?:nom|nachname|lastname|last_name|surname|family_name)(?:$|_)`),
+	PIIPrenom:  regexp.MustCompile(`(?i)(?:^|_)(?:prenom|vorname|firstname|first_name|given_name)(?:$|_)`),
+	PIIEmail:   regexp.MustCompile(`(?i)(?:^|_)(?:email|e_mail|mail|courriel|email_address)(?:$|_)`),
+	PIIPhone:   regexp.MustCompile(`(?i)(?:^|_)(?:tel|telefon|telephone|phone|mobile|gsm|handy|numero|num_tel|phone_number|natel)(?:$|_)`),
+	PIIDOB:     regexp.MustCompile(`(?i)(?:^|_)(?:date_naissance|geburtsdatum|birthdate|birth_date|dob|naissance|date_of_birth)(?:$|_)`),
 	PIIAddress: regexp.MustCompile(`(?i)(?:^|_)(?:adresse|address|addr|strasse|rue|street|ort|ville|city|plz|npa|zip|postal_code|code_postal|gemeinde)(?:$|_)`),
-	PIIIBAN: regexp.MustCompile(`(?i)(?:^|_)(?:iban|konto|bank_account|compte_bancaire|kontonummer)(?:$|_)`),
+	PIIIBAN:    regexp.MustCompile(`(?i)(?:^|_)(?:iban|konto|bank_account|compte_bancaire|kontonummer)(?:$|_)`),
 }
 
 var userTablePattern = regexp.MustCompile(`(?i)(?:^|_)(?:users?|kunden?|clients?|customers?|adherents?|versicherte?|members?|membres?|assures?|insured|subscribers?|policy_holders?|beneficiaires?|patients?|contacts?|accounts?|comptes?|personen?)(?:$|_)`)

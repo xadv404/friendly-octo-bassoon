@@ -25,8 +25,8 @@ const (
 type VulnCategory string
 
 const (
-	CategorySQLi   VulnCategory = "sqli"
-	CategoryNoSQL  VulnCategory = "nosql"
+	CategorySQLi  VulnCategory = "sqli"
+	CategoryNoSQL VulnCategory = "nosql"
 )
 
 // ScanMode définit la profondeur du scan.
@@ -87,7 +87,7 @@ type ScanOptions struct {
 	Threads         int
 	Verbose         bool
 	EarlyExit       bool
-	ExtractThreads  int // workers dédiés à l'extraction (séparés du scan)
+	ExtractThreads  int  // workers dédiés à l'extraction (séparés du scan)
 	PIIOnly         bool // extraire uniquement données utilisateurs à risque
 }
 
@@ -103,10 +103,10 @@ type ScanResult struct {
 
 // TestJob décrit un test unitaire.
 type TestJob struct {
-	Param     string
-	VulnType  VulnType
-	Category  VulnCategory
-	Payload   string
-	PayloadB  string
-	Priority  int
+	Param    string
+	VulnType VulnType
+	Category VulnCategory
+	Payload  string
+	PayloadB string
+	Priority int
 }

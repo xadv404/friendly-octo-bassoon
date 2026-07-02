@@ -11,6 +11,7 @@ type SiteStore struct {
 	baseDir string
 	emails  *EmailWriter
 	dump    *DumpRegistry
+	scanned *ScannedRegistry
 }
 
 // NewSiteStore crée un store de résultats (emails uniquement).
@@ -29,16 +30,41 @@ func NewSiteStore(baseDir, version string) (*SiteStore, error) {
 	if err != nil {
 		return nil, err
 	}
+	scanned, err := NewScannedRegistry(baseDir)
+	if err != nil {
+		return nil, err
+	}
 	return &SiteStore{
 		baseDir: baseDir,
 		emails:  emails,
 		dump:    dump,
+		scanned: scanned,
 	}, nil
 }
 
 // IsDomainDumped indique si un domaine a déjà été dumpé.
 func (s *SiteStore) IsDomainDumped(domain string) bool {
 	return s.dump != nil && s.dump.Contains(domain)
+}
+
+// IsURLScanned indique si l'URL a déjà été scannée.
+func (s *SiteStore) IsURLScanned(raw string) bool {
+	return s.scanned != nil && s.scanned.Contains(raw)
+}
+
+// MarkURLScanned enregistre une URL scannée.
+func (s *SiteStore) MarkURLScanned(raw string) {
+	if s.scanned != nil {
+		_ = s.scanned.Mark(raw)
+	}
+}
+
+// NewEmails retourne le nombre d'emails nouveaux cette session.
+func (s *SiteStore) NewEmails() int {
+	if s.emails == nil {
+		return 0
+	}
+	return s.emails.NewCount()
 }
 
 // AppendExtraction enregistre un email extrait et marque le domaine dumpé.

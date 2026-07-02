@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -88,6 +89,11 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 			break
 		}
 
+		if !cfg.Rescan && store.IsURLScanned(raw) {
+			skipped.Add(1)
+			continue
+		}
+
 		if !cfg.Rescan {
 			if domain, err := results.DomainFromURL(raw); err == nil && store.IsDomainDumped(domain) {
 				skipped.Add(1)
@@ -131,6 +137,7 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 			if err := store.Add(tr); err != nil {
 				r.Printer.Warning("write: " + err.Error())
 			}
+			store.MarkURLScanned(t.URL)
 
 			n := scanned.Add(1)
 			if len(tr.Findings) > 0 {
@@ -163,6 +170,9 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 	report.OutputFiles = files
 
 	r.Printer.MassSummary(report.Scanned, total, report.Vulnerable, report.Findings, int(skipped.Load()), time.Since(start))
+	if n := store.NewEmails(); n > 0 {
+		r.Printer.Success(fmt.Sprintf("%d nouveaux emails → %s/emails/", n, cfg.OutputDir))
+	}
 	for _, f := range files {
 		r.Printer.Success("→ " + f)
 	}

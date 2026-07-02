@@ -34,7 +34,7 @@ type ExtractedData struct {
 	DataType   DataType
 	Value      string
 	Payload    string
-	Method     string // union, error, nosql
+	Method     string   // union, error, nosql
 	PII        *PIIUser `json:"pii,omitempty"`
 }
 
