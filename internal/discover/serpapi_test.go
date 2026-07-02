@@ -43,6 +43,7 @@ func TestDiscoverBackendLabel_WithProxy(t *testing.T) {
 }
 
 func TestGoogleBackendLabel(t *testing.T) {
+	t.Setenv("OPENSERP_API_KEY", "")
 	t.Setenv("SERPAPI_API_KEY", "")
 	t.Setenv("DISCOVER_PROXY", "")
 	ReloadProxyPool()

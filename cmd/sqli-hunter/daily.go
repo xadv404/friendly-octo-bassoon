@@ -24,7 +24,7 @@ func runDaily(args []string) {
 	printer := output.New(cfg.noColor, cfg.verbose)
 	printer.Header(version)
 	printer.KV("mode", "daily — nouveaux emails uniquement")
-	printer.KV("discover", "URLs vuln .ch (Google direct + proxy BP)")
+	printer.KV("discover", "URLs vuln .ch (Google via OpenSerp)")
 	printer.KV("limit", fmt.Sprintf("%d urls", cfg.discoverLimit))
 	printer.KV("threads", fmt.Sprintf("%d", cfg.urlConcurrency))
 	printer.KV("output", cfg.outputDir+"/emails/")

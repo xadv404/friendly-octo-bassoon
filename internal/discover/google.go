@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strings"
 	"time"
 
 	tls_client "github.com/bogdanfinn/tls-client"
 )
 
-// googleClient scrape Google direct via proxy BP (TLS + headless).
+// googleClient : OpenSerp API (prioritaire) ou scraping direct via proxy BP.
 type googleClient struct {
 	delay   time.Duration
 	daySeed int
@@ -24,8 +23,11 @@ func newGoogleClient(daySeed int) *googleClient {
 }
 
 func (g *googleClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
+	if UseOpenSerp() {
+		return g.fetchOpenSerp(ctx, domain, subs, absolutePage)
+	}
 	if !HasDiscoverProxy() {
-		return nil, fmt.Errorf("google: configure DISCOVER_PROXY dans sqli-hunter.env (proxy BP résidentiel)")
+		return nil, fmt.Errorf("google: configure OPENSERP_API_KEY ou DISCOVER_PROXY dans sqli-hunter.env")
 	}
 	return g.fetchDirect(ctx, domain, subs, absolutePage)
 }
@@ -69,7 +71,6 @@ func (g *googleClient) fetchDirect(ctx context.Context, domain string, subs bool
 }
 
 func (g *googleClient) attemptDirect(ctx context.Context, query string, start, attempt int) ([]string, error) {
-	// 1) HTTP/TLS rapide (même IP pour toute la session)
 	client, err := newGoogleTLSClient(attempt)
 	if err == nil {
 		if attempt > 0 {
@@ -82,7 +83,6 @@ func (g *googleClient) attemptDirect(ctx context.Context, query string, start, a
 		}
 	}
 
-	// 2) Chromium headless direct (JS + consent clic)
 	urls, err := googleHeadlessFetch(ctx, query, start, attempt)
 	if len(urls) > 0 {
 		return urls, nil
@@ -118,7 +118,7 @@ func (g *googleClient) searchTLS(ctx context.Context, client tls_client.HttpClie
 		urls, html, err := g.doGoogleSearch(ctx, client, strat, query, start, referer)
 		if err != nil {
 			lastErr = err
-			if strings.Contains(err.Error(), "429") || strings.Contains(err.Error(), "sorry") {
+			if stringsContains(err.Error(), "429") || stringsContains(err.Error(), "sorry") {
 				break
 			}
 			continue
@@ -177,7 +177,7 @@ func (g *googleClient) doGoogleSearch(ctx context.Context, client tls_client.Htt
 	if len(html) < 400 {
 		return nil, html, fmt.Errorf("google: réponse trop courte")
 	}
-	if strings.Contains(html, "/sorry") {
+	if stringsContains(html, "/sorry") {
 		return nil, html, fmt.Errorf("google: sorry")
 	}
 
@@ -204,4 +204,17 @@ func buildGoogleSearchURL(strat googleSearchStrategy, query string, start int) (
 	}
 	u.RawQuery = q.Encode()
 	return u.String(), nil
+}
+
+func stringsContains(s, sub string) bool {
+	return len(sub) == 0 || (len(s) >= len(sub) && indexString(s, sub) >= 0)
+}
+
+func indexString(s, sub string) int {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return i
+		}
+	}
+	return -1
 }

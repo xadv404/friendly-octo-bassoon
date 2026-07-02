@@ -88,7 +88,7 @@ Cron (tous les jours à 3h) :
 ```
 
 Ce que fait le mode daily :
-1. **Discover Google** — dorks `.ch` via proxy BP résidentiel (`DISCOVER_PROXY`)
+1. **Discover Google** — dorks `.ch` via [OpenSerp API](https://openserp.dev/docs) (`OPENSERP_API_KEY`)
 2. **Curseur daily** — avance dans `results/discover_cursor.json`
 3. **Rotation dorks** — ordre des requêtes changé chaque jour
 4. Ignore domaines déjà dumpés + URLs déjà scannées
