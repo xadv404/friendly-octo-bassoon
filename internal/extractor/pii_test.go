@@ -90,11 +90,11 @@ func TestPII_NoFalsePositives(t *testing.T) {
 
 func TestFormatPIIRecord(t *testing.T) {
 	s := FormatPIIRecord(validEmailRecord())
-	if !strings.Contains(s, "email: jean.dupont@bluewin.ch") {
-		t.Errorf("unexpected format:\n%s", s)
+	if s != "jean.dupont@bluewin.ch\n" {
+		t.Errorf("unexpected format:\n%q", s)
 	}
-	if strings.Contains(s, "nom:") || strings.Contains(s, "telephone:") {
-		t.Error("should only contain email")
+	if strings.Contains(s, "email:") || strings.Contains(s, "nom:") || strings.Contains(s, "telephone:") {
+		t.Error("should only contain the email address")
 	}
 }
 

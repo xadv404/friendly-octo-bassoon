@@ -64,7 +64,7 @@ func TestWriteEmailsFromTargets(t *testing.T) {
 		URL: "https://x.ch/p?id=1",
 		Extractions: []models.ExtractedData{{
 			DataType: models.DataPII,
-			Value:    "email: test@sunrise.ch\n",
+			Value:    "test@sunrise.ch\n",
 		}},
 	}}
 	files, err := WriteEmailsFromTargets(dir, targets)
@@ -83,5 +83,19 @@ func TestEmailFromExtraction(t *testing.T) {
 	}
 	if got := EmailFromExtraction(d); got != "a@hispeed.ch" {
 		t.Fatalf("got %q", got)
+	}
+	legacy := models.ExtractedData{
+		DataType: models.DataPII,
+		Value:    "email: old@bluewin.ch\n",
+	}
+	if got := EmailFromExtraction(legacy); got != "old@bluewin.ch" {
+		t.Fatalf("legacy got %q", got)
+	}
+	plain := models.ExtractedData{
+		DataType: models.DataPII,
+		Value:    "plain@icloud.com\n",
+	}
+	if got := EmailFromExtraction(plain); got != "plain@icloud.com" {
+		t.Fatalf("plain got %q", got)
 	}
 }

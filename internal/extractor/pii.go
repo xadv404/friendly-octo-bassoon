@@ -54,12 +54,12 @@ func FormatPIIRecord(r PIIRecord) string {
 	return FormatPIIBlock(r)
 }
 
-// FormatPIIBlock affiche un email extrait (CLI / SQL).
+// FormatPIIBlock sérialise un email extrait (une adresse par ligne).
 func FormatPIIBlock(r PIIRecord) string {
 	if r.Email == "" {
 		return ""
 	}
-	return "email: " + r.Email + "\n"
+	return strings.ToLower(strings.TrimSpace(r.Email)) + "\n"
 }
 
 func writePIIField(b *strings.Builder, key, val string) {

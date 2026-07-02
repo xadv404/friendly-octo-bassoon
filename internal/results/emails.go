@@ -94,15 +94,21 @@ func EmailProvider(email string) string {
 	return sanitizeDomain(provider)
 }
 
-// EmailFromExtraction lit l'email depuis une extraction PII.
+// EmailFromExtraction lit l'email depuis une extraction PII (adresse seule, sans préfixe).
 func EmailFromExtraction(d models.ExtractedData) string {
 	if d.PII != nil && d.PII.Email != "" {
 		return strings.ToLower(strings.TrimSpace(d.PII.Email))
 	}
 	for _, line := range strings.Split(d.Value, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(strings.ToLower(line), "email:") {
-			return strings.ToLower(strings.TrimSpace(line[len("email:"):]))
+		line = strings.ToLower(strings.TrimSpace(line))
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "email:") {
+			line = strings.TrimSpace(line[len("email:"):])
+		}
+		if strings.Contains(line, "@") {
+			return line
 		}
 	}
 	return ""

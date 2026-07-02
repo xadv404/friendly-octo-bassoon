@@ -51,10 +51,11 @@ L'extraction ne récupère que les **emails valides** :
 |-------|-------------------|------------|
 | Email | `email`, `mail`, `e_mail`… | regex stricte + blocklist |
 
-Exemple de sortie :
+Exemple de sortie (`results/emails/bluewin.ch.txt`) :
 
 ```
-email: hans.meier@bluewin.ch
+hans.meier@bluewin.ch
+marie.mueller@bluewin.ch
 ```
 
 **Emails par fournisseur** — un fichier `.txt` par domaine email (`gmail.com.txt`, `bluewin.ch.txt`…), une adresse par ligne dans `results/emails/`.
