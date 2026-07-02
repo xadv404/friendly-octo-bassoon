@@ -6,6 +6,9 @@ func DiscoverBackendLabel(source Source) string {
 	case SourceGoogle:
 		return GoogleBackendLabel()
 	case SourceDDG, SourceAuto:
+		if HasDiscoverProxy() {
+			return "duckduckgo + proxy BP"
+		}
 		return "duckduckgo (scraping)"
 	case SourceBing:
 		return "bing"

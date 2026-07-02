@@ -121,13 +121,23 @@ func (p *proxyPool) first() *url.URL {
 	return p.proxies[0]
 }
 
+// HasDiscoverProxy indique si DISCOVER_PROXY est configuré.
+func HasDiscoverProxy() bool {
+	return getProxyPool().hasProxies()
+}
+
+// newProxyTransport — une connexion par requête (IP rotative côté BP Proxy).
+func newProxyTransport() *http.Transport {
+	t := &http.Transport{DisableKeepAlives: true}
+	if pool := getProxyPool(); pool.hasProxies() {
+		t.Proxy = http.ProxyURL(pool.first())
+	}
+	return t
+}
+
 func newDiscoverHTTPClient() *http.Client {
-	transport := &http.Transport{}
-	pool := getProxyPool()
-	if pool.hasProxies() {
-		proxy := pool.first()
-		transport.Proxy = http.ProxyURL(proxy)
-	} else {
+	transport := newProxyTransport()
+	if !getProxyPool().hasProxies() {
 		transport.Proxy = http.ProxyFromEnvironment
 	}
 	return &http.Client{

@@ -34,6 +34,14 @@ func TestUseSerpAPI(t *testing.T) {
 	}
 }
 
+func TestDiscoverBackendLabel_WithProxy(t *testing.T) {
+	t.Setenv("DISCOVER_PROXY", "http://u:p:host.test:1234")
+	ReloadProxyPool()
+	if got := DiscoverBackendLabel(SourceDDG); got != "duckduckgo + proxy BP" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestGoogleBackendLabel(t *testing.T) {
 	if got := GoogleBackendLabel(); got != "google (SerpAPI)" {
 		t.Fatalf("got %q", got)

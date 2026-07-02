@@ -113,13 +113,9 @@ func (d *ddgClient) FetchPage(ctx context.Context, domain string, subs bool, abs
 
 func newDDGHTTPClient() *http.Client {
 	jar, _ := cookiejar.New(nil)
-	transport := &http.Transport{}
-	if pool := getProxyPool(); pool.hasProxies() {
-		transport.Proxy = http.ProxyURL(pool.first())
-	}
 	return &http.Client{
 		Timeout:   searchHTTPTimeout,
-		Transport: transport,
+		Transport: newProxyTransport(),
 		Jar:       jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {

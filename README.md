@@ -103,7 +103,7 @@ Fichiers d'état :
 
 ## Découverte d'URLs (`discover`)
 
-Collecte via **DuckDuckGo HTML scraping** (`html.duckduckgo.com/html/` — POST, vqd, pagination).
+Collecte via **DuckDuckGo HTML scraping** + **proxy BP résidentiel** (`DISCOVER_PROXY` dans `sqli-hunter.env`).
 
 ```bash
 ./sqli-hunter daily
@@ -119,7 +119,8 @@ Collecte via **DuckDuckGo HTML scraping** (`html.duckduckgo.com/html/` — POST,
 | `google` | SerpAPI `google_light` (`SERPAPI_API_KEY`) |
 | `wayback` | Archive (1 domaine) |
 
-Variables (`sqli-hunter.env` optionnel) :
+Variables (`sqli-hunter.env`) :
+- `DISCOVER_PROXY` — proxy BP résidentiel rotatif (`http://user:pass:host:port`)
 - `SERPAPI_API_KEY` — uniquement pour `--source google`
 - `DISCOVER_PROXIES` — liste optionnelle (virgule / ligne)
 
