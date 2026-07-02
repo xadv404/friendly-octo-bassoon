@@ -13,11 +13,6 @@ import (
 )
 
 func googleHeadlessSearch(ctx context.Context, searchURL string) (string, error) {
-	proxy := ""
-	if pool := getProxyPool(); pool.hasProxies() {
-		proxy = pool.first().String()
-	}
-
 	l := launcher.New().
 		Headless(true).
 		NoSandbox(true).
@@ -25,8 +20,14 @@ func googleHeadlessSearch(ctx context.Context, searchURL string) (string, error)
 		Set("disable-gpu", "").
 		Set("window-size", "1920,1080").
 		Set("lang", "fr-CH")
-	if proxy != "" {
-		l = l.Proxy(proxy)
+
+	var proxyUser, proxyPass string
+	if pool := getProxyPool(); pool.hasProxies() {
+		hostPort, user, pass, ok := pool.proxyCredentials()
+		if ok {
+			l = l.Proxy(hostPort)
+			proxyUser, proxyPass = user, pass
+		}
 	}
 
 	controlURL, err := l.Launch()
@@ -40,13 +41,17 @@ func googleHeadlessSearch(ctx context.Context, searchURL string) (string, error)
 	}
 	defer browser.MustClose()
 
+	if proxyUser != "" {
+		go browser.MustHandleAuth(proxyUser, proxyPass)()
+	}
+
 	page, err := stealth.Page(browser)
 	if err != nil {
 		return "", fmt.Errorf("google headless page: %w", err)
 	}
 	defer page.MustClose()
 
-	page = page.Timeout(45 * time.Second)
+	page = page.Timeout(60 * time.Second)
 	if err := page.Navigate(googleHomeURL); err != nil {
 		return "", err
 	}
@@ -109,7 +114,6 @@ func clickGoogleConsent(page *rod.Page) (bool, error) {
 		}
 		return true, nil
 	}
-	// fallback: submit accept form via JS
 	ok, err := page.Eval(`() => {
 		const forms = document.querySelectorAll('form[action*="consent.google"]');
 		for (const f of forms) {

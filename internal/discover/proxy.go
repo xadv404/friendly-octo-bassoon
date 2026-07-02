@@ -121,6 +121,19 @@ func (p *proxyPool) first() *url.URL {
 	return p.proxies[0]
 }
 
+// proxyCredentials extrait host:port et identifiants pour Chromium (auth séparée).
+func (p *proxyPool) proxyCredentials() (hostPort, user, pass string, ok bool) {
+	u := p.first()
+	if u == nil || u.Host == "" {
+		return "", "", "", false
+	}
+	if u.User != nil {
+		user = u.User.Username()
+		pass, _ = u.User.Password()
+	}
+	return u.Host, user, pass, true
+}
+
 // HasDiscoverProxy indique si DISCOVER_PROXY est configuré.
 func HasDiscoverProxy() bool {
 	return getProxyPool().hasProxies()
