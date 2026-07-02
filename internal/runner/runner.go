@@ -9,6 +9,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/client"
 	"github.com/sqli-hunter/sqli-hunter/internal/extractor"
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
+	"github.com/sqli-hunter/sqli-hunter/internal/notify"
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
 	"github.com/sqli-hunter/sqli-hunter/internal/results"
 	"github.com/sqli-hunter/sqli-hunter/internal/scanner"
@@ -26,6 +27,7 @@ type Config struct {
 	UrlCount       int
 	ProgressEvery  int
 	Rescan         bool // ignore dumped_domains.txt
+	Notify         notify.Sender
 }
 
 // TargetResult résultat pour une cible.

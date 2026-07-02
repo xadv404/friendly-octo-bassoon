@@ -9,6 +9,7 @@ import (
 
 	"github.com/sqli-hunter/sqli-hunter/internal/discover"
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
+	"github.com/sqli-hunter/sqli-hunter/internal/notify"
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 	"github.com/sqli-hunter/sqli-hunter/internal/targets"
@@ -34,6 +35,7 @@ func executeScan(ctx context.Context, cfg config, printer *output.Printer) error
 		ProgressEvery:  cfg.progressEvery,
 		ListDefaults:   listDefaults,
 		Rescan:         cfg.rescan,
+		Notify:         notify.Default(),
 	}
 
 	if cfg.listFile != "" {
@@ -66,6 +68,11 @@ func executeScan(ctx context.Context, cfg config, printer *output.Printer) error
 	printer.KV("output", cfg.outputDir+"/emails/")
 	printer.Rule()
 	fmt.Println()
+
+	n := notify.Default()
+	if n.Enabled() && cfg.listFile != "" {
+		n.Launch("Scan lancé", fmt.Sprintf("urls: %d\nfichier: %s", runCfg.UrlCount, cfg.listFile))
+	}
 
 	r := &runner.Runner{Version: version, Printer: printer}
 	_, err := r.Run(ctx, runCfg)
@@ -164,6 +171,9 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	printer.KV("lu", fmt.Sprintf("%d (%s)", result.Fetched, cfg.discoverSource))
 	if result.PagesFetched > 0 && opts.PersistCursor {
 		printer.KV("curseur", fmt.Sprintf("→ page %d demain", pageBase+result.PagesFetched))
+	}
+	if n := notify.Default(); n.Enabled() {
+		n.DiscoverDone(result.Kept, result.Skipped, result.Fetched)
 	}
 	fmt.Println()
 

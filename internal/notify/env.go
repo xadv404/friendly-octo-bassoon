@@ -1,32 +1,25 @@
-package main
+package notify
 
 import (
 	"bufio"
 	"os"
+	"strconv"
 	"strings"
-
-	"github.com/sqli-hunter/sqli-hunter/internal/discover"
 )
 
-func init() {
-	loadSqliHunterEnv()
-	discover.ReloadProxyPool()
-}
-
-func loadSqliHunterEnv() {
+func loadNotifyEnv() {
 	for _, path := range []string{
+		os.Getenv("TG_BOT_ENV"),
+		"tg-bot.env",
+		"config/tg-bot.env",
 		os.Getenv("SQLI_HUNTER_ENV"),
 		"sqli-hunter.env",
 		"config/sqli-hunter.env",
-		"tg-bot.env",
-		"config/tg-bot.env",
 	} {
 		if path == "" {
 			continue
 		}
-		if err := loadDotEnv(path); err == nil {
-			return
-		}
+		_ = loadDotEnv(path)
 	}
 }
 
@@ -55,4 +48,19 @@ func loadDotEnv(path string) error {
 		}
 	}
 	return sc.Err()
+}
+
+func parseAllowedIDs(raw string) []int64 {
+	var out []int64
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(part, 10, 64)
+		if err == nil {
+			out = append(out, id)
+		}
+	}
+	return out
 }
