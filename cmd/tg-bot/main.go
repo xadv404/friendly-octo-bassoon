@@ -79,8 +79,6 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg config, msg *tgbotapi.Message) {
 		sendStart(bot, cfg, msg.Chat.ID)
 	case text == "/help":
 		reply(bot, msg.Chat.ID, helpText())
-	case text == "/list":
-		sendList(bot, cfg, msg.Chat.ID)
 	case strings.HasPrefix(text, "/get "):
 		handleGet(bot, cfg, msg.Chat.ID, strings.TrimSpace(text[len("/get "):]))
 	default:
@@ -235,10 +233,6 @@ func handleGet(bot *tgbotapi.BotAPI, cfg config, chatID int64, args string) {
 	sendEmails(bot, cfg, chatID, count, parts[1])
 }
 
-func sendList(bot *tgbotapi.BotAPI, cfg config, chatID int64) {
-	reply(bot, chatID, stockMessage(cfg))
-}
-
 func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, providerQuery string) {
 	if count > cfg.maxEmails {
 		reply(bot, chatID, fmt.Sprintf("Max %d emails par requête.", cfg.maxEmails))
@@ -291,7 +285,6 @@ func helpText() string {
 Bot emails sqli-hunter
 
 /start — stock + bouton Extraire
-/list — stock disponible
 100 gmail — envoie et retire du stock
 
 Les doublons et emails déjà livrés sont ignorés.
