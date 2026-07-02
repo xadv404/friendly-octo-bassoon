@@ -13,14 +13,14 @@ import (
 
 const serpAPIEndpoint = "https://serpapi.com/search.json"
 
-// serpAPIResponse structure minimale de la réponse SerpAPI Google.
+// serpAPIResponse structure minimale de la réponse SerpAPI Google Light.
 type serpAPIResponse struct {
 	OrganicResults []serpAPIOrganic `json:"organic_results"`
 	Error          string           `json:"error"`
 }
 
 type serpAPIOrganic struct {
-	Link      string          `json:"link"`
+	Link      string           `json:"link"`
 	Sitelinks *serpAPISitelinks `json:"sitelinks"`
 }
 
@@ -41,13 +41,7 @@ func UseSerpAPI() bool {
 
 // GoogleBackendLabel décrit le backend Google actif (CLI).
 func GoogleBackendLabel() string {
-	if UseSerpAPI() {
-		return "google (SerpAPI)"
-	}
-	if getProxyPool().hasProxies() {
-		return "google (proxy BP)"
-	}
-	return "google"
+	return "google (SerpAPI)"
 }
 
 func (g *googleClient) searchSerpAPI(ctx context.Context, query string, start int) ([]string, error) {
@@ -61,7 +55,7 @@ func (g *googleClient) searchSerpAPI(ctx context.Context, query string, start in
 		return nil, err
 	}
 	q := u.Query()
-	q.Set("engine", "google")
+	q.Set("engine", "google_light")
 	q.Set("api_key", key)
 	q.Set("q", query)
 	q.Set("start", fmt.Sprintf("%d", start))

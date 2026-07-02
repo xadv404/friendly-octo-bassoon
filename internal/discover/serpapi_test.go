@@ -35,7 +35,6 @@ func TestUseSerpAPI(t *testing.T) {
 }
 
 func TestGoogleBackendLabel(t *testing.T) {
-	t.Setenv("SERPAPI_API_KEY", "key")
 	if got := GoogleBackendLabel(); got != "google (SerpAPI)" {
 		t.Fatalf("got %q", got)
 	}

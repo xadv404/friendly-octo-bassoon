@@ -502,7 +502,7 @@ Mode daily (cron quotidien) :
   sqli-hunter daily
   sqli-hunter daily --discover-limit 3000 --url-threads 64
 
-  → Google dorks .ch via proxy (DISCOVER_PROXY dans sqli-hunter.env)
+  → Google dorks .ch via SerpAPI (SERPAPI_API_KEY dans sqli-hunter.env)
   → Skip URLs/domaines déjà traités
   → Seulement nouveaux emails dans results/emails/
 

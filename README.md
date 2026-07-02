@@ -88,7 +88,7 @@ Cron (tous les jours à 3h) :
 ```
 
 Ce que fait le mode daily :
-1. **Discover Google** — dorks `.ch` via SerpAPI (ou proxy BP en fallback)
+1. **Discover Google** — dorks `.ch` via SerpAPI (`google_light`)
 2. **Curseur daily** — avance dans `results/discover_cursor.json`
 3. **Rotation dorks** — ordre des requêtes changé chaque jour
 4. Ignore domaines déjà dumpés + URLs déjà scannées
@@ -103,11 +103,11 @@ Fichiers d'état :
 
 ## Découverte d'URLs (`discover`)
 
-Collecte via **Google** — [SerpAPI](https://serpapi.com) recommandé (pas de captcha), ou proxy BP en fallback.
+Collecte via **SerpAPI** uniquement ([google_light](https://serpapi.com/google-light-api) — service hébergé, pas de scraping direct).
 
 ```bash
 # Copier sqli-hunter.env.example → sqli-hunter.env
-# SERPAPI_API_KEY=...   (https://serpapi.com/manage-api-key)
+# SERPAPI_API_KEY=...   (gratuit 250/mois — https://serpapi.com/manage-api-key)
 ./sqli-hunter daily
 
 ./sqli-hunter ch --discover-limit 500
@@ -115,12 +115,11 @@ Collecte via **Google** — [SerpAPI](https://serpapi.com) recommandé (pas de c
 
 | `--source` | Moteur |
 |------------|--------|
-| `google` | SerpAPI si clé configurée, sinon proxy BP [défaut] |
+| `google` | SerpAPI `google_light` [défaut] |
 | `wayback` | Archive (1 domaine) |
 
 Variables (`sqli-hunter.env` ou env) :
-- `SERPAPI_API_KEY` — clé API SerpAPI [recommandé]
-- `DISCOVER_PROXY` — proxy BP fallback (`http://user:pass:host:port`)
+- `SERPAPI_API_KEY` — clé API SerpAPI **obligatoire**
 - `DISCOVER_PROXIES` — liste optionnelle (virgule / ligne)
 
 | Option | Description |
