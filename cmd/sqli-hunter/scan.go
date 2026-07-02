@@ -112,19 +112,29 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	printer.Rule()
 	fmt.Println()
 
+	pageBase := 0
+	if discover.ParseSource(cfg.discoverSource) == discover.SourceBing && discover.IsSwissWide(cfg.discoverDomain) {
+		if p, err := discover.LoadCursor(cfg.outputDir); err == nil {
+			pageBase = p
+		}
+		printer.KV("curseur bing", fmt.Sprintf("page %d (rotation daily)", pageBase))
+	}
+
 	opts := discover.Options{
-		Domain:      cfg.discoverDomain,
-		Output:      cfg.discoverOutput,
-		Subs:        cfg.discoverSubs,
-		Paths:       discover.ParseList(cfg.discoverPaths),
-		Params:      discover.ParseList(cfg.discoverParams),
-		NoFilter:    discoverNoFilter(cfg),
-		Limit:       cfg.discoverLimit,
-		Source:      discover.ParseSource(cfg.discoverSource),
-		ResultsDir:  cfg.outputDir,
-		SkipDumped:  !cfg.rescan,
-		SkipScanned: cfg.skipScanned || discover.IsSwissWide(cfg.discoverDomain),
-		AllowEmpty:  cfg.allowEmptyDiscover,
+		Domain:        cfg.discoverDomain,
+		Output:        cfg.discoverOutput,
+		Subs:          cfg.discoverSubs,
+		Paths:         discover.ParseList(cfg.discoverPaths),
+		Params:        discover.ParseList(cfg.discoverParams),
+		NoFilter:      discoverNoFilter(cfg),
+		Limit:         cfg.discoverLimit,
+		Source:        discover.ParseSource(cfg.discoverSource),
+		ResultsDir:    cfg.outputDir,
+		SkipDumped:    !cfg.rescan,
+		SkipScanned:   cfg.skipScanned || discover.IsSwissWide(cfg.discoverDomain),
+		AllowEmpty:    cfg.allowEmptyDiscover,
+		PageBase:      pageBase,
+		PersistCursor: discover.ParseSource(cfg.discoverSource) == discover.SourceBing && discover.IsSwissWide(cfg.discoverDomain),
 		OnProgress: func(fetched, kept, page int) {
 			src := cfg.discoverSource
 			if src == "" {
@@ -145,6 +155,9 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		printer.KV("ignorés", fmt.Sprintf("%d (déjà vus/dumpés)", result.Skipped))
 	}
 	printer.KV("lu", fmt.Sprintf("%d (%s)", result.Fetched, cfg.discoverSource))
+	if result.PagesFetched > 0 && opts.PersistCursor {
+		printer.KV("curseur", fmt.Sprintf("→ page %d demain", pageBase+result.PagesFetched))
+	}
 	fmt.Println()
 
 	return result.Output, result.Kept, nil

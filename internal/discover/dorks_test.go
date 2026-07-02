@@ -46,6 +46,9 @@ func TestBuildVulnDorks_SwissWideBroad(t *testing.T) {
 			}
 		}
 	}
+	if len(dorks) < 100 {
+		t.Fatalf("expected 100+ daily dorks, got %d", len(dorks))
+	}
 }
 
 func TestBuildVulnDorks_SingleDomain(t *testing.T) {

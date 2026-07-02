@@ -11,11 +11,11 @@ type mockFetcher struct {
 	pages [][]string
 }
 
-func (m *mockFetcher) FetchPage(_ context.Context, _ string, _ bool, page, _ int) ([]string, error) {
-	if page >= len(m.pages) {
+func (m *mockFetcher) FetchPage(_ context.Context, _ string, _ bool, absolutePage, _ int) ([]string, error) {
+	if absolutePage >= len(m.pages) {
 		return nil, nil
 	}
-	return m.pages[page], nil
+	return m.pages[absolutePage], nil
 }
 
 func TestRun_KeepsSwissURLsWithParams(t *testing.T) {

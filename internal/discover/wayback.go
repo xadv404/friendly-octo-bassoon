@@ -28,7 +28,7 @@ func newWaybackClient() *waybackClient {
 	}
 }
 
-func (w *waybackClient) FetchPage(ctx context.Context, domain string, subs bool, page, limit int) ([]string, error) {
+func (w *waybackClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
 	var pattern string
 	switch {
 	case IsSwissWide(domain):
@@ -46,7 +46,7 @@ func (w *waybackClient) FetchPage(ctx context.Context, domain string, subs bool,
 	q.Set("collapse", "urlkey")
 	q.Set("filter", "statuscode:200")
 	q.Set("limit", strconv.Itoa(limit))
-	q.Set("page", strconv.Itoa(page))
+	q.Set("page", strconv.Itoa(absolutePage))
 
 	reqURL := w.baseURL + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)

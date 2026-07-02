@@ -30,8 +30,9 @@ func ParseSource(s string) Source {
 }
 
 // CDXFetcher récupère une page d'URLs depuis une source (Bing, Wayback, mock test).
+// absolutePage = index global (curseur + offset du run) pour pagination Bing.
 type CDXFetcher interface {
-	FetchPage(ctx context.Context, domain string, subs bool, page, limit int) ([]string, error)
+	FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error)
 }
 
 // Options configure la découverte d'URLs.
@@ -49,16 +50,20 @@ type Options struct {
 	SkipDumped  bool
 	SkipScanned bool
 	AllowEmpty  bool // pas d'erreur si 0 URL (mode daily)
+	PageBase    int  // curseur Bing persisté (discover_cursor.json)
+	DaySeed     int  // rotation dorks (0 = jour courant)
+	PersistCursor bool
 	Fetcher     CDXFetcher
 	OnProgress  func(fetched, kept int, page int)
 }
 
 // Result résumé d'une découverte.
 type Result struct {
-	Fetched int
-	Kept    int
-	Skipped int
-	Output  string
+	Fetched      int
+	Kept         int
+	Skipped      int
+	Output       string
+	PagesFetched int
 }
 
 // Run collecte des URLs et écrit le fichier de scope.
@@ -72,7 +77,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	opts.Domain = NormalizeSwissDomain(opts.Domain)
 
 	if opts.Fetcher == nil {
-		opts.Fetcher = defaultFetcher(opts.Source)
+		opts.Fetcher = defaultFetcher(opts.Source, DaySeed(opts.DaySeed))
 	}
 
 	skipper, err := loadDumpSkipper(opts)
@@ -148,7 +153,7 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 			return collectResult{}, ctx.Err()
 		}
 
-		batch, err := client.FetchPage(ctx, opts.Domain, opts.Subs, page, pageSize)
+		batch, err := client.FetchPage(ctx, opts.Domain, opts.Subs, opts.PageBase+page, pageSize)
 		if err != nil {
 			return collectResult{fetched, kept, skipped}, err
 		}
@@ -224,14 +229,19 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 		pageSize = 5000
 	}
 
-	var fetched, kept, skipped int
+	var fetched, kept, skipped, pagesFetched int
 	for page := 0; ; page++ {
 		if ctx.Err() != nil {
 			return Result{}, ctx.Err()
 		}
 
-		batch, err := opts.Fetcher.FetchPage(ctx, opts.Domain, opts.Subs, page, pageSize)
+		absPage := opts.PageBase + page
+		batch, err := opts.Fetcher.FetchPage(ctx, opts.Domain, opts.Subs, absPage, pageSize)
+		pagesFetched++
 		if err != nil {
+			if opts.PersistCursor {
+				_ = SaveCursor(opts.ResultsDir, opts.PageBase+pagesFetched)
+			}
 			return Result{}, err
 		}
 		if len(batch) == 0 {
@@ -262,7 +272,11 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 			kept++
 			if opts.Limit > 0 && kept >= opts.Limit {
 				collectWithProgress(fetched, kept, page)
-				return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath}, nil
+				res := Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched}
+				if opts.PersistCursor {
+					_ = SaveCursor(opts.ResultsDir, opts.PageBase+pagesFetched)
+				}
+				return res, nil
 			}
 		}
 
@@ -271,20 +285,24 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 		if len(batch) < pageSize && opts.Source != SourceBing {
 			break
 		}
-		if opts.Source == SourceBing && page > 400 {
+		if opts.Source == SourceBing && page >= 400 {
 			break
 		}
 	}
 
+	if opts.PersistCursor && pagesFetched > 0 {
+		_ = SaveCursor(opts.ResultsDir, opts.PageBase+pagesFetched)
+	}
+
 	if kept == 0 {
 		if opts.AllowEmpty {
-			return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath}, nil
+			return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched}, nil
 		}
-		return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath},
+		return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched},
 			fmt.Errorf("aucune URL .ch scannable trouvée pour %s", opts.Domain)
 	}
 
-	return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath}, nil
+	return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched}, nil
 }
 
 func shouldSkipScanned(raw string, scanned *results.ScannedRegistry) bool {

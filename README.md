@@ -89,11 +89,14 @@ Cron (tous les jours à 3h) :
 
 Ce que fait le mode daily :
 1. Bing dorks sur `.ch` — aucun site ciblé
-2. Ignore domaines déjà dumpés + URLs déjà scannées
-3. Scan + extraction emails
-4. **Dédup** — n'ajoute que les emails pas encore dans `results/emails/`
+2. **Curseur daily** — avance dans `results/discover_cursor.json` (pages Bing suivantes chaque jour)
+3. **Rotation dorks** — ordre des requêtes changé chaque jour
+4. Ignore domaines déjà dumpés + URLs déjà scannées
+5. Scan + extraction emails
+6. **Dédup** — n'ajoute que les emails pas encore dans `results/emails/`
 
 Fichiers d'état :
+- `results/discover_cursor.json` — position Bing pour le prochain daily
 - `results/scanned_urls.txt` — URLs déjà testées
 - `results/dumped_domains.txt` — sites déjà dumpés
 - `results/emails/*.txt` — stock cumulé

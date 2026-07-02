@@ -60,7 +60,7 @@ func TestBingClient_FetchPage(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := newBingClient()
+	client := newBingClient(42)
 	client.baseURL = srv.URL
 	client.delay = 0
 

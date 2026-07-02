@@ -28,9 +28,10 @@ type bingClient struct {
 	http    *http.Client
 	delay   time.Duration
 	baseURL string
+	daySeed int
 }
 
-func newBingClient() *bingClient {
+func newBingClient(daySeed int) *bingClient {
 	return &bingClient{
 		http: &http.Client{
 			Timeout: 30 * time.Second,
@@ -41,19 +42,21 @@ func newBingClient() *bingClient {
 				return nil
 			},
 		},
-		delay: 2 * time.Second,
+		delay:   2 * time.Second,
+		daySeed: daySeed,
 	}
 }
 
-// FetchPage exécute un dork Bing (page = rotation dork + offset résultats).
-func (b *bingClient) FetchPage(ctx context.Context, domain string, subs bool, page, limit int) ([]string, error) {
-	dorks := BuildVulnDorks(domain, subs)
+// FetchPage exécute un dork Bing (absolutePage = curseur global + offset run).
+func (b *bingClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
+	dorks := DailyDorkOrder(BuildVulnDorks(domain, subs), b.daySeed)
 	if len(dorks) == 0 {
 		return nil, nil
 	}
 
-	dork := dorks[page%len(dorks)]
-	bingFirst := (page/len(dorks))*10 + 1
+	dork := dorks[absolutePage%len(dorks)]
+	depth := absolutePage / len(dorks)
+	bingFirst := depth*50 + 1
 
 	select {
 	case <-ctx.Done():
@@ -208,11 +211,11 @@ func decodeBingURL(enc string) (string, error) {
 	return string(b), nil
 }
 
-func defaultFetcher(source Source) CDXFetcher {
+func defaultFetcher(source Source, daySeed int) CDXFetcher {
 	switch source {
 	case SourceWayback:
 		return newWaybackClient()
 	default:
-		return newBingClient()
+		return newBingClient(daySeed)
 	}
 }
