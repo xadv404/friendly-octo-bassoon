@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,9 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sqli-hunter/sqli-hunter/internal/results"
 )
+
+//go:embed assets/logo.png
+var logoPNG []byte
 
 type config struct {
 	token      string
@@ -65,12 +69,12 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg config, msg *tgbotapi.Message) {
 	}
 
 	if text == "/myid" {
-		reply(bot, msg.Chat.ID, fmt.Sprintf("Ton ID Telegram: `%d`\n\nAjoute-le dans `TELEGRAM_ALLOWED_IDS` de tg-bot.env", msg.From.ID))
+		reply(bot, msg.Chat.ID, myIDText(msg.From.ID))
 		return
 	}
 
 	if !cfg.authorized(msg.From.ID) {
-		reply(bot, msg.Chat.ID, fmt.Sprintf("Accès refusé.\nTon ID: `%d`\nEnvoie /myid pour le récupérer.", msg.From.ID))
+		reply(bot, msg.Chat.ID, accessDeniedText(msg.From.ID))
 		return
 	}
 
@@ -78,40 +82,39 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg config, msg *tgbotapi.Message) {
 	case text == "/start":
 		sendStart(bot, cfg, msg.Chat.ID)
 	default:
-		reply(bot, msg.Chat.ID, "Utilise /start puis les boutons pour extraire.")
+		reply(bot, msg.Chat.ID, hintText())
 	}
 }
 
-func sendStart(bot *tgbotapi.BotAPI, cfg config, chatID int64) {
-	text := stockMessage(cfg)
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+func startKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("📥 Extraire", "menu:extract"),
+			tgbotapi.NewInlineKeyboardButtonData(btnExtract(), "menu:extract"),
 		),
 	)
-	msg := tgbotapi.NewMessage(chatID, text)
+}
+
+func sendStart(bot *tgbotapi.BotAPI, cfg config, chatID int64) {
+	caption := welcomeCaption(cfg)
+	kb := startKeyboard()
+
+	if len(logoPNG) > 0 {
+		photo := tgbotapi.NewPhoto(chatID, tgbotapi.FileBytes{Name: "logo.png", Bytes: logoPNG})
+		photo.Caption = fmt.Sprintf("🇨🇭 *%s*", botName)
+		photo.ParseMode = "Markdown"
+		_, _ = bot.Send(photo)
+	}
+	sendStartText(bot, chatID, caption, kb)
+}
+
+func sendStartText(bot *tgbotapi.BotAPI, chatID int64, caption string, kb tgbotapi.InlineKeyboardMarkup) {
+	msg := tgbotapi.NewMessage(chatID, caption)
 	msg.ParseMode = "Markdown"
-	msg.ReplyMarkup = keyboard
+	msg.ReplyMarkup = kb
 	if _, err := bot.Send(msg); err != nil {
 		msg.ParseMode = ""
 		_, _ = bot.Send(msg)
 	}
-}
-
-func stockMessage(cfg config) string {
-	list, err := results.ListProviders(cfg.resultsDir)
-	if err != nil || len(list) == 0 {
-		return "Stock emails: *vide*\n\nLance `sqli-hunter daily` pour alimenter."
-	}
-	var b strings.Builder
-	b.WriteString("*Stock disponible* (uniques, non livrés)\n\n")
-	total := 0
-	for _, p := range list {
-		fmt.Fprintf(&b, "• `%s` — %d\n", p.Provider, p.Count)
-		total += p.Count
-	}
-	fmt.Fprintf(&b, "\n*Total:* %d emails", total)
-	return b.String()
 }
 
 func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery) {
@@ -122,31 +125,25 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 	data := cq.Data
 
 	if !cfg.authorized(cq.From.ID) {
-		answerCallback(bot, cq.ID, "Accès refusé")
+		answerCallback(bot, cq.ID, callbackDenied())
 		return
 	}
 
 	switch {
 	case data == "menu:start":
-		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, stockMessage(cfg))
-		kb := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📥 Extraire", "menu:extract")),
-		)
-		edit.ReplyMarkup = &kb
-		edit.ParseMode = "Markdown"
-		_, _ = bot.Send(edit)
+		editStart(bot, cfg, chatID, cq.Message.MessageID)
 		answerCallback(bot, cq.ID, "")
 	case data == "menu:extract":
 		list, err := results.ListProviders(cfg.resultsDir)
 		if err != nil || len(list) == 0 {
-			answerCallback(bot, cq.ID, "Stock vide")
-			reply(bot, chatID, "Stock vide.")
+			answerCallback(bot, cq.ID, callbackEmpty())
+			reply(bot, chatID, emptyStockText())
 			return
 		}
 		var rows [][]tgbotapi.InlineKeyboardButton
 		var row []tgbotapi.InlineKeyboardButton
 		for i, p := range list {
-			label := fmt.Sprintf("%s (%d)", p.Provider, p.Count)
+			label := providerButtonLabel(p.Provider, p.Count)
 			row = append(row, tgbotapi.NewInlineKeyboardButtonData(label, "prov:"+p.Provider))
 			if len(row) == 2 || i == len(list)-1 {
 				rows = append(rows, row)
@@ -154,16 +151,17 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 			}
 		}
 		rows = append(rows, tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("← Retour", "menu:start"),
+			tgbotapi.NewInlineKeyboardButtonData(btnBack(), "menu:start"),
 		))
-		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, "Choisis un fournisseur :")
+		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, extractMenuText())
+		edit.ParseMode = "Markdown"
 		edit.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
 		_, _ = bot.Send(edit)
 		answerCallback(bot, cq.ID, "")
 	case strings.HasPrefix(data, "prov:"):
 		provider := strings.TrimPrefix(data, "prov:")
 		qtyKeyboard := quantityKeyboard(provider)
-		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, fmt.Sprintf("Combien pour *%s* ?", provider))
+		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, quantityText(provider))
 		edit.ParseMode = "Markdown"
 		edit.ReplyMarkup = &qtyKeyboard
 		_, _ = bot.Send(edit)
@@ -172,20 +170,29 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 		rest := strings.TrimPrefix(data, "qty:")
 		i := strings.LastIndex(rest, ":")
 		if i <= 0 || i >= len(rest)-1 {
-			answerCallback(bot, cq.ID, "Erreur")
+			answerCallback(bot, cq.ID, callbackError())
 			return
 		}
 		provider := rest[:i]
 		count, err := strconv.Atoi(rest[i+1:])
 		if err != nil || count <= 0 {
-			answerCallback(bot, cq.ID, "Quantité invalide")
+			answerCallback(bot, cq.ID, callbackBadQty())
 			return
 		}
-		answerCallback(bot, cq.ID, "Envoi…")
+		answerCallback(bot, cq.ID, callbackSending())
 		sendEmails(bot, cfg, chatID, count, provider)
 	default:
 		answerCallback(bot, cq.ID, "")
 	}
+}
+
+func editStart(bot *tgbotapi.BotAPI, cfg config, chatID int64, messageID int) {
+	text := stockMessage(cfg)
+	kb := startKeyboard()
+	edit := tgbotapi.NewEditMessageText(chatID, messageID, fmt.Sprintf("🇨🇭 *%s*\n_Stock emails .ch_\n\n%s", botName, text))
+	edit.ParseMode = "Markdown"
+	edit.ReplyMarkup = &kb
+	_, _ = bot.Send(edit)
 }
 
 func quantityKeyboard(provider string) tgbotapi.InlineKeyboardMarkup {
@@ -193,27 +200,27 @@ func quantityKeyboard(provider string) tgbotapi.InlineKeyboardMarkup {
 	var rows [][]tgbotapi.InlineKeyboardButton
 	var row []tgbotapi.InlineKeyboardButton
 	for i, n := range counts {
-		row = append(row, tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(n), fmt.Sprintf("qty:%s:%d", provider, n)))
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(qtyButtonLabel(n), fmt.Sprintf("qty:%s:%d", provider, n)))
 		if len(row) == 3 || i == len(counts)-1 {
 			rows = append(rows, row)
 			row = nil
 		}
 	}
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("← Fournisseurs", "menu:extract"),
+		tgbotapi.NewInlineKeyboardButtonData(btnProviders(), "menu:extract"),
 	))
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
 }
 
 func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, providerQuery string) {
 	if count > cfg.maxEmails {
-		reply(bot, chatID, fmt.Sprintf("Max %d emails par requête.", cfg.maxEmails))
+		reply(bot, chatID, fmt.Sprintf("⚠️ Max *%d* emails par requête.", cfg.maxEmails))
 		return
 	}
 
 	taken, err := results.TakeEmailsForBot(cfg.resultsDir, providerQuery, count)
 	if err != nil {
-		reply(bot, chatID, err.Error())
+		reply(bot, chatID, "❌ "+err.Error())
 		return
 	}
 
@@ -223,15 +230,16 @@ func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, provi
 	defer os.Remove(tmpPath)
 
 	if err := os.WriteFile(tmpPath, []byte(body), 0644); err != nil {
-		reply(bot, chatID, "Erreur écriture.")
+		reply(bot, chatID, "❌ Erreur écriture fichier.")
 		return
 	}
 
 	doc := tgbotapi.NewDocument(chatID, tgbotapi.FilePath(tmpPath))
-	doc.Caption = fmt.Sprintf("%d × %s (retirés du stock)", len(taken.Emails), taken.Provider)
+	doc.Caption = deliveryCaption(taken.Provider, len(taken.Emails))
+	doc.ParseMode = "Markdown"
 
 	if _, err := bot.Send(doc); err != nil {
-		reply(bot, chatID, "Envoi échoué: "+err.Error())
+		reply(bot, chatID, "❌ Envoi échoué: "+err.Error())
 		return
 	}
 
