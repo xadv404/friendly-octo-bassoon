@@ -12,7 +12,7 @@ import (
 
 const (
 	googleHomeURL    = "https://www.google.ch/"
-	googleMaxRetry   = 8
+	googleMaxRetry   = 12
 	googleResultsNum = 10
 )
 

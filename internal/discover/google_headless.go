@@ -81,6 +81,11 @@ func googleHeadlessSearch(ctx context.Context, searchURL string) (string, []stri
 	time.Sleep(1 * time.Second)
 	_ = page.WaitLoad()
 
+	if info, err := page.Info(); err == nil && strings.Contains(info.URL, "/sorry") {
+		html, _ := googleHeadlessPageHTML(page)
+		return html, nil, fmt.Errorf("google headless: sorry")
+	}
+
 	urls := googleHeadlessExtractURLs(page)
 	if len(urls) == 0 {
 		html, err = googleHeadlessPageHTML(page)
@@ -166,8 +171,10 @@ func submitGoogleConsent(page *rod.Page) error {
 }
 
 func googleHeadlessFetch(ctx context.Context, query string, start int) ([]string, error) {
-	strat := googleSearchStrategies()[0]
-	searchURL, err := buildGoogleSearchURL(strat, query, start)
+	searchURL, err := buildGoogleSearchURL(googleSearchStrategy{
+		baseURL: "https://www.google.ch/search",
+		params:  nil, // navigateur réel : résultats JS (pas gbv)
+	}, query, start)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +182,10 @@ func googleHeadlessFetch(ctx context.Context, query string, start int) ([]string
 	if err != nil {
 		return nil, err
 	}
-	if isGoogleHardBlocked(html) || strings.Contains(html, "/sorry") {
+	if strings.Contains(html, "/sorry") || strings.Contains(html, "google.com/sorry") {
+		return nil, fmt.Errorf("google headless: sorry")
+	}
+	if isGoogleHardBlocked(html) {
 		return nil, fmt.Errorf("google headless: blocage")
 	}
 	urls = filterSwissURLs(urls)
