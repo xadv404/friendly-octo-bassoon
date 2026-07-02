@@ -2,16 +2,20 @@ package main
 
 import "testing"
 
-func TestNormalizeArgs_PositionalDomain(t *testing.T) {
-	got := normalizeArgs([]string{"css.ch", "--url-threads", "64"})
-	want := []string{"-D", "css.ch", "--url-threads", "64"}
-	if len(got) != len(want) {
-		t.Fatalf("got %v want %v", got, want)
-	}
+func TestNormalizeArgs_PositionalCh(t *testing.T) {
+	got := normalizeArgs([]string{"ch", "--url-threads", "64"})
+	want := []string{"-D", "ch", "--url-threads", "64"}
 	for i := range want {
 		if got[i] != want[i] {
 			t.Fatalf("got %v want %v", got, want)
 		}
+	}
+}
+
+func TestNormalizeArgs_NoSingleDomainShorthand(t *testing.T) {
+	got := normalizeArgs([]string{"css.ch", "--url-threads", "64"})
+	if got[0] == "-D" && got[1] == "css.ch" {
+		t.Fatal("css.ch should not auto-map to -D; use sqli-hunter ch")
 	}
 }
 

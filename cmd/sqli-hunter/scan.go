@@ -162,7 +162,7 @@ func discoverNoFilter(cfg config) bool {
 
 func discoverLabel(domain string) string {
 	if discover.IsSwissWide(domain) || discover.NormalizeSwissDomain(domain) == "ch" {
-		return "tout le .ch (Bing dorks)"
+		return "URLs vulnérables .ch (Bing dorks)"
 	}
 	return discover.NormalizeSwissDomain(domain)
 }

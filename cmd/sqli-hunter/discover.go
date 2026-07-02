@@ -197,7 +197,7 @@ Usage:
 
 Source:
   --source <bing|wayback>     Collecteur [défaut: bing]
-  -d, --domain <domaine>      Domaine .ch (css → css.ch) ou ch
+  -d, --domain <ch|domaine.ch>  ch = URLs vuln .ch · ou un domaine pour wayback
       --subs                  Inclure sous-domaines [défaut: oui]
       --no-subs               Domaine exact uniquement
       --rescan                Inclure domaines déjà dumpés
@@ -215,9 +215,7 @@ Sortie:
 
 Exemples:
   sqli-hunter discover -d ch --limit 500
-  sqli-hunter discover -d css.ch --source bing
-  sqli-hunter discover -d css.ch --source wayback --limit 1000
-  sqli-hunter discover -d css.ch --scan -- --url-threads 64
+  sqli-hunter discover -d shop.ch --source wayback --limit 1000
 
 `)
 }

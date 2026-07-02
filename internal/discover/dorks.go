@@ -2,8 +2,9 @@ package discover
 
 import "fmt"
 
-// BuildEmailDorks retourne les dorks Bing orientés extraction email / SQLi (.ch).
-func BuildEmailDorks(domain string, subs bool) []string {
+// BuildVulnDorks retourne des dorks Bing pour URLs vulnérables SQLi (.ch).
+// Mode large (ch) → site:.ch sans cibler un domaine précis.
+func BuildVulnDorks(domain string, subs bool) []string {
 	site := siteOperator(domain, subs)
 	if site == "" {
 		return nil
@@ -12,61 +13,59 @@ func BuildEmailDorks(domain string, subs bool) []string {
 	patterns := []string{
 		`%s inurl:?id=`,
 		`%s inurl:?page=`,
+		`%s inurl:?pid=`,
 		`%s inurl:?uid=`,
 		`%s inurl:?user=`,
 		`%s inurl:?user_id=`,
 		`%s inurl:?userid=`,
-		`%s inurl:?email=`,
-		`%s inurl:?mail=`,
-		`%s inurl:?e_mail=`,
-		`%s inurl:?login=`,
-		`%s inurl:?member=`,
-		`%s inurl:?client=`,
-		`%s inurl:?kunde=`,
-		`%s inurl:?customer=`,
-		`%s inurl:?newsletter=`,
-		`%s inurl:?subscribe=`,
-		`%s inurl:?account=`,
-		`%s inurl:?profil=`,
-		`%s inurl:?profile=`,
-		`%s inurl:?register=`,
-		`%s inurl:?inscription=`,
-		`%s inurl:?contact=`,
-		`%s inurl:?search=`,
 		`%s inurl:?cat=`,
 		`%s inurl:?category=`,
 		`%s inurl:?product=`,
 		`%s inurl:?article=`,
+		`%s inurl:?news=`,
+		`%s inurl:?item=`,
 		`%s inurl:?view=`,
+		`%s inurl:?show=`,
+		`%s inurl:?detail=`,
 		`%s inurl:?ref=`,
 		`%s inurl:?order=`,
 		`%s inurl:?cmd=`,
-		`%s inurl:?item=`,
-		`%s inurl:?news=`,
-		`%s inurl:?detail=`,
-		`%s inurl:?show=`,
-		`%s inurl:?module=`,
 		`%s inurl:?action=`,
+		`%s inurl:?module=`,
+		`%s inurl:?file=`,
+		`%s inurl:?type=`,
+		`%s inurl:?sort=`,
+		`%s inurl:?filter=`,
+		`%s inurl:?search=`,
+		`%s inurl:?q=`,
+		`%s inurl:?query=`,
+		`%s inurl:?login=`,
+		`%s inurl:?member=`,
+		`%s inurl:?account=`,
+		`%s inurl:?register=`,
 		`%s inurl:php?id=`,
 		`%s inurl:index.php?id=`,
 		`%s inurl:product.php?id=`,
 		`%s inurl:page.php?id=`,
 		`%s inurl:article.php?id=`,
 		`%s inurl:news.php?id=`,
-		`%s inurl:member.php?id=`,
-		`%s inurl:user.php?id=`,
-		`%s inurl:login.php?`,
-		`%s inurl:register.php?`,
-		`%s inurl:newsletter.php?`,
+		`%s inurl:view.php?id=`,
+		`%s inurl:category.php?id=`,
+		`%s inurl:detail.php?id=`,
+		`%s inurl:show.php?id=`,
 		`%s ext:php "?id="`,
 		`%s ext:php "?page="`,
-		`%s ext:php "?user="`,
+		`%s ext:php "?cat="`,
+		`%s ext:php "?product="`,
 		`%s ext:asp "?id="`,
 		`%s ext:aspx "?id="`,
-		`%s "email" ext:php`,
-		`%s "mail" ext:php inurl:?`,
+		`%s ext:php inurl:?`,
 		`%s inurl:wp-content inurl:?`,
 		`%s inurl:joomla inurl:?`,
+		`%s inurl:drupal inurl:?`,
+		`%s "sql syntax" ext:php`,
+		`%s inurl:api inurl:?`,
+		`%s inurl:ajax inurl:?`,
 	}
 
 	out := make([]string, 0, len(patterns))
@@ -74,6 +73,11 @@ func BuildEmailDorks(domain string, subs bool) []string {
 		out = append(out, fmt.Sprintf(p, site))
 	}
 	return out
+}
+
+// BuildEmailDorks alias rétrocompat (scan email après vuln trouvée).
+func BuildEmailDorks(domain string, subs bool) []string {
+	return BuildVulnDorks(domain, subs)
 }
 
 func siteOperator(domain string, subs bool) string {

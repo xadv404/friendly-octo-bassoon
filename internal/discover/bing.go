@@ -47,7 +47,7 @@ func newBingClient() *bingClient {
 
 // FetchPage exécute un dork Bing (page = rotation dork + offset résultats).
 func (b *bingClient) FetchPage(ctx context.Context, domain string, subs bool, page, limit int) ([]string, error) {
-	dorks := BuildEmailDorks(domain, subs)
+	dorks := BuildVulnDorks(domain, subs)
 	if len(dorks) == 0 {
 		return nil, nil
 	}

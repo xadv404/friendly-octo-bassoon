@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.16.0"
+const version = "1.17.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -91,23 +91,24 @@ func main() {
 	}
 }
 
-// normalizeArgs convertit un domaine positionnel en -D <domaine>.
-// Ex: sqli-hunter css.ch → sqli-hunter -D css.ch
+// normalizeArgs : seul « ch » en raccourci positionnel (chasse URLs vuln .ch).
+// Pas de fetch par site (css.ch, etc.) — utiliser -D ch + Bing dorks.
 func normalizeArgs(args []string) []string {
 	if len(args) == 0 {
 		return args
 	}
-	first := args[0]
-	if strings.HasPrefix(first, "-") {
+	first := strings.ToLower(strings.TrimSpace(args[0]))
+	if strings.HasPrefix(first, "-") || strings.Contains(first, "://") {
 		return args
 	}
-	if strings.Contains(first, "://") {
+	switch first {
+	case "ch", ".ch", "suisse", "swiss", "all":
+		out := make([]string, 0, len(args)+1)
+		out = append(out, "-D", "ch")
+		return append(out, args[1:]...)
+	default:
 		return args
 	}
-	// domaine nu (css.ch, *.css.ch)
-	out := make([]string, 0, len(args)+1)
-	out = append(out, "-D", first)
-	return append(out, args[1:]...)
 }
 
 func applyMassDefaultsToConfig(cfg *config, urlCount int) {
@@ -492,14 +493,12 @@ Usage:
   sqli-hunter -l <fichier> [options]
   sqli-hunter discover -d <domaine.ch> [options]
 
-Découverte automatique (Bing dorks proxyless → extraction emails) :
-  sqli-hunter ch              Tout le .ch (Bing)
-  sqli-hunter css.ch          Un seul domaine
+Découverte automatique (Bing dorks → URLs vulnérables .ch, pas de sites prédéfinis) :
+  sqli-hunter ch              Cherche des URLs vuln sur tout le .ch
   sqli-hunter ch --discover-limit 1000 --url-threads 64
-  sqli-hunter ch --source wayback
 
 Cible:
-  -D, --domain <domaine>      ch = tout le .ch · css = css.ch · css.ch = un domaine
+  -D, --domain <ch>           ch = chasse URLs vuln .ch [défaut recommandé]
   -u, --url <URL>             URL unique avec paramètres
   -l, --list <fichier>        Fichier d'URLs (une par ligne, # commentaires)
   -o, --output <dir>          Répertoire de sortie [défaut: results]
@@ -548,8 +547,6 @@ Affichage:
 
 Exemples:
   sqli-hunter ch --discover-limit 500 --url-threads 64
-  sqli-hunter css.ch --url-threads 64
-  sqli-hunter helsana --full
   sqli-hunter -u "https://target.ch/page?id=1"
   sqli-hunter -l urls.txt --url-threads 64
   sqli-hunter -l scope_50k.txt --mass --progress-every 500

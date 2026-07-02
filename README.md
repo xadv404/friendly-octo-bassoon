@@ -61,7 +61,7 @@ marie.mueller@bluewin.ch
 **Emails par fournisseur** — un fichier `.txt` par domaine email (`gmail.com.txt`, `bluewin.ch.txt`…), une adresse par ligne dans `results/emails/`.
 
 ```bash
-sqli-hunter css.ch --url-threads 64
+sqli-hunter ch --url-threads 64
 ```
 
 ### Données extraites (--extract-meta)
@@ -74,26 +74,20 @@ sqli-hunter css.ch --url-threads 64
 
 ## Découverte d'URLs (`discover`)
 
-Collecte **proxyless via Bing** avec dorks orientés emails/SQLi — URLs **.ch** avec paramètres (`?id=`, `?email=`, etc.).
+Collecte **proxyless via Bing** — dorks SQLi sur tout le `.ch` (pas de liste de sites type css.ch).
 
 ```bash
-# Tout le .ch (Bing dorks site:.ch)
+# Chercher des URLs vulnérables sur tout le .ch
 sqli-hunter ch --discover-limit 1000 --url-threads 64
 
-# Un seul domaine
-sqli-hunter css.ch --url-threads 64
-
-# Fallback Wayback (domaines archivés)
-sqli-hunter ch --source wayback --discover-limit 500
-
-# Liste manuelle
-sqli-hunter -l scope_ch.txt --url-threads 64
+# Wayback uniquement si tu cibles UN domaine précis
+sqli-hunter discover -d shop.ch --source wayback --limit 500
 ```
 
 | Option | Description |
 |--------|-------------|
-| `-d, --domain` / `-D` | `ch` = tout le .ch · `css` = css.ch |
-| `--source` | `bing` [défaut] ou `wayback` |
+| `-D ch` | Chasse URLs vuln sur `.ch` via Bing [recommandé] |
+| `--source` | `bing` [défaut] ou `wayback` (1 domaine) |
 | `--paths` | Filtre manuel path (optionnel) |
 | `--params` | Filtre manuel paramètres (optionnel) |
 | `--no-filter` | Toutes URLs .ch avec `?param=` |

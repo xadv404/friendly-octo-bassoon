@@ -80,13 +80,21 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 
 	if IsSwissWide(opts.Domain) {
 		if opts.Source == SourceWayback {
-			return runSwissWide(ctx, opts, skipper)
+			return Result{}, fmt.Errorf("découverte large: utilise --source bing (wayback ne supporte pas la chasse aux URLs vuln sans domaine cible)")
 		}
-		return runSingleDomain(ctx, opts, skipper)
+		return runVulnHunt(ctx, opts, skipper)
 	}
 	if !strings.HasSuffix(opts.Domain, ".ch") {
-		return Result{}, fmt.Errorf("domaine .ch requis (ex: css.ch) ou ch pour tout le .ch")
+		return Result{}, fmt.Errorf("domaine .ch requis ou ch pour chasse aux URLs vulnérables")
 	}
+	if opts.Source == SourceBing {
+		return runVulnHunt(ctx, opts, skipper)
+	}
+	return runSingleDomain(ctx, opts, skipper)
+}
+
+// runVulnHunt collecte des URLs vulnérables via dorks Bing (pas de liste de sites prédéfinie).
+func runVulnHunt(ctx context.Context, opts Options, skipper *results.DumpRegistry) (Result, error) {
 	return runSingleDomain(ctx, opts, skipper)
 }
 
@@ -102,86 +110,7 @@ func loadDumpSkipper(opts Options) (*results.DumpRegistry, error) {
 }
 
 func runSwissWide(ctx context.Context, opts Options, skipper *results.DumpRegistry) (Result, error) {
-	seeds := SwissSeedDomains()
-	if skipper != nil {
-		var filtered []string
-		for _, d := range seeds {
-			if !skipper.Contains(d) {
-				filtered = append(filtered, d)
-			}
-		}
-		seeds = filtered
-	}
-	if len(seeds) == 0 {
-		return Result{}, fmt.Errorf("tous les domaines seeds sont déjà dumpés (ou liste vide)")
-	}
-
-	outPath := opts.Output
-	if outPath == "" {
-		outPath = "scope_ch.txt"
-	}
-
-	f, err := os.Create(outPath)
-	if err != nil {
-		return Result{}, fmt.Errorf("création %s : %w", outPath, err)
-	}
-	defer f.Close()
-
-	w := bufio.NewWriter(f)
-	defer w.Flush()
-
-	perDomain := 50
-	if opts.Limit > 0 {
-		perDomain = opts.Limit / len(seeds)
-		if perDomain < 5 {
-			perDomain = 5
-		}
-	}
-
-	seen := make(map[string]struct{})
-	var fetched, kept, skipped int
-
-	for i, domain := range seeds {
-		if ctx.Err() != nil {
-			return Result{}, ctx.Err()
-		}
-		if opts.Limit > 0 && kept >= opts.Limit {
-			break
-		}
-
-		subLimit := perDomain
-		if opts.Limit > 0 {
-			remaining := opts.Limit - kept
-			if remaining < subLimit {
-				subLimit = remaining
-			}
-		}
-
-		subOpts := opts
-		subOpts.Domain = domain
-		subOpts.Limit = subLimit
-		subOpts.Output = ""
-
-		batchResult, err := collectDomain(ctx, subOpts, opts.Fetcher, seen, skipper, w)
-		if err != nil {
-			continue
-		}
-		fetched += batchResult.Fetched
-		kept += batchResult.Kept
-		skipped += batchResult.Skipped
-
-		if opts.OnProgress != nil {
-			opts.OnProgress(fetched, kept, i)
-			fmt.Fprintf(os.Stderr, "\r  [%d/%d] %s — %d urls gardées", i+1, len(seeds), domain, kept)
-		}
-	}
-
-	if kept == 0 {
-		return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath},
-			fmt.Errorf("aucune URL .ch scannable trouvée (mode ch, %d domaines testés)", len(seeds))
-	}
-
-	return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath}, nil
+	return Result{}, fmt.Errorf("mode seeds désactivé — utilise: sqli-hunter ch --source bing")
 }
 
 type collectResult struct {

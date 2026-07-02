@@ -6,58 +6,37 @@ import (
 	"testing"
 )
 
-func TestRun_SwissWideMode(t *testing.T) {
+func TestRun_VulnHuntWide(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "scope_ch.txt")
 
-	fetcher := &domainMockFetcher{byDomain: map[string][][]string{
-		"swisscom.ch": {{
-			"https://www.swisscom.ch/shop?id=1",
-			"https://www.swisscom.ch/static",
-		}},
-		"migros.ch": {{
-			"https://www.migros.ch/product?pid=42",
-		}},
-		"css.ch": {{
-			"https://www.css.ch/page?id=9",
-		}},
-	}}
+	fetcher := &mockFetcher{pages: [][]string{{
+		"https://shop-unknown.ch/product.php?id=1",
+		"https://random-site.ch/page.php?uid=2",
+		"https://example.com/page.php?id=3",
+	}}}
 
 	result, err := Run(context.Background(), Options{
 		Domain:  "ch",
 		Output:  out,
 		Limit:   10,
-		Source:  SourceWayback,
+		Source:  SourceBing,
 		Fetcher: fetcher,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Kept < 2 {
-		t.Fatalf("kept %d want at least 2", result.Kept)
+	if result.Kept != 2 {
+		t.Fatalf("kept %d want 2 (.ch with params only)", result.Kept)
 	}
 }
 
-// domainMockFetcher route FetchPage par domaine.
-type domainMockFetcher struct {
-	byDomain map[string][][]string
-}
-
-func (m *domainMockFetcher) FetchPage(_ context.Context, domain string, _ bool, page, _ int) ([]string, error) {
-	pages, ok := m.byDomain[domain]
-	if !ok || page >= len(pages) {
-		return nil, nil
-	}
-	return pages[page], nil
-}
-
-func TestSwissSeedDomains_OnlyCH(t *testing.T) {
-	if len(SwissSeedDomains()) < 20 {
-		t.Fatal("expected substantial seed list")
-	}
-	for _, d := range SwissSeedDomains() {
-		if len(d) < 4 || d[len(d)-3:] != ".ch" {
-			t.Errorf("non .ch domain in seeds: %q", d)
-		}
+func TestRun_WaybackWideRejected(t *testing.T) {
+	_, err := Run(context.Background(), Options{
+		Domain: "ch",
+		Source: SourceWayback,
+	})
+	if err == nil {
+		t.Fatal("wayback wide should fail")
 	}
 }
