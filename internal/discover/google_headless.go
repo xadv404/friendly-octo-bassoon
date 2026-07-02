@@ -66,28 +66,23 @@ func googleHeadlessSearch(ctx context.Context, searchURL string) (string, error)
 	if err := page.WaitLoad(); err != nil {
 		return "", err
 	}
-
-	if clicked, _ := clickGoogleConsent(page); clicked {
-		_ = page.WaitLoad()
-		time.Sleep(800 * time.Millisecond)
-	}
+	time.Sleep(800 * time.Millisecond)
 
 	html, err := page.HTML()
 	if err != nil {
 		return "", err
 	}
 	if isGoogleConsentPage(html) {
-		if clicked, _ := clickGoogleConsent(page); clicked {
-			_ = page.WaitLoad()
-			time.Sleep(800 * time.Millisecond)
-			html, err = page.HTML()
-			if err != nil {
-				return "", err
-			}
+		_ = submitGoogleConsent(page)
+		time.Sleep(1500 * time.Millisecond)
+		_ = page.WaitLoad()
+		html, err = page.HTML()
+		if err != nil {
+			return "", err
 		}
 	}
 	if isGoogleEnableJS(html) {
-		time.Sleep(1500 * time.Millisecond)
+		time.Sleep(2 * time.Second)
 		_ = page.WaitLoad()
 		html, err = page.HTML()
 		if err != nil {
@@ -97,38 +92,44 @@ func googleHeadlessSearch(ctx context.Context, searchURL string) (string, error)
 	return html, nil
 }
 
-func clickGoogleConsent(page *rod.Page) (bool, error) {
+func submitGoogleConsent(page *rod.Page) error {
 	selectors := []string{
 		`form[action*="consent.google"] input[type="submit"][value*="accepter"]`,
 		`form[action*="consent.google"] input[aria-label*="accepter"]`,
-		`button#L2AGLb`,
 		`input[value="Tout accepter"]`,
 	}
 	for _, sel := range selectors {
-		el, err := page.Timeout(3 * time.Second).Element(sel)
+		el, err := page.Timeout(4 * time.Second).Element(sel)
 		if err != nil {
 			continue
 		}
+		wait := page.WaitNavigation(proto.PageLifecycleEventNameNetworkAlmostIdle)
 		if err := el.Click(proto.InputMouseButtonLeft, 1); err != nil {
 			continue
 		}
-		return true, nil
+		wait()
+		return nil
 	}
-	ok, err := page.Eval(`() => {
-		const forms = document.querySelectorAll('form[action*="consent.google"]');
-		for (const f of forms) {
-			const aps = f.querySelector('input[name="set_aps"][value="true"]');
-			if (aps) { f.submit(); return true; }
-		}
-		return false;
-	}`)
+	forms, err := page.Elements(`form[action*="consent.google"]`)
 	if err != nil {
-		return false, err
+		return err
 	}
-	if ok.Value.Bool() {
-		return true, nil
+	for _, form := range forms {
+		if _, err := form.Element(`input[name="set_aps"][value="true"]`); err != nil {
+			continue
+		}
+		btn, err := form.Element(`input[type="submit"]`)
+		if err != nil {
+			continue
+		}
+		wait := page.WaitNavigation(proto.PageLifecycleEventNameNetworkAlmostIdle)
+		if err := btn.Click(proto.InputMouseButtonLeft, 1); err != nil {
+			continue
+		}
+		wait()
+		return nil
 	}
-	return false, nil
+	return fmt.Errorf("google headless: consent introuvable")
 }
 
 func googleHeadlessFetch(ctx context.Context, query string, start int) ([]string, error) {
