@@ -43,39 +43,21 @@ Dès qu'une vulnérabilité est détectée, l'outil lance automatiquement l'extr
 | `--threads` | Goroutines de scan | 8 |
 | `--extract-threads` | Workers d'extraction | 2 |
 
-### Données extraites (mode PII — profil **Suisse**)
+### Données extraites (mode email — profil **Suisse**)
 
-L'extraction cible **uniquement les données utilisateurs à risque**, validées par regex **CH** :
+L'extraction ne récupère que les **emails valides** :
 
 | Champ | Colonnes détectées | Validation |
 |-------|-------------------|------------|
-| Nom / Prénom | `nom`, `nachname`, `vorname`, `prenom`… | lettres, 2–50 car. |
-| Email | `email`, `mail`… | regex email |
-| Téléphone | `tel`, `telefon`, `natel`, `mobile`… | **+41 / 0xx suisse** |
-| Date naissance | `geburtsdatum`, `date_naissance`… | `YYYY-MM-DD` ou `DD.MM.YYYY` |
-| Adresse | `strasse`, `adresse`, `plz`, `npa`, `ort`… | NPA 4 chiffres ou ≥ 8 car. |
-| IBAN | `iban`, `konto`… | **CH** uniquement — optionnel |
+| Email | `email`, `mail`, `e_mail`… | regex stricte + blocklist |
 
-Exemple de sortie `.sql` / CLI :
+Exemple de sortie :
 
 ```
-── Utilisateur #1 ──
-nom: Meier
-prenom: Hans
-date_naissance: 1985-03-12
-adresse: Bahnhofstrasse 1, 8001 Zürich
 email: hans.meier@bluewin.ch
-telephone: 0791234567
-iban: CH9300762011623852957   ← uniquement si présent en DB
 ```
 
-**Seuil minimum** — les **6 champs obligatoires** doivent être présents et valides :
-
-```
-nom + prénom + date_naissance + adresse + email + téléphone
-```
-
-L'**IBAN CH** est extrait en plus si disponible, mais n'est pas requis.
+**Seuil minimum** : un email valide suffit.
 
 ```bash
 sqli-hunter css.ch --url-threads 64

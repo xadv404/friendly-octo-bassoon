@@ -344,33 +344,12 @@ func isAllDigits(s string) bool {
 	return len(s) > 0
 }
 
-// sanitizeRecord nettoie les champs invalides avant export.
+// sanitizeRecord nettoie et ne garde que l'email pour l'export.
 func sanitizeRecord(r *PIIRecord) {
-	if !isValidName(r.Nom) {
-		r.Nom = ""
+	em := extractEmail(r.Email)
+	if em == "" && r.Raw != "" {
+		em = extractEmail(r.Raw)
 	}
-	if !isValidName(r.Prenom) {
-		r.Prenom = ""
-	}
-	if em := extractEmail(r.Email); em != "" {
-		r.Email = em
-	} else {
-		r.Email = ""
-	}
-	if ph := extractPhone(r.Phone); ph != "" {
-		r.Phone = ph
-	} else {
-		r.Phone = ""
-	}
-	if ib := extractIBAN(r.IBAN); ib != "" {
-		r.IBAN = ib
-	} else {
-		r.IBAN = ""
-	}
-	if !isValidDOB(r.DOB) {
-		r.DOB = ""
-	}
-	if !isValidAddress(r.Address) {
-		r.Address = ""
-	}
+	r.Email = em
+	r.Nom, r.Prenom, r.Phone, r.DOB, r.Address, r.IBAN = "", "", "", "", "", ""
 }

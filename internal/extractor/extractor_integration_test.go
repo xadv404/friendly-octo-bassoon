@@ -34,10 +34,11 @@ func TestExtractFromFinding_MySQL(t *testing.T) {
 	for _, d := range data {
 		if d.DataType == models.DataPII {
 			foundPII = true
-			for _, field := range []string{"nom:", "prenom:", "date_naissance:", "adresse:", "email:", "telephone:"} {
-				if !strings.Contains(d.Value, field) {
-					t.Fatalf("missing %s in PII:\n%s", field, d.Value)
-				}
+			if !strings.Contains(d.Value, "email:") {
+				t.Fatalf("missing email in PII:\n%s", d.Value)
+			}
+			if strings.Contains(d.Value, "nom:") || strings.Contains(d.Value, "telephone:") {
+				t.Fatalf("should only extract email:\n%s", d.Value)
 			}
 		}
 	}

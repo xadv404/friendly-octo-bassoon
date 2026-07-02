@@ -68,15 +68,9 @@ func addressColumnsMet(cols map[PIIColumnKind]string) bool {
 	return false
 }
 
-// HasMinimumPIIColumns vérifie que la table expose toutes les colonnes requises.
+// HasMinimumPIIColumns vérifie que la table expose une colonne email.
 func HasMinimumPIIColumns(cols map[PIIColumnKind]string) bool {
-	required := []PIIColumnKind{PIINom, PIIPrenom, PIIDOB, PIIEmail, PIIPhone}
-	for _, kind := range required {
-		if cols[kind] == "" {
-			return false
-		}
-	}
-	return addressColumnsMet(cols)
+	return cols[PIIEmail] != ""
 }
 
 // addressSQLExpr construit l'expression SQL pour le champ adresse (fusion plz/ort/rue).

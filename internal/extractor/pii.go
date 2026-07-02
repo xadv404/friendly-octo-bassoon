@@ -54,20 +54,12 @@ func FormatPIIRecord(r PIIRecord) string {
 	return FormatPIIBlock(r)
 }
 
-// FormatPIIBlock affiche un utilisateur au format lisible (CLI / SQL).
+// FormatPIIBlock affiche un email extrait (CLI / SQL).
 func FormatPIIBlock(r PIIRecord) string {
-	u := r.ToModel()
-	var b strings.Builder
-	writePIIField(&b, "nom", u.Nom)
-	writePIIField(&b, "prenom", u.Prenom)
-	writePIIField(&b, "date_naissance", u.DateNaissance)
-	writePIIField(&b, "adresse", u.Adresse)
-	writePIIField(&b, "email", u.Email)
-	writePIIField(&b, "telephone", u.Telephone)
-	if u.IBAN != "" {
-		writePIIField(&b, "iban", u.IBAN)
+	if r.Email == "" {
+		return ""
 	}
-	return strings.TrimRight(b.String(), "\n")
+	return "email: " + r.Email + "\n"
 }
 
 func writePIIField(b *strings.Builder, key, val string) {
@@ -122,15 +114,10 @@ func SelectPIIColumns(columns []string) map[PIIColumnKind]string {
 	return SelectPIIColumnsExtended(columns)
 }
 
-// RecordMeetsMinimum : nom, prénom, naissance, adresse, email, téléphone obligatoires — IBAN optionnel.
+// RecordMeetsMinimum : email valide obligatoire.
 func RecordMeetsMinimum(r PIIRecord) bool {
 	sanitizeRecord(&r)
-	return r.Nom != "" &&
-		r.Prenom != "" &&
-		r.DOB != "" &&
-		r.Address != "" &&
-		r.Email != "" &&
-		r.Phone != ""
+	return r.Email != ""
 }
 
 // ParseLabeledPII parse "nom=X|email=Y|tel=Z" depuis une réponse SQL.
@@ -204,7 +191,7 @@ func ParseLabeledPII(raw, table string) []PIIRecord {
 	return records
 }
 
-// ScanPIIInText extrait des PII depuis du texte/JSON libre (NoSQL, fuites).
+// ScanPIIInText extrait des emails depuis du texte/JSON libre (NoSQL, fuites).
 func ScanPIIInText(body string) []PIIRecord {
 	body = strings.TrimSpace(body)
 	if body == "" {
@@ -213,42 +200,12 @@ func ScanPIIInText(body string) []PIIRecord {
 
 	r := PIIRecord{Raw: truncate(body, 300)}
 	r.Email = extractEmail(body)
-	r.Phone = extractPhone(body)
-	r.IBAN = extractIBAN(body)
-	if d := rePIIDOB.FindString(body); d != "" && isValidDOB(d) {
-		r.DOB = d
-	}
-
-	// Date de naissance depuis JSON
-	for _, key := range []string{`"date_naissance"`, `"geburtsdatum"`, `"birthdate"`, `"dob"`, `"naissance"`} {
-		if v := jsonStringValue(body, key); v != "" && isValidDOB(v) {
-			r.DOB = v
-			break
-		}
-	}
-	for _, key := range []string{`"nom"`, `"nachname"`, `"prenom"`, `"vorname"`, `"firstname"`, `"lastname"`, `"first_name"`, `"last_name"`} {
-		if v := jsonStringValue(body, key); v != "" && isValidName(v) {
-			kl := strings.ToLower(key)
-			switch {
-			case strings.Contains(kl, "pre") || strings.Contains(kl, "vor") || strings.Contains(kl, "first"):
-				r.Prenom = v
-			default:
-				r.Nom = v
+	for _, key := range []string{`"email"`, `"mail"`, `"e_mail"`, `"courriel"`} {
+		if v := jsonStringValue(body, key); v != "" {
+			if em := extractEmail(v); em != "" {
+				r.Email = em
+				break
 			}
-		}
-	}
-	for _, key := range []string{`"adresse"`, `"address"`} {
-		if v := jsonStringValue(body, key); v != "" && isValidAddress(v) {
-			r.Address = v
-			break
-		}
-	}
-	if r.Address == "" {
-		street := firstJSON(body, `"strasse"`, `"rue"`, `"street"`)
-		plz := firstJSON(body, `"plz"`, `"npa"`, `"zip"`)
-		ort := firstJSON(body, `"ort"`, `"ville"`, `"city"`)
-		if merged := mergeAddressParts(street, plz, ort); isValidAddress(merged) {
-			r.Address = merged
 		}
 	}
 
