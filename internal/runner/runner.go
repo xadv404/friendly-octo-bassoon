@@ -17,14 +17,15 @@ import (
 
 // Config configure une exécution.
 type Config struct {
-	Targets        []models.ScanTarget // mode -u (petite liste en mémoire)
-	ListFile       string              // mode -l (streaming massif)
+	Targets        []models.ScanTarget
+	ListFile       string
 	ListDefaults   targets.Defaults
 	Opts           models.ScanOptions
 	OutputDir      string
 	UrlConcurrency int
-	UrlCount       int // total URLs (pour progression)
-	ProgressEvery  int // affichage progression tous les N URLs
+	UrlCount       int
+	ProgressEvery  int
+	Rescan         bool // ignore dumped_domains.txt
 }
 
 // TargetResult résultat pour une cible.

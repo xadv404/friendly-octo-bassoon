@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/sqli-hunter/sqli-hunter/internal/extractor"
 )
 
 // ProviderInfo stats d'un fournisseur email.
@@ -127,6 +129,9 @@ func ReadProviderEmails(baseDir, provider string, limit int) ([]string, error) {
 	for sc.Scan() {
 		line := strings.ToLower(strings.TrimSpace(sc.Text()))
 		if line == "" || !strings.Contains(line, "@") {
+			continue
+		}
+		if !extractor.ValidEmail(line) {
 			continue
 		}
 		emails = append(emails, line)

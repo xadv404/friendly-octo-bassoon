@@ -33,6 +33,7 @@ func executeScan(ctx context.Context, cfg config, printer *output.Printer) error
 		UrlConcurrency: cfg.urlConcurrency,
 		ProgressEvery:  cfg.progressEvery,
 		ListDefaults:   listDefaults,
+		Rescan:         cfg.rescan,
 	}
 
 	if cfg.listFile != "" {
@@ -62,7 +63,7 @@ func executeScan(ctx context.Context, cfg config, printer *output.Printer) error
 	printer.KV("threads", fmt.Sprintf("scan %d · extract %d · urls %d",
 		opts.Threads, opts.ExtractThreads, runCfg.UrlConcurrency))
 	printer.KV("rate", fmt.Sprintf("%d ms", opts.RateLimitMs))
-	printer.KV("output", cfg.outputDir+"/DOMAIN/DOMAIN.{json,sql}")
+	printer.KV("output", cfg.outputDir+"/emails/")
 	printer.Rule()
 	fmt.Println()
 
@@ -112,15 +113,22 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	fmt.Println()
 
 	opts := discover.Options{
-		Domain:   cfg.discoverDomain,
-		Output:   cfg.discoverOutput,
-		Subs:     cfg.discoverSubs,
-		Paths:    discover.ParseList(cfg.discoverPaths),
-		Params:   discover.ParseList(cfg.discoverParams),
-		NoFilter: discoverNoFilter(cfg),
-		Limit:    cfg.discoverLimit,
+		Domain:     cfg.discoverDomain,
+		Output:     cfg.discoverOutput,
+		Subs:       cfg.discoverSubs,
+		Paths:      discover.ParseList(cfg.discoverPaths),
+		Params:     discover.ParseList(cfg.discoverParams),
+		NoFilter:   discoverNoFilter(cfg),
+		Limit:      cfg.discoverLimit,
+		Source:     discover.ParseSource(cfg.discoverSource),
+		ResultsDir: cfg.outputDir,
+		SkipDumped: !cfg.rescan,
 		OnProgress: func(fetched, kept, page int) {
-			fmt.Fprintf(os.Stderr, "\r  wayback page %d — %d urls lues, %d gardées", page+1, fetched, kept)
+			src := cfg.discoverSource
+			if src == "" {
+				src = "bing"
+			}
+			fmt.Fprintf(os.Stderr, "\r  %s page %d — %d urls lues, %d gardées", src, page+1, fetched, kept)
 		},
 	}
 
@@ -131,7 +139,10 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	}
 
 	printer.Success(fmt.Sprintf("%d URLs découvertes → %s", result.Kept, result.Output))
-	printer.KV("lu", fmt.Sprintf("%d (wayback)", result.Fetched))
+	if result.Skipped > 0 {
+		printer.KV("ignorés", fmt.Sprintf("%d (déjà dumpés)", result.Skipped))
+	}
+	printer.KV("lu", fmt.Sprintf("%d (%s)", result.Fetched, cfg.discoverSource))
 	fmt.Println()
 
 	return result.Output, result.Kept, nil
@@ -151,7 +162,7 @@ func discoverNoFilter(cfg config) bool {
 
 func discoverLabel(domain string) string {
 	if discover.IsSwissWide(domain) || discover.NormalizeSwissDomain(domain) == "ch" {
-		return "tout le .ch (Wayback)"
+		return "tout le .ch (Bing dorks)"
 	}
 	return discover.NormalizeSwissDomain(domain)
 }

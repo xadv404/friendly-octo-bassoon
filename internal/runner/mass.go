@@ -88,6 +88,13 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 			break
 		}
 
+		if !cfg.Rescan {
+			if domain, err := results.DomainFromURL(raw); err == nil && store.IsDomainDumped(domain) {
+				skipped.Add(1)
+				continue
+			}
+		}
+
 		target, err := targets.FromURL(raw, cfg.ListDefaults)
 		if err != nil {
 			skipped.Add(1)

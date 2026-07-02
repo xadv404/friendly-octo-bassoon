@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/sqli-hunter/sqli-hunter/internal/extractor"
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
 )
 
@@ -34,6 +35,9 @@ func NewEmailWriter(baseDir string) (*EmailWriter, error) {
 // Append ajoute un email dans le fichier du fournisseur (@domain).
 func (w *EmailWriter) Append(email string) error {
 	email = strings.ToLower(strings.TrimSpace(email))
+	if !extractor.ValidEmail(email) {
+		return nil
+	}
 	provider := EmailProvider(email)
 	if provider == "" {
 		return nil
@@ -96,22 +100,28 @@ func EmailProvider(email string) string {
 
 // EmailFromExtraction lit l'email depuis une extraction PII (adresse seule, sans préfixe).
 func EmailFromExtraction(d models.ExtractedData) string {
+	var email string
 	if d.PII != nil && d.PII.Email != "" {
-		return strings.ToLower(strings.TrimSpace(d.PII.Email))
+		email = strings.ToLower(strings.TrimSpace(d.PII.Email))
+	} else {
+		for _, line := range strings.Split(d.Value, "\n") {
+			line = strings.ToLower(strings.TrimSpace(line))
+			if line == "" {
+				continue
+			}
+			if strings.HasPrefix(line, "email:") {
+				line = strings.TrimSpace(line[len("email:"):])
+			}
+			if strings.Contains(line, "@") {
+				email = line
+				break
+			}
+		}
 	}
-	for _, line := range strings.Split(d.Value, "\n") {
-		line = strings.ToLower(strings.TrimSpace(line))
-		if line == "" {
-			continue
-		}
-		if strings.HasPrefix(line, "email:") {
-			line = strings.TrimSpace(line[len("email:"):])
-		}
-		if strings.Contains(line, "@") {
-			return line
-		}
+	if email == "" || !extractor.ValidEmail(email) {
+		return ""
 	}
-	return ""
+	return email
 }
 
 // WriteEmailsFromTargets écrit les emails groupés par fournisseur.
@@ -120,6 +130,7 @@ func WriteEmailsFromTargets(baseDir string, targets []TargetResult) ([]string, e
 	if err != nil {
 		return nil, err
 	}
+	dump, _ := NewDumpRegistry(baseDir)
 	for _, t := range targets {
 		for _, e := range t.Extractions {
 			if e.DataType != models.DataPII {
@@ -128,6 +139,9 @@ func WriteEmailsFromTargets(baseDir string, targets []TargetResult) ([]string, e
 			if em := EmailFromExtraction(e); em != "" {
 				if err := w.Append(em); err != nil {
 					return nil, err
+				}
+				if domain, err := DomainFromURL(t.URL); err == nil {
+					_ = dump.Mark(domain)
 				}
 			}
 		}

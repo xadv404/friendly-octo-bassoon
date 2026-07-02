@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.15.0"
+const version = "1.16.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -143,6 +143,8 @@ type config struct {
 	discoverSubs   bool
 	discoverNoFilter bool
 	discoverLimit  int
+	discoverSource string
+	rescan         bool
 	outputDir      string
 	method         string
 	params         map[string]string
@@ -182,6 +184,7 @@ func parseArgs(args []string) (config, error) {
 		rateLimit:      100,
 		outputDir:      "results",
 		discoverSubs:   true,
+		discoverSource: "bing",
 		params:         make(map[string]string),
 		data:           make(map[string]string),
 		headers:        make(map[string]string),
@@ -247,6 +250,14 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("--discover-limit doit être >= 1")
 			}
 			cfg.discoverLimit = v
+		case arg == "--source":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--source nécessite bing ou wayback")
+			}
+			cfg.discoverSource = args[i]
+		case arg == "--rescan":
+			cfg.rescan = true
 		case arg == "-o" || arg == "--output":
 			i++
 			if i >= len(args) {
@@ -475,16 +486,17 @@ func printUsage() {
 	fmt.Print(`sqli-hunter — détection SQLi/NoSQL · profil Suisse (.ch)
 
 Usage:
-  sqli-hunter <domaine.ch> [options]       Découverte Wayback + scan
+  sqli-hunter <domaine.ch> [options]       Découverte Bing + scan
   sqli-hunter -D <domaine.ch> [options]
   sqli-hunter -u <URL> [options]
   sqli-hunter -l <fichier> [options]
   sqli-hunter discover -d <domaine.ch> [options]
 
-Découverte automatique (URLs .ch avec paramètres → scan vulnérabilités) :
-  sqli-hunter ch              Tout le .ch (Wayback)
+Découverte automatique (Bing dorks proxyless → extraction emails) :
+  sqli-hunter ch              Tout le .ch (Bing)
   sqli-hunter css.ch          Un seul domaine
   sqli-hunter ch --discover-limit 1000 --url-threads 64
+  sqli-hunter ch --source wayback
 
 Cible:
   -D, --domain <domaine>      ch = tout le .ch · css = css.ch · css.ch = un domaine
@@ -499,12 +511,14 @@ Cible:
       --json <JSON>           Corps JSON (mode -u)
 
 Découverte (avec -D) :
+      --source <bing|wayback> Collecteur URLs [défaut: bing]
       --paths <a,b,c>         Filtre manuel path (optionnel)
       --discover-params <a,b> Filtre manuel paramètres (optionnel)
       --discover-output <f>   Fichier scope [défaut: scope_DOMAIN.ch.txt]
       --subs / --no-subs      Sous-domaines [défaut: oui]
       --no-filter             Toutes URLs .ch avec ?param= (ignore --paths)
       --discover-limit <n>    Max URLs à garder
+      --rescan                Re-scanner domaines déjà dumpés
 
 Requête:
   -H, --header <Nom: Val>     Header HTTP (répétable)

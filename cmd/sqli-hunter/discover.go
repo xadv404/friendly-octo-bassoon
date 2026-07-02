@@ -18,6 +18,9 @@ type discoverConfig struct {
 	subs      bool
 	noFilter  bool
 	limit     int
+	source    string
+	rescan    bool
+	resultsDir string
 	scan      bool
 	scanExtra []string
 	help      bool
@@ -56,15 +59,22 @@ func runDiscover(args []string) {
 
 	ctx := context.Background()
 	opts := discover.Options{
-		Domain:   cfg.domain,
-		Output:   cfg.output,
-		Subs:     cfg.subs,
-		Paths:    discover.ParseList(cfg.paths),
-		Params:   discover.ParseList(cfg.params),
-		NoFilter: discoverNoFilterDiscover(cfg),
-		Limit:    cfg.limit,
+		Domain:     cfg.domain,
+		Output:     cfg.output,
+		Subs:       cfg.subs,
+		Paths:      discover.ParseList(cfg.paths),
+		Params:     discover.ParseList(cfg.params),
+		NoFilter:   discoverNoFilterDiscover(cfg),
+		Limit:      cfg.limit,
+		Source:     discover.ParseSource(cfg.source),
+		ResultsDir: cfg.resultsDir,
+		SkipDumped: !cfg.rescan,
 		OnProgress: func(fetched, kept, page int) {
-			fmt.Fprintf(os.Stderr, "\r  wayback page %d — %d urls lues, %d gardées", page+1, fetched, kept)
+			src := cfg.source
+			if src == "" {
+				src = "bing"
+			}
+			fmt.Fprintf(os.Stderr, "\r  %s page %d — %d urls lues, %d gardées", src, page+1, fetched, kept)
 		},
 	}
 
@@ -76,7 +86,7 @@ func runDiscover(args []string) {
 	}
 
 	printer.Success(fmt.Sprintf("%d URLs → %s", result.Kept, result.Output))
-	printer.KV("lu", fmt.Sprintf("%d (wayback)", result.Fetched))
+	printer.KV("lu", fmt.Sprintf("%d (%s)", result.Fetched, cfg.source))
 	fmt.Println()
 	fmt.Printf("  sqli-hunter -l %s --url-threads 64\n", result.Output)
 
@@ -95,7 +105,7 @@ func runDiscover(args []string) {
 }
 
 func parseDiscoverArgs(args []string) (discoverConfig, error) {
-	cfg := discoverConfig{subs: true}
+	cfg := discoverConfig{subs: true, source: "bing", resultsDir: "results"}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
@@ -141,6 +151,20 @@ func parseDiscoverArgs(args []string) (discoverConfig, error) {
 				return cfg, fmt.Errorf("--limit doit être >= 1")
 			}
 			cfg.limit = v
+		case arg == "--source":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--source nécessite bing ou wayback")
+			}
+			cfg.source = args[i]
+		case arg == "--rescan":
+			cfg.rescan = true
+		case arg == "--results-dir":
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--results-dir nécessite un chemin")
+			}
+			cfg.resultsDir = args[i]
 		case arg == "--scan":
 			cfg.scan = true
 			// Arguments après -- sont transmis au scan
@@ -166,15 +190,17 @@ func discoverNoFilterDiscover(cfg discoverConfig) bool {
 }
 
 func printDiscoverUsage() {
-	fmt.Print(`sqli-hunter discover — URLs suisses (.ch) via Wayback
+	fmt.Print(`sqli-hunter discover — URLs suisses (.ch) via Bing (proxyless)
 
 Usage:
   sqli-hunter discover -d <domaine.ch> [options]
 
 Source:
-  -d, --domain <domaine>      Domaine .ch (css → css.ch)
+  --source <bing|wayback>     Collecteur [défaut: bing]
+  -d, --domain <domaine>      Domaine .ch (css → css.ch) ou ch
       --subs                  Inclure sous-domaines [défaut: oui]
       --no-subs               Domaine exact uniquement
+      --rescan                Inclure domaines déjà dumpés
 
 Filtres (optionnels) :
       --paths <a,b,c>         Mots-clés dans le path/URL
@@ -184,13 +210,13 @@ Filtres (optionnels) :
 Sortie:
   -o, --output <fichier>      Fichier scope [défaut: scope_DOMAIN.ch.txt]
       --limit <n>             Max URLs à garder
+      --results-dir <dir>     Dossier results [défaut: results]
       --scan                  Lancer le scan SQLi après découverte
-                              Options scan après -- :
-                              discover -d x.ch --scan -- --full
 
 Exemples:
   sqli-hunter discover -d ch --limit 500
-  sqli-hunter discover -d css.ch
+  sqli-hunter discover -d css.ch --source bing
+  sqli-hunter discover -d css.ch --source wayback --limit 1000
   sqli-hunter discover -d css.ch --scan -- --url-threads 64
 
 `)

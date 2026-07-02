@@ -74,14 +74,17 @@ sqli-hunter css.ch --url-threads 64
 
 ## Découverte d'URLs (`discover`)
 
-Collecte automatique via **Wayback** — URLs **.ch** avec paramètres (`?key=val`), puis scan des vulnérabilités.
+Collecte **proxyless via Bing** avec dorks orientés emails/SQLi — URLs **.ch** avec paramètres (`?id=`, `?email=`, etc.).
 
 ```bash
-# Tout le .ch (Wayback)
+# Tout le .ch (Bing dorks site:.ch)
 sqli-hunter ch --discover-limit 1000 --url-threads 64
 
 # Un seul domaine
 sqli-hunter css.ch --url-threads 64
+
+# Fallback Wayback (domaines archivés)
+sqli-hunter ch --source wayback --discover-limit 500
 
 # Liste manuelle
 sqli-hunter -l scope_ch.txt --url-threads 64
@@ -90,14 +93,18 @@ sqli-hunter -l scope_ch.txt --url-threads 64
 | Option | Description |
 |--------|-------------|
 | `-d, --domain` / `-D` | `ch` = tout le .ch · `css` = css.ch |
+| `--source` | `bing` [défaut] ou `wayback` |
 | `--paths` | Filtre manuel path (optionnel) |
 | `--params` | Filtre manuel paramètres (optionnel) |
 | `--no-filter` | Toutes URLs .ch avec `?param=` |
 | `--subs` / `--no-subs` | Sous-domaines [défaut: oui] |
+| `--rescan` | Inclure domaines déjà dumpés |
 | `-o` | Fichier sortie [défaut: `scope_DOMAIN.ch.txt`] |
 | `--scan` | Lance le scan après collecte |
 
-Source : API CDX Wayback (`web.archive.org`). Ne fonctionne que sur des domaines **déjà archivés**.
+**Anti re-dump** : les domaines dumpés sont enregistrés dans `results/dumped_domains.txt` et ignorés automatiquement (discover + scan).
+
+**Validation emails** : regex stricte + blocklist (0 FP) — re-validée à l'écriture.
 
 ## Scan massif (1k – 100k URLs)
 

@@ -27,6 +27,7 @@ func TestRun_SwissWideMode(t *testing.T) {
 		Domain:  "ch",
 		Output:  out,
 		Limit:   10,
+		Source:  SourceWayback,
 		Fetcher: fetcher,
 	})
 	if err != nil {

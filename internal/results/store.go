@@ -10,6 +10,7 @@ import (
 type SiteStore struct {
 	baseDir string
 	emails  *EmailWriter
+	dump    *DumpRegistry
 }
 
 // NewSiteStore crée un store de résultats (emails uniquement).
@@ -24,18 +25,34 @@ func NewSiteStore(baseDir, version string) (*SiteStore, error) {
 	if err != nil {
 		return nil, err
 	}
+	dump, err := NewDumpRegistry(baseDir)
+	if err != nil {
+		return nil, err
+	}
 	return &SiteStore{
 		baseDir: baseDir,
 		emails:  emails,
+		dump:    dump,
 	}, nil
 }
 
-// AppendExtraction enregistre un email extrait.
+// IsDomainDumped indique si un domaine a déjà été dumpé.
+func (s *SiteStore) IsDomainDumped(domain string) bool {
+	return s.dump != nil && s.dump.Contains(domain)
+}
+
+// AppendExtraction enregistre un email extrait et marque le domaine dumpé.
 func (s *SiteStore) AppendExtraction(findingURL string, d models.ExtractedData) {
-	if d.DataType == models.DataPII {
-		if em := EmailFromExtraction(d); em != "" {
-			_ = s.emails.Append(em)
-		}
+	if d.DataType != models.DataPII {
+		return
+	}
+	em := EmailFromExtraction(d)
+	if em == "" {
+		return
+	}
+	_ = s.emails.Append(em)
+	if domain, err := DomainFromURL(findingURL); err == nil {
+		_ = s.dump.Mark(domain)
 	}
 }
 

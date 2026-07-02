@@ -7,9 +7,29 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/sqli-hunter/sqli-hunter/internal/results"
 )
 
-// CDXFetcher récupère une page d'URLs depuis une source (Wayback, mock test).
+// Source de collecte d'URLs.
+type Source string
+
+const (
+	SourceBing    Source = "bing"
+	SourceWayback Source = "wayback"
+)
+
+// ParseSource interprète --source (défaut: bing).
+func ParseSource(s string) Source {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "wayback", "archive", "cdx":
+		return SourceWayback
+	default:
+		return SourceBing
+	}
+}
+
+// CDXFetcher récupère une page d'URLs depuis une source (Bing, Wayback, mock test).
 type CDXFetcher interface {
 	FetchPage(ctx context.Context, domain string, subs bool, page, limit int) ([]string, error)
 }
@@ -19,11 +39,14 @@ type Options struct {
 	Domain     string
 	Output     string
 	Subs       bool
-	Paths      []string // filtre manuel optionnel
-	Params     []string // filtre manuel optionnel
-	NoFilter   bool     // ignore Paths/Params — toutes URLs .ch avec ?key=val
-	Limit      int      // max URLs écrites (0 = illimité)
+	Paths      []string
+	Params     []string
+	NoFilter   bool
+	Limit      int
 	PageSize   int
+	Source     Source
+	ResultsDir string
+	SkipDumped bool
 	Fetcher    CDXFetcher
 	OnProgress func(fetched, kept int, page int)
 }
@@ -32,28 +55,65 @@ type Options struct {
 type Result struct {
 	Fetched int
 	Kept    int
+	Skipped int
 	Output  string
 }
 
-// Run collecte des URLs via Wayback CDX et écrit le fichier de scope.
+// Run collecte des URLs et écrit le fichier de scope.
 func Run(ctx context.Context, opts Options) (Result, error) {
 	if opts.Domain == "" {
 		return Result{}, fmt.Errorf("domaine requis")
 	}
+	if opts.Source == "" {
+		opts.Source = SourceBing
+	}
 	opts.Domain = NormalizeSwissDomain(opts.Domain)
+
+	if opts.Fetcher == nil {
+		opts.Fetcher = defaultFetcher(opts.Source)
+	}
+
+	skipper, err := loadDumpSkipper(opts)
+	if err != nil {
+		return Result{}, err
+	}
+
 	if IsSwissWide(opts.Domain) {
-		return runSwissWide(ctx, opts)
+		if opts.Source == SourceWayback {
+			return runSwissWide(ctx, opts, skipper)
+		}
+		return runSingleDomain(ctx, opts, skipper)
 	}
 	if !strings.HasSuffix(opts.Domain, ".ch") {
 		return Result{}, fmt.Errorf("domaine .ch requis (ex: css.ch) ou ch pour tout le .ch")
 	}
-	return runSingleDomain(ctx, opts)
+	return runSingleDomain(ctx, opts, skipper)
 }
 
-func runSwissWide(ctx context.Context, opts Options) (Result, error) {
+func loadDumpSkipper(opts Options) (*results.DumpRegistry, error) {
+	if !opts.SkipDumped {
+		return nil, nil
+	}
+	dir := opts.ResultsDir
+	if dir == "" {
+		dir = "results"
+	}
+	return results.NewDumpRegistry(dir)
+}
+
+func runSwissWide(ctx context.Context, opts Options, skipper *results.DumpRegistry) (Result, error) {
 	seeds := SwissSeedDomains()
+	if skipper != nil {
+		var filtered []string
+		for _, d := range seeds {
+			if !skipper.Contains(d) {
+				filtered = append(filtered, d)
+			}
+		}
+		seeds = filtered
+	}
 	if len(seeds) == 0 {
-		return Result{}, fmt.Errorf("liste de domaines .ch vide")
+		return Result{}, fmt.Errorf("tous les domaines seeds sont déjà dumpés (ou liste vide)")
 	}
 
 	outPath := opts.Output
@@ -70,11 +130,6 @@ func runSwissWide(ctx context.Context, opts Options) (Result, error) {
 	w := bufio.NewWriter(f)
 	defer w.Flush()
 
-	client := opts.Fetcher
-	if client == nil {
-		client = newWaybackClient()
-	}
-
 	perDomain := 50
 	if opts.Limit > 0 {
 		perDomain = opts.Limit / len(seeds)
@@ -84,7 +139,7 @@ func runSwissWide(ctx context.Context, opts Options) (Result, error) {
 	}
 
 	seen := make(map[string]struct{})
-	var fetched, kept int
+	var fetched, kept, skipped int
 
 	for i, domain := range seeds {
 		if ctx.Err() != nil {
@@ -105,15 +160,15 @@ func runSwissWide(ctx context.Context, opts Options) (Result, error) {
 		subOpts := opts
 		subOpts.Domain = domain
 		subOpts.Limit = subLimit
-		subOpts.Output = "" // ne pas réécrire fichier
+		subOpts.Output = ""
 
-		batchResult, err := collectDomain(ctx, subOpts, client, seen, w)
+		batchResult, err := collectDomain(ctx, subOpts, opts.Fetcher, seen, skipper, w)
 		if err != nil {
-			// Wayback peut échouer sur un domaine — continuer les autres
 			continue
 		}
 		fetched += batchResult.Fetched
 		kept += batchResult.Kept
+		skipped += batchResult.Skipped
 
 		if opts.OnProgress != nil {
 			opts.OnProgress(fetched, kept, i)
@@ -122,25 +177,26 @@ func runSwissWide(ctx context.Context, opts Options) (Result, error) {
 	}
 
 	if kept == 0 {
-		return Result{Fetched: fetched, Kept: 0, Output: outPath},
+		return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath},
 			fmt.Errorf("aucune URL .ch scannable trouvée (mode ch, %d domaines testés)", len(seeds))
 	}
 
-	return Result{Fetched: fetched, Kept: kept, Output: outPath}, nil
+	return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath}, nil
 }
 
 type collectResult struct {
 	Fetched int
 	Kept    int
+	Skipped int
 }
 
-func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen map[string]struct{}, w *bufio.Writer) (collectResult, error) {
+func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen map[string]struct{}, skipper *results.DumpRegistry, w *bufio.Writer) (collectResult, error) {
 	pageSize := opts.PageSize
 	if pageSize <= 0 {
 		pageSize = 5000
 	}
 
-	var fetched, kept int
+	var fetched, kept, skipped int
 	for page := 0; ; page++ {
 		if ctx.Err() != nil {
 			return collectResult{}, ctx.Err()
@@ -148,7 +204,7 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 
 		batch, err := client.FetchPage(ctx, opts.Domain, opts.Subs, page, pageSize)
 		if err != nil {
-			return collectResult{fetched, kept}, err
+			return collectResult{fetched, kept, skipped}, err
 		}
 		if len(batch) == 0 {
 			break
@@ -157,6 +213,10 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 		fetched += len(batch)
 		for _, raw := range batch {
 			norm := normalizeURL(raw)
+			if shouldSkipDumped(norm, skipper) {
+				skipped++
+				continue
+			}
 			if !passesFilters(norm, opts) {
 				continue
 			}
@@ -169,18 +229,25 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 			}
 			kept++
 			if opts.Limit > 0 && kept >= opts.Limit {
-				return collectResult{fetched, kept}, nil
+				return collectResult{fetched, kept, skipped}, nil
 			}
 		}
 
-		if len(batch) < pageSize {
+		if len(batch) < pageSize && opts.Source != SourceBing {
+			break
+		}
+		if opts.Source == SourceBing && page > 200 {
 			break
 		}
 	}
-	return collectResult{fetched, kept}, nil
+	return collectResult{fetched, kept, skipped}, nil
 }
 
-func runSingleDomain(ctx context.Context, opts Options) (Result, error) {
+func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpRegistry) (Result, error) {
+	if skipper != nil && !IsSwissWide(opts.Domain) && skipper.Contains(opts.Domain) {
+		return Result{}, fmt.Errorf("domaine %s déjà dumpé (utilise --rescan pour forcer)", opts.Domain)
+	}
+
 	outPath := opts.Output
 	if outPath == "" {
 		outPath = "scope_" + sanitizeFilename(opts.Domain) + ".txt"
@@ -195,11 +262,6 @@ func runSingleDomain(ctx context.Context, opts Options) (Result, error) {
 	w := bufio.NewWriter(f)
 	defer w.Flush()
 
-	client := opts.Fetcher
-	if client == nil {
-		client = newWaybackClient()
-	}
-
 	seen := make(map[string]struct{})
 	collectWithProgress := func(fetched, kept, page int) {
 		if opts.OnProgress != nil {
@@ -212,13 +274,13 @@ func runSingleDomain(ctx context.Context, opts Options) (Result, error) {
 		pageSize = 5000
 	}
 
-	var fetched, kept int
+	var fetched, kept, skipped int
 	for page := 0; ; page++ {
 		if ctx.Err() != nil {
 			return Result{}, ctx.Err()
 		}
 
-		batch, err := client.FetchPage(ctx, opts.Domain, opts.Subs, page, pageSize)
+		batch, err := opts.Fetcher.FetchPage(ctx, opts.Domain, opts.Subs, page, pageSize)
 		if err != nil {
 			return Result{}, err
 		}
@@ -229,6 +291,10 @@ func runSingleDomain(ctx context.Context, opts Options) (Result, error) {
 		fetched += len(batch)
 		for _, raw := range batch {
 			norm := normalizeURL(raw)
+			if shouldSkipDumped(norm, skipper) {
+				skipped++
+				continue
+			}
 			if !passesFilters(norm, opts) {
 				continue
 			}
@@ -242,23 +308,37 @@ func runSingleDomain(ctx context.Context, opts Options) (Result, error) {
 			kept++
 			if opts.Limit > 0 && kept >= opts.Limit {
 				collectWithProgress(fetched, kept, page)
-				return Result{Fetched: fetched, Kept: kept, Output: outPath}, nil
+				return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath}, nil
 			}
 		}
 
 		collectWithProgress(fetched, kept, page)
 
-		if len(batch) < pageSize {
+		if len(batch) < pageSize && opts.Source != SourceBing {
+			break
+		}
+		if opts.Source == SourceBing && page > 200 {
 			break
 		}
 	}
 
 	if kept == 0 {
-		return Result{Fetched: fetched, Kept: 0, Output: outPath},
+		return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath},
 			fmt.Errorf("aucune URL .ch scannable trouvée pour %s", opts.Domain)
 	}
 
-	return Result{Fetched: fetched, Kept: kept, Output: outPath}, nil
+	return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath}, nil
+}
+
+func shouldSkipDumped(raw string, skipper *results.DumpRegistry) bool {
+	if skipper == nil {
+		return false
+	}
+	domain, err := results.DomainFromURL(raw)
+	if err != nil {
+		return false
+	}
+	return skipper.Contains(domain)
 }
 
 func passesFilters(raw string, opts Options) bool {

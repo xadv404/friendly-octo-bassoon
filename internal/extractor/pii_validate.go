@@ -102,6 +102,11 @@ func extractIBAN(s string) string {
 	return ""
 }
 
+// ValidEmail valide une adresse email (strict, 0 FP).
+func ValidEmail(s string) bool {
+	return isValidEmail(s)
+}
+
 func isValidEmail(s string) bool {
 	s = strings.ToLower(strings.TrimSpace(s))
 	if len(s) < 6 || len(s) > 100 {
