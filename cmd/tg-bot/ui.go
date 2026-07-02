@@ -39,7 +39,7 @@ func welcomeCaption(cfg config) string {
 func stockMessage(cfg config) string {
 	list, err := results.ListProviders(cfg.resultsDir)
 	if err != nil || len(list) == 0 {
-		return "📭 *Stock vide*\n\n⏳ Lance le collecteur pour alimenter :\n`sqli-hunter daily`"
+		return "📭 *Stock vide*\n\nAucun email dispo pour le moment."
 	}
 
 	var b strings.Builder
