@@ -5,10 +5,19 @@ import (
 	"testing"
 )
 
+func TestDorkCounts(t *testing.T) {
+	all := BuildVulnDorks("ch", false)
+	fresh := BuildFreshDorks("ch", false)
+	t.Logf("dorks: all=%d fresh=%d", len(all), len(fresh))
+	if len(all) > 3500 {
+		t.Fatalf("dork set unexpectedly large: %d", len(all))
+	}
+}
+
 func TestBuildVulnDorks_SwissWideBroad(t *testing.T) {
 	dorks := BuildVulnDorks("ch", false)
-	if len(dorks) < 150 {
-		t.Fatalf("expected 150+ broad dorks, got %d", len(dorks))
+	if len(dorks) < 2000 {
+		t.Fatalf("expected 2000+ broad dorks, got %d", len(dorks))
 	}
 
 	for _, d := range dorks {
@@ -25,6 +34,12 @@ func TestBuildVulnDorks_SwissWideBroad(t *testing.T) {
 		"site:.ch inurl:kanton inurl:?",
 		"site:.ch inurl:?ID=",
 		"site:.ch inurl:immobilier inurl:detail.php inurl:?",
+		"site:.ch inurl:product.php inurl:?id=",
+		"site:.ch inurl:RegionRef inurl:.php inurl:?",
+		"site:.ch inurl:Gemeinde- inurl:.php inurl:?",
+		"site:.ch inurl:Kauf-Suche.php inurl:?",
+		"site:.ch inurl:news_view.php inurl:?id=",
+		"site:.ch (inurl:id= | inurl:pid= | inurl:cat=) inurl:&",
 	}
 	for _, want := range mustHave {
 		found := false
@@ -52,8 +67,8 @@ func TestBuildVulnDorks_SwissWideBroad(t *testing.T) {
 
 func TestBuildFreshDorks(t *testing.T) {
 	fresh := BuildFreshDorks("ch", false)
-	if len(fresh) < 50 {
-		t.Fatalf("expected 50+ fresh dorks, got %d", len(fresh))
+	if len(fresh) < 150 {
+		t.Fatalf("expected 150+ fresh dorks, got %d", len(fresh))
 	}
 	for _, d := range fresh {
 		if !strings.Contains(d, "site:.ch") {
@@ -64,6 +79,9 @@ func TestBuildFreshDorks(t *testing.T) {
 		"site:.ch inurl:view.php inurl:?",
 		"site:.ch inurl:promo.php inurl:?",
 		"site:.ch inurl:immobilier inurl:detail.php inurl:?",
+		"site:.ch inurl:product.php inurl:?id=",
+		"site:.ch inurl:Kauf-Suche.php inurl:?",
+		"site:.ch inurl:RegionRef inurl:.php inurl:?",
 	}
 	for _, want := range mustHave {
 		found := false
