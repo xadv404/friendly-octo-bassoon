@@ -13,14 +13,23 @@ import (
 	"github.com/bogdanfinn/tls-client/profiles"
 )
 
-const googleConsentCookie = "YES+"
-const googleSOCSCookie = "CAESHAgBEhJnd3NfMjAyMzA4MTAtMF9SQzIaAmRlIAEaBgiAo_CmBg"
+const (
+	googleConsentCookie = "YES+"
+	googleSOCSCookie    = "CAESHAgBEhJnd3NfMjAyMzA4MTAtMF9SQzIaAmRlIAEaBgiAo_CmBg"
+)
 
-func newGoogleTLSClient() (tls_client.HttpClient, error) {
+var googleTLSProfiles = []profiles.ClientProfile{
+	profiles.Chrome_131,
+	profiles.Chrome_133,
+	profiles.Chrome_124,
+}
+
+func newGoogleTLSClient(attempt int) (tls_client.HttpClient, error) {
 	jar := tls_client.NewCookieJar()
+	profile := googleTLSProfiles[attempt%len(googleTLSProfiles)]
 	opts := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(int(searchHTTPTimeout.Seconds())),
-		tls_client.WithClientProfile(profiles.Chrome_131),
+		tls_client.WithClientProfile(profile),
 		tls_client.WithCookieJar(jar),
 		tls_client.WithRandomTLSExtensionOrder(),
 	}
@@ -122,17 +131,25 @@ func setGoogleTLSHeaders(req *fhttp.Request, referer string) {
 }
 
 func googleTLSWarmUp(ctx context.Context, client tls_client.HttpClient) error {
-	_, code, err := googleTLSGet(ctx, client, googleHomeURL, "")
-	if err != nil {
-		return err
+	urls := []string{
+		googleHomeURL,
+		"https://www.google.ch/ncr",
 	}
-	if code != fhttp.StatusOK {
-		return fmt.Errorf("google warmup HTTP %d", code)
-	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-time.After(500 * time.Millisecond):
+	referer := ""
+	for _, u := range urls {
+		_, code, err := googleTLSGet(ctx, client, u, referer)
+		if err != nil {
+			return err
+		}
+		if code != fhttp.StatusOK && code != fhttp.StatusFound {
+			return fmt.Errorf("google warmup HTTP %d", code)
+		}
+		referer = googleHomeURL
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(googleJitter(400 * time.Millisecond)):
+		}
 	}
 	return nil
 }

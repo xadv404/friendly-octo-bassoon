@@ -46,12 +46,12 @@ func TestGoogleBackendLabel(t *testing.T) {
 	t.Setenv("SERPAPI_API_KEY", "")
 	t.Setenv("DISCOVER_PROXY", "")
 	ReloadProxyPool()
-	if got := GoogleBackendLabel(); got != "google" {
+	if got := GoogleBackendLabel(); got != "google direct" {
 		t.Fatalf("no proxy: got %q", got)
 	}
 	t.Setenv("DISCOVER_PROXY", "http://u:p:host.test:1234")
 	ReloadProxyPool()
-	if got := GoogleBackendLabel(); got != "google + proxy BP" {
+	if got := GoogleBackendLabel(); got != "google direct + proxy BP" {
 		t.Fatalf("with proxy: got %q", got)
 	}
 }

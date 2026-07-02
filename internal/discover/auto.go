@@ -2,7 +2,7 @@ package discover
 
 import "context"
 
-// autoFetcher délègue à Google (proxy BP ou SerpAPI).
+// autoFetcher = Google direct (proxy BP).
 type autoFetcher struct {
 	google *googleClient
 }

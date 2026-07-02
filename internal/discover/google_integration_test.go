@@ -17,8 +17,8 @@ func TestGoogleHeadlessLive(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
 	defer cancel()
 
-	for i := 0; i < 8; i++ {
-		urls, err := googleHeadlessFetch(ctx, "site:.ch inurl:php?id=", 0)
+	for i := 0; i < 5; i++ {
+		urls, err := googleHeadlessFetch(ctx, "site:.ch inurl:php?id=", 0, i)
 		t.Logf("headless %d: urls=%d err=%v", i+1, len(urls), err)
 		if len(urls) > 0 {
 			t.Log(urls[0])

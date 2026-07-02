@@ -12,7 +12,9 @@ var (
 	reGoogleSkip     = regexp.MustCompile(`(?i)(google\.|gstatic\.com|youtube\.com|webcache|googleusercontent)`)
 	reGoogleJSONURL  = regexp.MustCompile(`"(?:url|link|ou)":"(https?://[^"\\]+)"`)
 	reGoogleJSONArray = regexp.MustCompile(`\["(https?://[^"\\]+\.ch[^"\\]*)"(?:,|\])`)
-	reGoogleDataHref = regexp.MustCompile(`(?i)data-href="(https?://[^"]+)"`)
+	reGoogleDataHref  = regexp.MustCompile(`(?i)data-href="(https?://[^"]+)"`)
+	reGooglePing      = regexp.MustCompile(`(?i)ping="/url\?(?:[^"]*&)?q=([^&"]+)"`)
+	reGoogleCite     = regexp.MustCompile(`(?i)<cite[^>]*>(https?://[^<]+\.ch[^<]*)</cite>`)
 )
 
 func parseGoogleResults(html string) []string {
@@ -54,6 +56,12 @@ func parseGoogleResults(html string) []string {
 		add(m[1])
 	}
 	for _, m := range reGoogleDataHref.FindAllStringSubmatch(html, -1) {
+		add(m[1])
+	}
+	for _, m := range reGooglePing.FindAllStringSubmatch(html, -1) {
+		add(m[1])
+	}
+	for _, m := range reGoogleCite.FindAllStringSubmatch(html, -1) {
 		add(m[1])
 	}
 	if len(out) == 0 {
