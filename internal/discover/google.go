@@ -11,24 +11,26 @@ import (
 	"time"
 )
 
-const googleSearchURL = "https://www.google.com/search"
-
-var (
-	reGoogleURL  = regexp.MustCompile(`(?i)/url\?q=([^&"']+)`)
-	reGoogleSkip = regexp.MustCompile(`(?i)(google\.|gstatic\.com|youtube\.com|webcache)`)
+const (
+	googleSearchURL = "https://www.google.com/search"
+	googleMaxRetry  = 8
 )
 
-// googleClient collecte via Google Search (proxy rotatif recommandé).
+var (
+	reGoogleURL      = regexp.MustCompile(`(?i)/url\?q=([^&"']+)`)
+	reGoogleDirectCH = regexp.MustCompile(`(?i)https?://[a-zA-Z0-9._\-]+\.ch[^\s"'<>\\]*`)
+	reGoogleSkip     = regexp.MustCompile(`(?i)(google\.|gstatic\.com|youtube\.com|webcache)`)
+)
+
+// googleClient collecte via Google Search (proxy BP — IP rotative par requête).
 type googleClient struct {
-	http    *http.Client
 	delay   time.Duration
 	daySeed int
 }
 
 func newGoogleClient(daySeed int) *googleClient {
 	return &googleClient{
-		http:    newDiscoverHTTPClient(),
-		delay:   3 * time.Second,
+		delay:   2 * time.Second,
 		daySeed: daySeed,
 	}
 }
@@ -53,10 +55,33 @@ func (g *googleClient) FetchPage(ctx context.Context, domain string, subs bool, 
 	case <-time.After(g.delay):
 	}
 
-	return g.search(ctx, dork, start)
+	var lastErr error
+	for attempt := 0; attempt < googleMaxRetry; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(time.Duration(attempt) * time.Second):
+			}
+		}
+
+		urls, err := g.searchOnce(ctx, dork, start)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if len(urls) > 0 {
+			return urls, nil
+		}
+		lastErr = fmt.Errorf("google: page vide (retry %d/%d)", attempt+1, googleMaxRetry)
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, nil
 }
 
-func (g *googleClient) search(ctx context.Context, query string, start int) ([]string, error) {
+func (g *googleClient) searchOnce(ctx context.Context, query string, start int) ([]string, error) {
 	u, err := url.Parse(googleSearchURL)
 	if err != nil {
 		return nil, err
@@ -74,11 +99,11 @@ func (g *googleClient) search(ctx context.Context, query string, start int) ([]s
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", searchUserAgent)
-	req.Header.Set("Accept", "text/html,application/xhtml+xml")
-	req.Header.Set("Accept-Language", "fr-CH,fr;q=0.9")
+	setGoogleHeaders(req)
 
-	resp, err := g.http.Do(req)
+	// Nouveau client à chaque tentative → nouvelle IP via proxy BP.
+	client := newDiscoverHTTPClient()
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -93,11 +118,24 @@ func (g *googleClient) search(ctx context.Context, query string, start int) ([]s
 		return nil, err
 	}
 	html := string(body)
-	if isGoogleBlocked(html) {
-		return nil, fmt.Errorf("google: captcha/blocage (change de proxy)")
+	if len(html) < 1000 || isGoogleBlocked(html) {
+		return nil, fmt.Errorf("google: captcha/blocage ou JS requis (nouvelle IP au prochain essai)")
 	}
 
 	return filterSwissURLs(parseGoogleResults(html)), nil
+}
+
+func setGoogleHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", searchUserAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "fr-CH,fr;q=0.9,de-CH;q=0.8,de;q=0.7")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-Site", "none")
+	req.Header.Set("Sec-Fetch-User", "?1")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	req.AddCookie(&http.Cookie{Name: "CONSENT", Value: "YES+1"})
 }
 
 func parseGoogleResults(html string) []string {
@@ -113,6 +151,7 @@ func parseGoogleResults(html string) []string {
 		if err == nil && decoded != "" {
 			raw = decoded
 		}
+		raw = strings.TrimRight(raw, `.,;)`)
 		if !strings.HasPrefix(raw, "http://") && !strings.HasPrefix(raw, "https://") {
 			return
 		}
@@ -128,6 +167,11 @@ func parseGoogleResults(html string) []string {
 
 	for _, m := range reGoogleURL.FindAllStringSubmatch(html, -1) {
 		add(m[1])
+	}
+	if len(out) == 0 {
+		for _, m := range reGoogleDirectCH.FindAllString(html, -1) {
+			add(m)
+		}
 	}
 	return out
 }

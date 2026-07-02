@@ -7,7 +7,20 @@ func isBingBlocked(html string) bool {
 }
 
 func isGoogleBlocked(html string) bool {
-	return isSearchBlocked(html)
+	if isSearchBlocked(html) {
+		return true
+	}
+	lower := strings.ToLower(html)
+	for _, marker := range []string{
+		"google.com/sorry",
+		"/httpservice/retry/enablejs",
+		"emsg=sg_rel",
+	} {
+		if strings.Contains(lower, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func isSearchBlocked(html string) bool {
