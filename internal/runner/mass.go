@@ -10,6 +10,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/client"
 	"github.com/sqli-hunter/sqli-hunter/internal/extractor"
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
+	"github.com/sqli-hunter/sqli-hunter/internal/notify"
 	"github.com/sqli-hunter/sqli-hunter/internal/results"
 	"github.com/sqli-hunter/sqli-hunter/internal/scanner"
 	"github.com/sqli-hunter/sqli-hunter/internal/targets"
@@ -56,6 +57,9 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 	ext := extractor.New(extractClient,
 		func(d models.ExtractedData) {
 			store.AppendExtraction(d.FindingURL, d)
+			if em := results.EmailFromExtraction(d); em != "" && cfg.Notify != nil && cfg.Notify.Enabled() {
+				cfg.Notify.DumpOK(d, em)
+			}
 			if cfg.Opts.Verbose {
 				r.Printer.Extraction(d)
 			}
@@ -64,6 +68,11 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 		rateLimit,
 		cfg.Opts.PIIOnly,
 	)
+	ext.SetOnDumpFail(func(f models.Finding, reason string) {
+		if cfg.Notify != nil && cfg.Notify.Enabled() {
+			cfg.Notify.DumpFail(f, reason)
+		}
+	})
 
 	pool := extractor.NewPool(ext, cfg.Opts.ExtractThreads)
 	pool.Start(ctx)
@@ -118,6 +127,9 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 
 			onFinding := func(f models.Finding) {
 				r.Printer.Finding(f)
+				if cfg.Notify != nil && cfg.Notify.Enabled() {
+					cfg.Notify.Vuln(f)
+				}
 				pool.Submit(t, f)
 			}
 
@@ -170,8 +182,12 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 	report.OutputFiles = files
 
 	r.Printer.MassSummary(report.Scanned, total, report.Vulnerable, report.Findings, int(skipped.Load()), time.Since(start))
-	if n := store.NewEmails(); n > 0 {
-		r.Printer.Success(fmt.Sprintf("%d nouveaux emails → %s/emails/", n, cfg.OutputDir))
+	newEmails := store.NewEmails()
+	if newEmails > 0 {
+		r.Printer.Success(fmt.Sprintf("%d nouveaux emails → %s/emails/", newEmails, cfg.OutputDir))
+	}
+	if cfg.Notify != nil && cfg.Notify.Enabled() {
+		notify.ScanComplete(cfg.Notify, report.Scanned, total, report.Vulnerable, report.Findings, newEmails, notify.StockSummary(cfg.OutputDir))
 	}
 	for _, f := range files {
 		r.Printer.Success("→ " + f)

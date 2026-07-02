@@ -1,4 +1,4 @@
-package main
+package bot
 
 import "testing"
 
@@ -11,15 +11,15 @@ func TestProviderEmoji(t *testing.T) {
 		"unknown.ch": "📮",
 	}
 	for prov, want := range cases {
-		if got := providerEmoji(prov); got != want {
+		if got := ProviderEmoji(prov); got != want {
 			t.Errorf("%s => %q want %q", prov, got, want)
 		}
 	}
 }
 
-func TestStockMessageEmpty(t *testing.T) {
-	msg := stockMessage(config{resultsDir: t.TempDir()})
-	if msg == "" || !contains(msg, "vide") {
+func TestFRWelcome(t *testing.T) {
+	msg := fr.Welcome(frStockEmpty())
+	if msg == "" || !contains(msg, "MAIL LIST") {
 		t.Fatalf("got %q", msg)
 	}
 }

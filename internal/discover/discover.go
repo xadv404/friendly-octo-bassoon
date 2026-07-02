@@ -71,6 +71,7 @@ type Options struct {
 	PageBase    int  // curseur Bing persisté (discover_cursor.json)
 	DaySeed     int  // rotation dorks (0 = jour courant)
 	PersistCursor bool
+	FreshPass   bool // page 0 des dorks à fort rendement avant le curseur
 	Fetcher     CDXFetcher
 	OnProgress  func(fetched, kept int, page int)
 }
@@ -254,6 +255,24 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 	}
 
 	var fetched, kept, skipped, pagesFetched int
+
+	if opts.FreshPass && IsSearchEngineSource(opts.Source) {
+		fresh, err := runFreshPass(ctx, opts, opts.Fetcher, skipper, scanned, seen, w)
+		if err != nil {
+			return Result{}, err
+		}
+		fetched += fresh.fetched
+		kept += fresh.kept
+		skipped += fresh.skipped
+		if opts.Limit > 0 && kept >= opts.Limit {
+			res := Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath, PagesFetched: 0}
+			if opts.PersistCursor {
+				_ = SaveCursor(opts.ResultsDir, opts.PageBase)
+			}
+			return res, nil
+		}
+	}
+
 	for page := 0; ; page++ {
 		if ctx.Err() != nil {
 			return Result{}, ctx.Err()

@@ -13,9 +13,15 @@ import (
 type Extractor struct {
 	httpClient *client.HTTPClient
 	onExtract  func(models.ExtractedData)
+	onDumpFail func(models.Finding, string)
 	onProgress func(string)
 	rateLimit  func()
 	piiOnly    bool
+}
+
+// SetOnDumpFail enregistre un callback quand l'extraction PII échoue.
+func (e *Extractor) SetOnDumpFail(fn func(models.Finding, string)) {
+	e.onDumpFail = fn
 }
 
 // New crée un extracteur.
@@ -81,8 +87,9 @@ func (e *Extractor) ExtractAll(ctx context.Context, target models.ScanTarget, fi
 }
 
 func (e *Extractor) run(ctx context.Context, target models.ScanTarget, param string, vulnType models.VulnType, dbms, findingURL string) []models.ExtractedData {
+	finding := models.Finding{URL: findingURL, Parameter: param, VulnType: vulnType, DBMS: dbms}
 	if e.piiOnly {
-		return e.runPII(ctx, target, param, vulnType, dbms, findingURL)
+		return e.runPIIFromFinding(ctx, target, finding)
 	}
 	return e.runMetadata(ctx, target, param, vulnType, dbms, findingURL)
 }

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/sqli-hunter/sqli-hunter/internal/notify"
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
 	"github.com/sqli-hunter/sqli-hunter/internal/results"
 )
@@ -31,6 +32,9 @@ func runDaily(args []string) {
 	printer.Rule()
 	fmt.Println()
 
+	n := notify.Default()
+	notify.DailyLaunch(n, cfg.discoverLimit, cfg.urlConcurrency, cfg.outputDir)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -51,12 +55,18 @@ func runDaily(args []string) {
 
 	scopeFile, count, err := discoverURLs(ctx, cfg, printer)
 	if err != nil {
+		if n.Enabled() {
+			n.Error("Discover: " + err.Error())
+		}
 		printer.Error(err.Error())
 		os.Exit(1)
 	}
 	if count == 0 {
 		printer.Success("Rien de nouveau aujourd'hui — emails déjà à jour")
 		printEmailStock(printer, cfg.outputDir)
+		if n.Enabled() {
+			notify.DailyNoNew(n, cfg.outputDir)
+		}
 		return
 	}
 
@@ -65,6 +75,9 @@ func runDaily(args []string) {
 	cfg.massMode = true
 
 	if err := executeScan(ctx, cfg, printer); err != nil {
+		if n.Enabled() {
+			n.Error("Scan: " + err.Error())
+		}
 		printer.Error(err.Error())
 		os.Exit(1)
 	}
@@ -73,7 +86,7 @@ func runDaily(args []string) {
 }
 
 func parseDailyArgs(args []string) (config, error) {
-	scanArgs := append([]string{"-D", "ch", "--mass", "--url-threads", "64", "--discover-limit", "2000"}, args...)
+	scanArgs := append([]string{"-D", "ch", "--mass", "--url-threads", "64", "--discover-limit", "5000"}, args...)
 	return parseArgs(scanArgs)
 }
 

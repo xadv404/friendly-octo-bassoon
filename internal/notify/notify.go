@@ -1,0 +1,52 @@
+package notify
+
+import (
+	"sync"
+
+	"github.com/sqli-hunter/sqli-hunter/internal/i18n"
+	"github.com/sqli-hunter/sqli-hunter/internal/models"
+)
+
+// Sender envoie des alertes scan (Telegram whitelist).
+type Sender interface {
+	Enabled() bool
+	Launch(title, detail string)
+	DiscoverDone(kept, skipped, fetched int)
+	ScanStarted(urlCount int, listFile string)
+	Vuln(f models.Finding)
+	DumpFail(f models.Finding, reason string)
+	DumpOK(d models.ExtractedData, email string)
+	Complete(title, detail string)
+	Error(msg string)
+}
+
+// Noop désactive les notifications.
+type Noop struct{}
+
+func (Noop) Enabled() bool                       { return false }
+func (Noop) Launch(string, string)               {}
+func (Noop) DiscoverDone(int, int, int)          {}
+func (Noop) ScanStarted(int, string)             {}
+func (Noop) Vuln(models.Finding)                 {}
+func (Noop) DumpFail(models.Finding, string)     {}
+func (Noop) DumpOK(models.ExtractedData, string) {}
+func (Noop) Complete(string, string)             {}
+func (Noop) Error(string)                        {}
+
+var (
+	defaultOnce sync.Once
+	defaultSend Sender
+)
+
+// Default retourne le notifier Telegram (ou Noop si non configuré).
+func Default() Sender {
+	defaultOnce.Do(func() {
+		defaultSend = newFromEnv()
+	})
+	return defaultSend
+}
+
+// StockSummary formate le stock emails (i18n).
+func StockSummary(baseDir string) string {
+	return i18n.Load().Alert.StockSummary(baseDir)
+}

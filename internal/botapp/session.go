@@ -1,8 +1,7 @@
-package main
+package botapp
 
 import "sync"
 
-// pendingQty mémorise le fournisseur en attente d'une quantité saisie.
 type pendingQty struct {
 	mu   sync.Mutex
 	data map[int64]string

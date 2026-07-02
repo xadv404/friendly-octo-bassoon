@@ -18,6 +18,8 @@ func loadSqliHunterEnv() {
 		os.Getenv("SQLI_HUNTER_ENV"),
 		"sqli-hunter.env",
 		"config/sqli-hunter.env",
+		"tg-bot.env",
+		"config/tg-bot.env",
 	} {
 		if path == "" {
 			continue

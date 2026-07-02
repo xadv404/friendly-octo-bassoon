@@ -65,6 +65,20 @@ func newDDGClient(daySeed int) *ddgClient {
 	}
 }
 
+func (d *ddgClient) FetchDork(ctx context.Context, dork string, start int) ([]string, error) {
+	offset := 0
+	if start > 0 {
+		offset = 10 + (start-1)*15
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(d.delay):
+	}
+	client := newDDGHTTPClient()
+	return d.search(ctx, client, dork, offset)
+}
+
 func (d *ddgClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
 	dorks := DailyDorkOrder(BuildVulnDorks(domain, subs), d.daySeed)
 	if len(dorks) == 0 {

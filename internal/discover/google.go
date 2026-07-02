@@ -25,3 +25,15 @@ func (g *googleClient) FetchPage(ctx context.Context, domain string, subs bool, 
 	}
 	return g.fetchOpenSerp(ctx, domain, subs, absolutePage)
 }
+
+func (g *googleClient) FetchDork(ctx context.Context, dork string, start int) ([]string, error) {
+	if !UseOpenSerp() {
+		return nil, fmt.Errorf("google: configure OPENSERP_API_KEY dans sqli-hunter.env")
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(openSerpJitter(g.delay)):
+	}
+	return g.searchOpenSerp(ctx, dork, start)
+}

