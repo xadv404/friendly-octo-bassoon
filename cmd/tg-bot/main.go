@@ -16,6 +16,8 @@ import (
 //go:embed assets/logo.png
 var logoPNG []byte
 
+var pending = newPendingQty()
+
 type config struct {
 	token      string
 	resultsDir string
@@ -80,10 +82,25 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg config, msg *tgbotapi.Message) {
 
 	switch {
 	case text == "/start":
+		pending.Clear(msg.From.ID)
 		sendStart(bot, cfg, msg.Chat.ID)
 	default:
+		if provider, ok := pending.Get(msg.From.ID); ok {
+			handleQuantityInput(bot, cfg, msg.Chat.ID, msg.From.ID, provider, text)
+			return
+		}
 		reply(bot, msg.Chat.ID, hintText())
 	}
+}
+
+func handleQuantityInput(bot *tgbotapi.BotAPI, cfg config, chatID, userID int64, provider, text string) {
+	count, err := strconv.Atoi(strings.TrimSpace(text))
+	if err != nil || count <= 0 {
+		reply(bot, chatID, invalidQtyText(provider))
+		return
+	}
+	pending.Clear(userID)
+	sendEmails(bot, cfg, chatID, count, provider)
 }
 
 func startKeyboard() tgbotapi.InlineKeyboardMarkup {
@@ -186,24 +203,9 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 		answerCallback(bot, cq.ID, "")
 	case strings.HasPrefix(data, "prov:"):
 		provider := strings.TrimPrefix(data, "prov:")
-		qtyKeyboard := quantityKeyboard(provider)
-		editMenu(bot, chatID, cq.Message.MessageID, quantityText(provider), qtyKeyboard, isPhotoMessage(cq.Message))
+		pending.Set(cq.From.ID, provider)
+		reply(bot, chatID, quantityAskText(provider))
 		answerCallback(bot, cq.ID, "")
-	case strings.HasPrefix(data, "qty:"):
-		rest := strings.TrimPrefix(data, "qty:")
-		i := strings.LastIndex(rest, ":")
-		if i <= 0 || i >= len(rest)-1 {
-			answerCallback(bot, cq.ID, callbackError())
-			return
-		}
-		provider := rest[:i]
-		count, err := strconv.Atoi(rest[i+1:])
-		if err != nil || count <= 0 {
-			answerCallback(bot, cq.ID, callbackBadQty())
-			return
-		}
-		answerCallback(bot, cq.ID, callbackSending())
-		sendEmails(bot, cfg, chatID, count, provider)
 	default:
 		answerCallback(bot, cq.ID, "")
 	}
@@ -211,23 +213,6 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 
 func editStart(bot *tgbotapi.BotAPI, cfg config, chatID int64, msg *tgbotapi.Message) {
 	editMenu(bot, chatID, msg.MessageID, welcomeCaption(cfg), startKeyboard(), isPhotoMessage(msg))
-}
-
-func quantityKeyboard(provider string) tgbotapi.InlineKeyboardMarkup {
-	counts := []int{10, 50, 100, 500, 1000}
-	var rows [][]tgbotapi.InlineKeyboardButton
-	var row []tgbotapi.InlineKeyboardButton
-	for i, n := range counts {
-		row = append(row, tgbotapi.NewInlineKeyboardButtonData(qtyButtonLabel(n), fmt.Sprintf("qty:%s:%d", provider, n)))
-		if len(row) == 3 || i == len(counts)-1 {
-			rows = append(rows, row)
-			row = nil
-		}
-	}
-	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData(btnProviders(), "menu:extract"),
-	))
-	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
 }
 
 func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, providerQuery string) {

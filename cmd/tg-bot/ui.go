@@ -57,8 +57,12 @@ func extractMenuText() string {
 	return "🗂️ *Choisis un fournisseur*\n\n👇 Sélectionne le service :"
 }
 
-func quantityText(provider string) string {
-	return fmt.Sprintf("%s *%s*\n\n🔢 Combien d'emails ?", providerEmoji(provider), provider)
+func quantityAskText(provider string) string {
+	return fmt.Sprintf("%s *%s* sélectionné\n\n🔢 Envoie un *chiffre* — combien d'emails ?", providerEmoji(provider), provider)
+}
+
+func invalidQtyText(provider string) string {
+	return fmt.Sprintf("⚠️ Nombre invalide.\n\nEnvoie un chiffre pour *%s* (ex: `100`)", provider)
 }
 
 func emptyStockText() string {
@@ -74,7 +78,7 @@ func myIDText(userID int64) string {
 }
 
 func hintText() string {
-	return "👆 Tape /start puis utilise les boutons pour extraire."
+	return "👆 Tape /start puis choisis un fournisseur."
 }
 
 func deliveryCaption(provider string, count int) string {
@@ -87,27 +91,9 @@ func callbackSending() string { return "⚡ Envoi en cours…" }
 func callbackError() string   { return "❌ Erreur" }
 func callbackBadQty() string  { return "⚠️ Quantité invalide" }
 
-func btnExtract() string  { return "📥 Extraire" }
-func btnBack() string     { return "◀️ Retour" }
-func btnProviders() string { return "◀️ Fournisseurs" }
+func btnExtract() string { return "📥 Extraire" }
+func btnBack() string    { return "◀️ Retour" }
 
 func providerButtonLabel(provider string, count int) string {
 	return fmt.Sprintf("%s %s · %d", providerEmoji(provider), provider, count)
-}
-
-func qtyButtonLabel(n int) string {
-	switch n {
-	case 10:
-		return "🔟 10"
-	case 50:
-		return "5️⃣0️⃣ 50"
-	case 100:
-		return "💯 100"
-	case 500:
-		return "🚀 500"
-	case 1000:
-		return "🔥 1000"
-	default:
-		return fmt.Sprintf("%d", n)
-	}
 }
