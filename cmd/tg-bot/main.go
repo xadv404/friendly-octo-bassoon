@@ -221,6 +221,9 @@ func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, provi
 		return
 	}
 
+	log.Printf("bot extraction start chat=%d provider=%s count=%d", chatID, providerQuery, count)
+	reply(bot, chatID, extractionLaunchText(providerQuery, count))
+
 	taken, err := results.TakeEmailsForBot(cfg.resultsDir, providerQuery, count)
 	if err != nil {
 		reply(bot, chatID, "❌ "+err.Error())

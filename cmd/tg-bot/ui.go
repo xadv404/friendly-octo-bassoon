@@ -81,6 +81,10 @@ func hintText() string {
 	return "👆 Tape /start puis choisis un fournisseur."
 }
 
+func extractionLaunchText(provider string, count int) string {
+	return fmt.Sprintf("⚡ *Extraction lancée*\n\n%s `%s` · *%d* emails\n\n⏳ Préparation en cours…", providerEmoji(provider), provider, count)
+}
+
 func deliveryCaption(provider string, count int) string {
 	return fmt.Sprintf("✅ *%d emails* livrés\n%s `%s`\n\n🗑️ Retirés du stock", count, providerEmoji(provider), provider)
 }

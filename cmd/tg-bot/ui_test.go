@@ -17,6 +17,13 @@ func TestProviderEmoji(t *testing.T) {
 	}
 }
 
+func TestExtractionLaunchText(t *testing.T) {
+	msg := extractionLaunchText("gmail.com", 50)
+	if !contains(msg, "Extraction lancée") || !contains(msg, "gmail.com") || !contains(msg, "50") {
+		t.Fatalf("got %q", msg)
+	}
+}
+
 func TestStockMessageEmpty(t *testing.T) {
 	msg := stockMessage(config{resultsDir: t.TempDir()})
 	if msg == "" || !contains(msg, "vide") {
