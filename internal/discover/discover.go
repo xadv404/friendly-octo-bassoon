@@ -22,19 +22,19 @@ const (
 	SourceWayback   Source = "wayback"
 )
 
-// ParseSource interprète --source (défaut: auto).
+// ParseSource interprète --source (défaut: google).
 func ParseSource(s string) Source {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "wayback", "archive", "cdx":
 		return SourceWayback
-	case "google", "g":
-		return SourceGoogle
+	case "bing":
+		return SourceBing
 	case "duckduckgo", "ddg":
 		return SourceDDG
-	case "auto", "":
-		return SourceAuto
+	case "google", "g", "auto", "":
+		return SourceGoogle
 	default:
-		return SourceBing
+		return SourceGoogle
 	}
 }
 
@@ -90,7 +90,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, fmt.Errorf("domaine requis")
 	}
 	if opts.Source == "" {
-		opts.Source = SourceAuto
+		opts.Source = SourceGoogle
 	}
 	opts.Domain = NormalizeSwissDomain(opts.Domain)
 
@@ -109,7 +109,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 
 	if IsSwissWide(opts.Domain) {
 		if opts.Source == SourceWayback {
-			return Result{}, fmt.Errorf("découverte large: utilise --source auto|google|bing|duckduckgo")
+			return Result{}, fmt.Errorf("découverte large: utilise --source google")
 		}
 		return runVulnHunt(ctx, opts, skipper, scanned)
 	}
@@ -150,7 +150,7 @@ func loadScannedSkipper(opts Options) (*results.ScannedRegistry, error) {
 }
 
 func runSwissWide(ctx context.Context, opts Options, skipper *results.DumpRegistry) (Result, error) {
-	return Result{}, fmt.Errorf("mode seeds désactivé — utilise: sqli-hunter ch --source bing")
+	return Result{}, fmt.Errorf("mode seeds désactivé — utilise: sqli-hunter ch --source google")
 }
 
 type collectResult struct {

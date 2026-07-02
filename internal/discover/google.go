@@ -27,15 +27,15 @@ type googleClient struct {
 
 func newGoogleClient(daySeed int) *googleClient {
 	return &googleClient{
-		http:    newDiscoverHTTPClient(true),
+		http:    newDiscoverHTTPClient(),
 		delay:   3 * time.Second,
 		daySeed: daySeed,
 	}
 }
 
 func (g *googleClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
-	if !globalProxyPool.hasProxies() {
-		return nil, fmt.Errorf("google: configure DISCOVER_PROXIES (proxy rotatif requis)")
+	if !getProxyPool().hasProxies() {
+		return nil, fmt.Errorf("google: configure DISCOVER_PROXY dans sqli-hunter.env")
 	}
 
 	dorks := DailyDorkOrder(BuildVulnDorks(domain, subs), g.daySeed)

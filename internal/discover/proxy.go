@@ -1,20 +1,41 @@
 package discover
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-	"sync/atomic"
+	"sync"
 )
 
-// proxyPool rotation round-robin pour DISCOVER_PROXIES / DISCOVER_PROXY.
-type proxyPool struct {
-	proxies []*url.URL
-	seq     atomic.Uint64
+var (
+	proxyMu         sync.RWMutex
+	globalProxyPool = &proxyPool{}
+)
+
+func init() {
+	ReloadProxyPool()
 }
 
-var globalProxyPool = loadProxyPool()
+// ReloadProxyPool recharge DISCOVER_PROXY après chargement du .env.
+func ReloadProxyPool() {
+	proxyMu.Lock()
+	globalProxyPool = loadProxyPool()
+	proxyMu.Unlock()
+}
+
+func getProxyPool() *proxyPool {
+	proxyMu.RLock()
+	p := globalProxyPool
+	proxyMu.RUnlock()
+	return p
+}
+
+// proxyPool — un proxy suffit si l'IP change côté fournisseur (BP Proxy).
+type proxyPool struct {
+	proxies []*url.URL
+}
 
 func loadProxyPool() *proxyPool {
 	var raw []string
@@ -33,8 +54,8 @@ func loadProxyPool() *proxyPool {
 	p := &proxyPool{}
 	seen := make(map[string]struct{})
 	for _, s := range raw {
-		u, err := url.Parse(s)
-		if err != nil || u.Host == "" {
+		u, err := parseProxyURL(s)
+		if err != nil || u == nil || u.Host == "" {
 			continue
 		}
 		key := u.String()
@@ -47,33 +68,65 @@ func loadProxyPool() *proxyPool {
 	return p
 }
 
+// parseProxyURL accepte http://user:pass@host:port et http://user:pass:host:port (BP Proxy).
+func parseProxyURL(raw string) (*url.URL, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, fmt.Errorf("proxy vide")
+	}
+
+	if u, err := url.Parse(raw); err == nil && u.Host != "" {
+		if strings.Contains(raw, "@") || !strings.HasSuffix(strings.SplitN(u.Host, "@", 2)[len(strings.Split(u.Host, "@"))-1], ":") {
+			// standard user:pass@host:port
+			if u.User != nil || strings.Contains(u.Host, "@") {
+				return u, nil
+			}
+		}
+	}
+
+	// http://user:pass:host:port
+	scheme := "http"
+	rest := raw
+	if strings.HasPrefix(rest, "https://") {
+		scheme = "https"
+		rest = strings.TrimPrefix(rest, "https://")
+	} else if strings.HasPrefix(rest, "http://") {
+		rest = strings.TrimPrefix(rest, "http://")
+	}
+
+	parts := strings.Split(rest, ":")
+	if len(parts) == 4 {
+		user, pass, host, port := parts[0], parts[1], parts[2], parts[3]
+		return url.Parse(fmt.Sprintf("%s://%s:%s@%s:%s", scheme, url.PathEscape(user), url.PathEscape(pass), host, port))
+	}
+
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, err
+	}
+	if u.Host == "" {
+		return nil, fmt.Errorf("proxy invalide: %s", raw)
+	}
+	return u, nil
+}
+
 func (p *proxyPool) hasProxies() bool {
 	return p != nil && len(p.proxies) > 0
 }
 
-func (p *proxyPool) next() *url.URL {
+func (p *proxyPool) first() *url.URL {
 	if !p.hasProxies() {
 		return nil
 	}
-	i := p.seq.Add(1) - 1
-	return p.proxies[int(i)%len(p.proxies)]
+	return p.proxies[0]
 }
 
-func newDiscoverHTTPClient(rotate bool) *http.Client {
+func newDiscoverHTTPClient() *http.Client {
 	transport := &http.Transport{}
-	if globalProxyPool.hasProxies() {
-		transport.Proxy = func(req *http.Request) (*url.URL, error) {
-			if rotate {
-				if u := globalProxyPool.next(); u != nil {
-					return u, nil
-				}
-			} else if len(globalProxyPool.proxies) == 1 {
-				return globalProxyPool.proxies[0], nil
-			} else if u := globalProxyPool.next(); u != nil {
-				return u, nil
-			}
-			return http.ProxyFromEnvironment(req)
-		}
+	pool := getProxyPool()
+	if pool.hasProxies() {
+		proxy := pool.first()
+		transport.Proxy = http.ProxyURL(proxy)
 	} else {
 		transport.Proxy = http.ProxyFromEnvironment
 	}

@@ -32,7 +32,7 @@ type bingClient struct {
 
 func newBingClient(daySeed int) *bingClient {
 	return &bingClient{
-		http:    newDiscoverHTTPClient(false),
+		http:    newDiscoverHTTPClient(),
 		delay:   2 * time.Second,
 		daySeed: daySeed,
 	}
@@ -221,13 +221,11 @@ func defaultFetcher(source Source, daySeed int) CDXFetcher {
 	switch source {
 	case SourceWayback:
 		return newWaybackClient()
-	case SourceGoogle:
-		return newGoogleClient(daySeed)
+	case SourceBing:
+		return newBingClient(daySeed)
 	case SourceDDG:
 		return newDDGClient(daySeed)
-	case SourceAuto:
-		return newAutoFetcher(daySeed)
 	default:
-		return newBingClient(daySeed)
+		return newGoogleClient(daySeed)
 	}
 }

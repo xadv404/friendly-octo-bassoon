@@ -24,7 +24,7 @@ type ddgClient struct {
 
 func newDDGClient(daySeed int) *ddgClient {
 	return &ddgClient{
-		http:    newDiscoverHTTPClient(false),
+		http:    newDiscoverHTTPClient(),
 		delay:   2 * time.Second,
 		daySeed: daySeed,
 	}

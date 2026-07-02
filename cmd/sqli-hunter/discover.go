@@ -72,7 +72,7 @@ func runDiscover(args []string) {
 		OnProgress: func(fetched, kept, page int) {
 			src := cfg.source
 			if src == "" {
-				src = "bing"
+				src = "google"
 			}
 			fmt.Fprintf(os.Stderr, "\r  %s page %d — %d urls lues, %d gardées", src, page+1, fetched, kept)
 		},
@@ -105,7 +105,7 @@ func runDiscover(args []string) {
 }
 
 func parseDiscoverArgs(args []string) (discoverConfig, error) {
-	cfg := discoverConfig{subs: true, source: "bing", resultsDir: "results"}
+	cfg := discoverConfig{subs: true, source: "google", resultsDir: "results"}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
@@ -154,7 +154,7 @@ func parseDiscoverArgs(args []string) (discoverConfig, error) {
 		case arg == "--source":
 			i++
 			if i >= len(args) {
-				return cfg, fmt.Errorf("--source nécessite bing ou wayback")
+				return cfg, fmt.Errorf("--source nécessite google ou wayback")
 			}
 			cfg.source = args[i]
 		case arg == "--rescan":
@@ -190,13 +190,13 @@ func discoverNoFilterDiscover(cfg discoverConfig) bool {
 }
 
 func printDiscoverUsage() {
-	fmt.Print(`sqli-hunter discover — URLs suisses (.ch) via Bing (proxyless)
+	fmt.Print(`sqli-hunter discover — URLs suisses (.ch) via Google (proxy BP)
 
 Usage:
   sqli-hunter discover -d <domaine.ch> [options]
 
 Source:
-  --source <bing|wayback>     Collecteur [défaut: bing]
+  --source <google|wayback>   Collecteur [défaut: google]
   -d, --domain <ch|domaine.ch>  ch = URLs vuln .ch · ou un domaine pour wayback
       --subs                  Inclure sous-domaines [défaut: oui]
       --no-subs               Domaine exact uniquement
