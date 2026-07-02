@@ -42,3 +42,13 @@ func TestIsGoogleEnableJS(t *testing.T) {
 		t.Fatal("enablejs alone is not hard block")
 	}
 }
+
+func TestIsGoogleHardBlocked_NotJSBundle(t *testing.T) {
+	// Le mot "captcha" dans un bundle JS ne doit pas bloquer.
+	if isGoogleHardBlocked(`<script>var captcha_mode=false</script><div id="search">`) {
+		t.Fatal("captcha in JS bundle should not hard-block")
+	}
+	if !isGoogleHardBlocked(`<form id="captcha-form">`) {
+		t.Fatal("captcha form should hard-block")
+	}
+}
