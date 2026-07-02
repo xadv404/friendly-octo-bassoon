@@ -94,10 +94,6 @@ func (g *googleClient) fetchHTML(ctx context.Context, domain string, subs bool, 
 			}
 		}
 
-		if lastErr != nil && isGoogleRateLimited(lastErr) {
-			continue
-		}
-
 		urls, err := googleHeadlessFetch(ctx, dork, start)
 		if err != nil {
 			lastErr = err
@@ -226,12 +222,4 @@ func buildGoogleSearchURL(strat googleSearchStrategy, query string, start int) (
 	}
 	u.RawQuery = q.Encode()
 	return u.String(), nil
-}
-
-func isGoogleRateLimited(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "429") || strings.Contains(msg, "sorry")
 }
