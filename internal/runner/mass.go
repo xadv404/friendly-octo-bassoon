@@ -187,10 +187,7 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 		r.Printer.Success(fmt.Sprintf("%d nouveaux emails → %s/emails/", newEmails, cfg.OutputDir))
 	}
 	if cfg.Notify != nil && cfg.Notify.Enabled() {
-		detail := fmt.Sprintf("scanné: %d/%d\nvulns: %d\nfindings: %d\nnouveaux emails: %d\n%s",
-			report.Scanned, total, report.Vulnerable, report.Findings, newEmails,
-			notify.StockSummary(cfg.OutputDir))
-		cfg.Notify.Complete("Scan terminé", detail)
+		notify.ScanComplete(cfg.Notify, report.Scanned, total, report.Vulnerable, report.Findings, newEmails, notify.StockSummary(cfg.OutputDir))
 	}
 	for _, f := range files {
 		r.Printer.Success("→ " + f)

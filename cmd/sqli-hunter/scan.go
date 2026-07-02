@@ -71,7 +71,7 @@ func executeScan(ctx context.Context, cfg config, printer *output.Printer) error
 
 	n := notify.Default()
 	if n.Enabled() && cfg.listFile != "" {
-		n.Launch("Scan lancé", fmt.Sprintf("urls: %d\nfichier: %s", runCfg.UrlCount, cfg.listFile))
+		n.ScanStarted(runCfg.UrlCount, cfg.listFile)
 	}
 
 	r := &runner.Runner{Version: version, Printer: printer}

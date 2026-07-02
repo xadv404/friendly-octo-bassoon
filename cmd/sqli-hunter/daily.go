@@ -33,12 +33,7 @@ func runDaily(args []string) {
 	fmt.Println()
 
 	n := notify.Default()
-	if n.Enabled() {
-		n.Launch("Daily lancé", fmt.Sprintf(
-			"discover: .ch Google\nlimit: %d urls\nthreads: %d\noutput: %s/emails/",
-			cfg.discoverLimit, cfg.urlConcurrency, cfg.outputDir,
-		))
-	}
+	notify.DailyLaunch(n, cfg.discoverLimit, cfg.urlConcurrency, cfg.outputDir)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -70,7 +65,7 @@ func runDaily(args []string) {
 		printer.Success("Rien de nouveau aujourd'hui — emails déjà à jour")
 		printEmailStock(printer, cfg.outputDir)
 		if n.Enabled() {
-			n.Complete("Daily terminé", "Rien de nouveau\n"+notify.StockSummary(cfg.outputDir))
+			notify.DailyNoNew(n, cfg.outputDir)
 		}
 		return
 	}

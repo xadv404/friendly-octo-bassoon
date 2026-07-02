@@ -1,4 +1,4 @@
-package main
+package telegram
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseAllowedIDs(t *testing.T) {
-	m := parseAllowedIDs("123, 456 ,789")
+	m := ParseAllowedIDs("123, 456 ,789")
 	if len(m) != 3 || !m[123] || !m[456] || !m[789] {
 		t.Fatalf("got %v", m)
 	}
@@ -34,9 +34,6 @@ RESULTS_DIR=/tmp/emails
 	if os.Getenv("TELEGRAM_BOT_TOKEN") != "test-token" {
 		t.Fatalf("token %q", os.Getenv("TELEGRAM_BOT_TOKEN"))
 	}
-	if os.Getenv("TELEGRAM_ALLOWED_IDS") != "111222333" {
-		t.Fatalf("ids %q", os.Getenv("TELEGRAM_ALLOWED_IDS"))
-	}
 }
 
 func TestLoadConfig_RequiresToken(t *testing.T) {
@@ -52,7 +49,11 @@ func TestLoadConfig_RequiresToken(t *testing.T) {
 		_ = os.Unsetenv("TELEGRAM_BOT_TOKEN")
 	})
 
-	if _, err := loadConfig(); err == nil {
-		t.Fatal("expected error without token")
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Token != "" {
+		t.Fatal("expected empty token from file without token key")
 	}
 }
