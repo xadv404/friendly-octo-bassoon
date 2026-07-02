@@ -30,7 +30,12 @@ func main() {
 		log.Fatal(err)
 	}
 	bot.Debug = os.Getenv("TELEGRAM_DEBUG") == "1"
-	log.Printf("bot @%s — emails: %s", bot.Self.UserName, results.EmailsDir(cfg.resultsDir))
+	if len(cfg.allowed) == 0 {
+		log.Println("ATTENTION: TELEGRAM_ALLOWED_IDS vide — seul /myid accessible jusqu'à config")
+	} else {
+		log.Printf("bot @%s — whitelist: %d ID(s)", bot.Self.UserName, len(cfg.allowed))
+	}
+	log.Printf("emails: %s", results.EmailsDir(cfg.resultsDir))
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 30
@@ -44,65 +49,20 @@ func main() {
 	}
 }
 
-func loadConfig() (config, error) {
-	token := strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN"))
-	if token == "" {
-		return config{}, fmt.Errorf("TELEGRAM_BOT_TOKEN requis")
-	}
-
-	resultsDir := strings.TrimSpace(os.Getenv("RESULTS_DIR"))
-	if resultsDir == "" {
-		resultsDir = "results"
-	}
-
-	maxEmails := 10000
-	if v := strings.TrimSpace(os.Getenv("TELEGRAM_MAX_EMAILS")); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n <= 0 {
-			return config{}, fmt.Errorf("TELEGRAM_MAX_EMAILS invalide: %s", v)
-		}
-		maxEmails = n
-	}
-
-	allowed := parseAllowedIDs(os.Getenv("TELEGRAM_ALLOWED_IDS"))
-	return config{
-		token:      token,
-		resultsDir: resultsDir,
-		maxEmails:  maxEmails,
-		allowed:    allowed,
-	}, nil
-}
-
-func parseAllowedIDs(raw string) map[int64]bool {
-	out := make(map[int64]bool)
-	for _, part := range strings.Split(raw, ",") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-		id, err := strconv.ParseInt(part, 10, 64)
-		if err == nil {
-			out[id] = true
-		}
-	}
-	return out
-}
-
-func (c config) authorized(userID int64) bool {
-	if len(c.allowed) == 0 {
-		return true
-	}
-	return c.allowed[userID]
-}
-
 func handleMessage(bot *tgbotapi.BotAPI, cfg config, msg *tgbotapi.Message) {
-	if !cfg.authorized(msg.From.ID) {
-		reply(bot, msg.Chat.ID, "Accès refusé.")
+	text := strings.TrimSpace(msg.Text)
+	if text == "" {
 		return
 	}
 
-	text := strings.TrimSpace(msg.Text)
-	if text == "" {
+	// /myid toujours accessible pour configurer la whitelist
+	if text == "/myid" {
+		reply(bot, msg.Chat.ID, fmt.Sprintf("Ton ID Telegram: `%d`\n\nAjoute-le dans `TELEGRAM_ALLOWED_IDS` de tg-bot.env", msg.From.ID))
+		return
+	}
+
+	if !cfg.authorized(msg.From.ID) {
+		reply(bot, msg.Chat.ID, fmt.Sprintf("Accès refusé.\nTon ID: `%d`\nEnvoie /myid pour le récupérer.", msg.From.ID))
 		return
 	}
 
@@ -192,7 +152,7 @@ func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, provi
 		return
 	}
 
-	log.Printf("sent %d %s to chat %d", len(emails), provider, chatID)
+	log.Printf("sent %d %s to user %d", len(emails), provider, chatID)
 }
 
 func reply(bot *tgbotapi.BotAPI, chatID int64, text string) {
@@ -206,20 +166,17 @@ func reply(bot *tgbotapi.BotAPI, chatID int64, text string) {
 
 func helpText() string {
 	return strings.TrimSpace(`
-Bot emails sqli-hunter
+Bot emails sqli-hunter (accès whitelist)
 
 Commandes:
+/myid — affiche ton ID Telegram
 /list — fournisseurs disponibles
 /get 100 gmail — envoie un .txt avec 100 emails
-100 gmail — raccourci (nombre + fournisseur)
+100 gmail — raccourci
 
-Fournisseurs: gmail, bluewin, icloud, sunrise…
-Fichiers lus depuis results/emails/
-
-Variables:
-TELEGRAM_BOT_TOKEN (obligatoire)
-RESULTS_DIR (défaut: results)
-TELEGRAM_ALLOWED_IDS (optionnel, IDs séparés par virgule)
-TELEGRAM_MAX_EMAILS (défaut: 10000)
+Config: tg-bot.env (non versionné)
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_ALLOWED_IDS=123456789
+RESULTS_DIR=results
 `)
 }

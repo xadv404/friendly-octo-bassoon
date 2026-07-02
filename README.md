@@ -152,17 +152,20 @@ Une adresse par ligne, sans préfixe ni rapport JSON/SQL par site.
 Envoie les emails extraits en fichier `.txt` sur demande.
 
 ```bash
-# 1. Créer un bot via @BotFather → récupérer le token
-export TELEGRAM_BOT_TOKEN="123456:ABC..."
+# 1. Config locale (token + whitelist)
+cp tg-bot.env.example tg-bot.env
+# Éditer tg-bot.env → token + ton ID Telegram
 
-# 2. Lancer le bot (lit results/emails/)
+# 2. Lancer le bot
 go build -o tg-bot ./cmd/tg-bot
 ./tg-bot
 ```
 
-Dans Telegram :
+**Whitelist obligatoire** — seuls les IDs dans `TELEGRAM_ALLOWED_IDS` ont accès.
+Envoie `/myid` au bot pour obtenir ton ID Telegram, puis ajoute-le dans `tg-bot.env`.
 
 ```
+/myid              → ton ID Telegram (toujours accessible)
 /list              → fournisseurs dispo + stock
 100 gmail          → fichier gmail.com_100.txt
 /get 50 bluewin    → 50 emails bluewin.ch
@@ -170,10 +173,12 @@ Dans Telegram :
 
 | Variable | Description |
 |----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | Token BotFather (obligatoire) |
+| `TELEGRAM_BOT_TOKEN` | Token BotFather (dans `tg-bot.env`) |
+| `TELEGRAM_ALLOWED_IDS` | **Obligatoire** — IDs autorisés (virgule) |
 | `RESULTS_DIR` | Dossier résultats [défaut: `results`] |
-| `TELEGRAM_ALLOWED_IDS` | IDs Telegram autorisés (ex: `123,456`) |
 | `TELEGRAM_MAX_EMAILS` | Max par requête [défaut: `10000`] |
+
+> Ne commite jamais `tg-bot.env`. Si le token a fuité, régénère-le via @BotFather.
 
 ## Installation
 
