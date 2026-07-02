@@ -103,7 +103,7 @@ Fichiers d'état :
 
 ## Découverte d'URLs (`discover`)
 
-Collecte via **DuckDuckGo** proxyless par défaut (`html.duckduckgo.com/html/`).
+Collecte via **DuckDuckGo HTML scraping** (`html.duckduckgo.com/html/` — POST, vqd, pagination).
 
 ```bash
 ./sqli-hunter daily
@@ -115,7 +115,7 @@ Collecte via **DuckDuckGo** proxyless par défaut (`html.duckduckgo.com/html/`).
 
 | `--source` | Moteur |
 |------------|--------|
-| `duckduckgo` | DDG HTML proxyless [défaut] |
+| `duckduckgo` | DDG HTML scraping [défaut] |
 | `google` | SerpAPI `google_light` (`SERPAPI_API_KEY`) |
 | `wayback` | Archive (1 domaine) |
 

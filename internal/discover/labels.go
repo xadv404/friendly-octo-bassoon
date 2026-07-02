@@ -6,7 +6,7 @@ func DiscoverBackendLabel(source Source) string {
 	case SourceGoogle:
 		return GoogleBackendLabel()
 	case SourceDDG, SourceAuto:
-		return "duckduckgo (proxyless)"
+		return "duckduckgo (scraping)"
 	case SourceBing:
 		return "bing"
 	default:
