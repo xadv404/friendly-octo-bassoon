@@ -111,6 +111,9 @@ func TestIsScannable_RejectsJunk(t *testing.T) {
 		"not-a-url",
 		"https://css.ch/page",
 		"https://example.com/page.php?id=1",
+		"https://git.wsl.ch/EnviDat/ckan/-/blob/main/app.js?ref=tags",
+		"https://shop.ch/assets/app.min.js?v=1",
+		"https://shop.ch/static/style.css?x=1",
 	}
 	for _, u := range junk {
 		if isScannable(u) {

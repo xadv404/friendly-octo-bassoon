@@ -14,6 +14,17 @@ func hasQueryParams(raw string) bool {
 	return len(u.Query()) > 0
 }
 
+var noiseURLSuffixes = []string{
+	".min.js", ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
+	".woff", ".woff2", ".ttf", ".eot", ".pdf", ".zip", ".rar", ".mp4", ".mp3",
+}
+
+var noiseURLFragments = []string{
+	"/blob/", "/-/blob/", "/-/tree/", "/-/raw/", "/git/", "/assets/", "/static/",
+	"/ckeditor/", "/fckeditor/", "/tinymce/", "googleusercontent", "gstatic.com",
+	"facebook.com", "twitter.com", "linkedin.com", "youtube.com",
+}
+
 // isScannable rejette le bruit Wayback et garde les URLs .ch avec paramètres.
 func isScannable(raw string) bool {
 	if len(raw) > 2048 {
@@ -34,7 +45,30 @@ func isScannable(raw string) bool {
 	if !IsSwissURL(raw) {
 		return false
 	}
+	if isNoiseURL(raw) {
+		return false
+	}
 	return hasQueryParams(raw)
+}
+
+func isNoiseURL(raw string) bool {
+	lower := strings.ToLower(raw)
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	path := strings.ToLower(u.Path)
+	for _, suf := range noiseURLSuffixes {
+		if strings.HasSuffix(path, suf) {
+			return true
+		}
+	}
+	for _, frag := range noiseURLFragments {
+		if strings.Contains(lower, frag) {
+			return true
+		}
+	}
+	return false
 }
 
 // normalizeURL nettoie les artefacts Wayback (:80, espaces).
