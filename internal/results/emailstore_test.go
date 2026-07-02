@@ -49,6 +49,32 @@ func TestResolveProvider(t *testing.T) {
 	}
 }
 
+func TestResolveProvider_YahooDomains(t *testing.T) {
+	dir := t.TempDir()
+	emailsDir := filepath.Join(dir, "emails")
+	if err := os.MkdirAll(emailsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"yahoo.ch.txt", "yahoo.com.txt"} {
+		if err := os.WriteFile(filepath.Join(emailsDir, name), []byte("x@test\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	p, err := ResolveProvider(dir, "yahoo.ch")
+	if err != nil || p != "yahoo.ch" {
+		t.Fatalf("yahoo.ch: %q %v", p, err)
+	}
+	p, err = ResolveProvider(dir, "yahoo.com")
+	if err != nil || p != "yahoo.com" {
+		t.Fatalf("yahoo.com: %q %v", p, err)
+	}
+	_, err = ResolveProvider(dir, "yahoo")
+	if err == nil {
+		t.Fatal("expected ambiguous error for yahoo")
+	}
+}
+
 func TestListProviders(t *testing.T) {
 	dir := t.TempDir()
 	emailsDir := filepath.Join(dir, "emails")

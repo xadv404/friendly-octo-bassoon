@@ -18,6 +18,7 @@ type ProviderInfo struct {
 	Count    int
 }
 
+// Raccourcis sans TLD ambigu (yahoo.ch ≠ yahoo.com, gmx.ch ≠ gmx.de…).
 var providerAliases = map[string]string{
 	"gmail":      "gmail.com",
 	"googlemail": "gmail.com",
@@ -27,8 +28,6 @@ var providerAliases = map[string]string{
 	"hispeed":    "hispeed.ch",
 	"hotmail":    "hotmail.com",
 	"outlook":    "outlook.com",
-	"yahoo":      "yahoo.com",
-	"gmx":        "gmx.ch",
 }
 
 // EmailsDir retourne le chemin results/emails/.
@@ -98,8 +97,13 @@ func ResolveProvider(baseDir, query string) (string, error) {
 	var matches []string
 	for _, p := range providers {
 		name := p.Provider
+		if name == query {
+			matches = append(matches, name)
+			continue
+		}
+		// « yahoo » sans TLD : ambigu si yahoo.ch et yahoo.com coexistent.
 		base := strings.SplitN(name, ".", 2)[0]
-		if name == query || base == query || strings.HasPrefix(name, query+".") {
+		if base == query {
 			matches = append(matches, name)
 		}
 	}

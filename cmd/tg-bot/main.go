@@ -146,7 +146,7 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 		var rows [][]tgbotapi.InlineKeyboardButton
 		var row []tgbotapi.InlineKeyboardButton
 		for i, p := range list {
-			label := fmt.Sprintf("%s (%d)", shortProvider(p.Provider), p.Count)
+			label := fmt.Sprintf("%s (%d)", p.Provider, p.Count)
 			row = append(row, tgbotapi.NewInlineKeyboardButtonData(label, "prov:"+p.Provider))
 			if len(row) == 2 || i == len(list)-1 {
 				rows = append(rows, row)
@@ -169,13 +169,14 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 		_, _ = bot.Send(edit)
 		answerCallback(bot, cq.ID, "")
 	case strings.HasPrefix(data, "qty:"):
-		parts := strings.Split(strings.TrimPrefix(data, "qty:"), ":")
-		if len(parts) != 2 {
+		rest := strings.TrimPrefix(data, "qty:")
+		i := strings.LastIndex(rest, ":")
+		if i <= 0 || i >= len(rest)-1 {
 			answerCallback(bot, cq.ID, "Erreur")
 			return
 		}
-		provider := parts[0]
-		count, err := strconv.Atoi(parts[1])
+		provider := rest[:i]
+		count, err := strconv.Atoi(rest[i+1:])
 		if err != nil || count <= 0 {
 			answerCallback(bot, cq.ID, "Quantité invalide")
 			return
@@ -202,13 +203,6 @@ func quantityKeyboard(provider string) tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardButtonData("← Fournisseurs", "menu:extract"),
 	))
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
-}
-
-func shortProvider(p string) string {
-	if i := strings.Index(p, "."); i > 0 {
-		return p[:i]
-	}
-	return p
 }
 
 func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, providerQuery string) {
