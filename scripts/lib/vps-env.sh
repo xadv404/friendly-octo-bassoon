@@ -5,18 +5,30 @@ set -euo pipefail
 VPS_ENV_LOADED=0
 
 vps_repo_root() {
-  local root
-  root="$(cd "$(dirname "${BASH_SOURCE[1]}")/.." && pwd)"
-  echo "$root"
+  local dir
+  dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  # scripts/lib → repo root
+  if [[ "$(basename "$(dirname "$dir")")" == "scripts" ]]; then
+    echo "$(cd "$dir/../.." && pwd)"
+    return
+  fi
+  echo "$(cd "$dir/.." && pwd)"
 }
 
 vps_load_dotenv() {
   local path="$1"
   [[ -f "$path" ]] || return 1
-  set -a
-  # shellcheck disable=SC1090
-  source <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$path" | grep -v '^#' || true)
-  set +a
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ -z "$line" ]] && continue
+    [[ "$line" != *=* ]] && continue
+    local key="${line%%=*}"
+    local val="${line#*=}"
+    key="$(echo "$key" | sed 's/[[:space:]]*$//')"
+    val="$(echo "$val" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/^"//;s/"$//;s/^'"'"'//;s/'"'"'$//')"
+    [[ -n "$key" ]] && export "$key=$val"
+  done < "$path"
   return 0
 }
 

@@ -7,5 +7,6 @@ sqli-hunter.env
 config/sqli-hunter.env
 vps.env
 config/vps.env
+.ssh/
 *.pem
 id_rsa_vps*
