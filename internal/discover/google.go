@@ -3,17 +3,16 @@ package discover
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"time"
+
+	tls_client "github.com/bogdanfinn/tls-client"
 )
 
 const (
-	googleHomeURL   = "https://www.google.ch/"
-	googleMaxRetry  = 8
+	googleHomeURL    = "https://www.google.ch/"
+	googleMaxRetry   = 8
 	googleResultsNum = 10
 )
 
@@ -79,8 +78,14 @@ func (g *googleClient) fetchHTML(ctx context.Context, domain string, subs bool, 
 			case <-time.After(time.Duration(attempt*2) * time.Second):
 			}
 		}
-		// Un client par essai (cookie jar + même IP proxy pour warmup + recherche).
-		client := newGoogleHTTPClient()
+		client, err := newGoogleTLSClient()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if attempt > 0 {
+			resetGoogleTLSProxy(client)
+		}
 		urls, err := g.searchHTML(ctx, client, dork, start)
 		if err != nil {
 			lastErr = err
@@ -95,24 +100,6 @@ func (g *googleClient) fetchHTML(ctx context.Context, domain string, subs bool, 
 		return nil, lastErr
 	}
 	return nil, nil
-}
-
-func newGoogleHTTPClient() *http.Client {
-	jar, _ := cookiejar.New(nil)
-	return &http.Client{
-		Timeout:   searchHTTPTimeout,
-		Transport: newProxyTransport(),
-		Jar:       jar,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if strings.Contains(req.URL.String(), "/sorry") {
-				return http.ErrUseLastResponse
-			}
-			if len(via) >= 5 {
-				return http.ErrUseLastResponse
-			}
-			return nil
-		},
-	}
 }
 
 type googleSearchStrategy struct {
@@ -130,23 +117,23 @@ func googleSearchStrategies() []googleSearchStrategy {
 			},
 		},
 		{
-			baseURL: "https://www.google.ch/search",
-			params: map[string]string{
-				"gbv": "2",
-			},
-		},
-		{
 			baseURL: "https://www.google.com/search",
 			params: map[string]string{
 				"gbv": "1",
 				"udm": "14",
 			},
 		},
+		{
+			baseURL: "https://www.google.ch/search",
+			params: map[string]string{
+				"gbv": "2",
+			},
+		},
 	}
 }
 
-func (g *googleClient) searchHTML(ctx context.Context, client *http.Client, query string, start int) ([]string, error) {
-	if err := warmUpGoogle(ctx, client); err != nil {
+func (g *googleClient) searchHTML(ctx context.Context, client tls_client.HttpClient, query string, start int) ([]string, error) {
+	if err := googleTLSWarmUp(ctx, client); err != nil {
 		return nil, fmt.Errorf("google warmup: %w", err)
 	}
 
@@ -158,6 +145,14 @@ func (g *googleClient) searchHTML(ctx context.Context, client *http.Client, quer
 			lastErr = err
 			continue
 		}
+		if isGoogleConsentPage(html) {
+			html, err = acceptGoogleConsent(ctx, client, html, strat.baseURL)
+			if err != nil {
+				lastErr = err
+				continue
+			}
+			urls = filterSwissURLs(parseGoogleResults(html))
+		}
 		if len(urls) > 0 {
 			return urls, nil
 		}
@@ -166,7 +161,7 @@ func (g *googleClient) searchHTML(ctx context.Context, client *http.Client, quer
 			continue
 		}
 		if isGoogleEnableJS(html) {
-			lastErr = fmt.Errorf("google: enablejs (stratégie %s)", strat.baseURL)
+			lastErr = fmt.Errorf("google: enablejs")
 			continue
 		}
 		lastErr = fmt.Errorf("google: page vide")
@@ -174,33 +169,36 @@ func (g *googleClient) searchHTML(ctx context.Context, client *http.Client, quer
 	return nil, lastErr
 }
 
-func warmUpGoogle(ctx context.Context, client *http.Client) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, googleHomeURL, nil)
-	if err != nil {
-		return err
-	}
-	setGoogleHeaders(req, "")
-	req.AddCookie(&http.Cookie{Name: "CONSENT", Value: googleConsentCookie})
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-time.After(400 * time.Millisecond):
-	}
-	return nil
-}
-
-func (g *googleClient) doGoogleSearch(ctx context.Context, client *http.Client, strat googleSearchStrategy, query string, start int, referer string) ([]string, string, error) {
-	u, err := url.Parse(strat.baseURL)
+func (g *googleClient) doGoogleSearch(ctx context.Context, client tls_client.HttpClient, strat googleSearchStrategy, query string, start int, referer string) ([]string, string, error) {
+	searchURL, err := buildGoogleSearchURL(strat, query, start)
 	if err != nil {
 		return nil, "", err
+	}
+
+	html, code, err := googleTLSGet(ctx, client, searchURL, referer)
+	if err != nil {
+		return nil, "", err
+	}
+	if code == 429 {
+		return nil, html, fmt.Errorf("google HTTP 429")
+	}
+	if code != 200 {
+		return nil, html, fmt.Errorf("google HTTP %d", code)
+	}
+	if len(html) < 500 {
+		return nil, html, fmt.Errorf("google: réponse trop courte")
+	}
+	if strings.Contains(html, "/sorry") {
+		return nil, html, fmt.Errorf("google: sorry redirect")
+	}
+
+	return filterSwissURLs(parseGoogleResults(html)), html, nil
+}
+
+func buildGoogleSearchURL(strat googleSearchStrategy, query string, start int) (string, error) {
+	u, err := url.Parse(strat.baseURL)
+	if err != nil {
+		return "", err
 	}
 	q := u.Query()
 	q.Set("q", query)
@@ -215,60 +213,5 @@ func (g *googleClient) doGoogleSearch(ctx context.Context, client *http.Client, 
 		q.Set(k, v)
 	}
 	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, "", err
-	}
-	setGoogleHeaders(req, referer)
-	req.AddCookie(&http.Cookie{Name: "CONSENT", Value: googleConsentCookie})
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, "", fmt.Errorf("google HTTP 429")
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("google HTTP %d", resp.StatusCode)
-	}
-	if strings.Contains(resp.Request.URL.String(), "/sorry") {
-		return nil, "", fmt.Errorf("google: sorry redirect")
-	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
-	if err != nil {
-		return nil, "", err
-	}
-	html := string(body)
-	if len(html) < 500 {
-		return nil, html, fmt.Errorf("google: réponse trop courte")
-	}
-
-	return filterSwissURLs(parseGoogleResults(html)), html, nil
-}
-
-const googleConsentCookie = "YES+cb.20210720-07-p0.fr+FX+667"
-
-func setGoogleHeaders(req *http.Request, referer string) {
-	req.Header.Set("User-Agent", searchUserAgent)
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
-	req.Header.Set("Accept-Language", "fr-CH,fr;q=0.9,de-CH;q=0.8,de;q=0.7,en;q=0.4")
-	req.Header.Set("Cache-Control", "max-age=0")
-	req.Header.Set("Sec-CH-UA", `"Chromium";v="131", "Not_A Brand";v="24", "Google Chrome";v="131"`)
-	req.Header.Set("Sec-CH-UA-Mobile", "?0")
-	req.Header.Set("Sec-CH-UA-Platform", `"Windows"`)
-	req.Header.Set("Sec-Fetch-Dest", "document")
-	req.Header.Set("Sec-Fetch-Mode", "navigate")
-	if referer == "" {
-		req.Header.Set("Sec-Fetch-Site", "none")
-	} else {
-		req.Header.Set("Sec-Fetch-Site", "same-origin")
-		req.Header.Set("Referer", referer)
-	}
-	req.Header.Set("Sec-Fetch-User", "?1")
-	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	return u.String(), nil
 }
