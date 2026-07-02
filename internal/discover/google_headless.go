@@ -12,7 +12,7 @@ import (
 	"github.com/go-rod/stealth"
 )
 
-func googleHeadlessSearch(ctx context.Context, searchURL string) (string, error) {
+func googleHeadlessSearch(ctx context.Context, searchURL string) (string, []string, error) {
 	l := launcher.New().
 		Headless(true).
 		NoSandbox(true).
@@ -32,12 +32,12 @@ func googleHeadlessSearch(ctx context.Context, searchURL string) (string, error)
 
 	controlURL, err := l.Launch()
 	if err != nil {
-		return "", fmt.Errorf("google headless: %w", err)
+		return "", nil, fmt.Errorf("google headless: %w", err)
 	}
 
 	browser := rod.New().ControlURL(controlURL)
 	if err := browser.Connect(); err != nil {
-		return "", fmt.Errorf("google headless connect: %w", err)
+		return "", nil, fmt.Errorf("google headless connect: %w", err)
 	}
 	defer browser.MustClose()
 
@@ -47,49 +47,82 @@ func googleHeadlessSearch(ctx context.Context, searchURL string) (string, error)
 
 	page, err := stealth.Page(browser)
 	if err != nil {
-		return "", fmt.Errorf("google headless page: %w", err)
+		return "", nil, fmt.Errorf("google headless page: %w", err)
 	}
 	defer page.MustClose()
 
 	page = page.Timeout(60 * time.Second)
 	if err := page.Navigate(googleHomeURL); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if err := page.WaitLoad(); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	time.Sleep(600 * time.Millisecond)
 
 	if err := page.Navigate(searchURL); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if err := page.WaitLoad(); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	time.Sleep(800 * time.Millisecond)
 
-	html, err := page.HTML()
+	html, err := googleHeadlessPageHTML(page)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if isGoogleConsentPage(html) {
 		_ = submitGoogleConsent(page)
 		time.Sleep(1500 * time.Millisecond)
 		_ = page.WaitLoad()
-		html, err = page.HTML()
-		if err != nil {
-			return "", err
-		}
+		html, _ = googleHeadlessPageHTML(page)
 	}
-	if isGoogleEnableJS(html) {
-		time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
+	_ = page.WaitLoad()
+
+	urls := googleHeadlessExtractURLs(page)
+	if len(urls) == 0 {
+		html, err = googleHeadlessPageHTML(page)
+		if err != nil {
+			return "", nil, err
+		}
+		urls = parseGoogleResults(html)
+	}
+	return html, urls, nil
+}
+
+func googleHeadlessPageHTML(page *rod.Page) (string, error) {
+	var lastErr error
+	for i := 0; i < 4; i++ {
+		html, err := page.HTML()
+		if err == nil {
+			return html, nil
+		}
+		lastErr = err
+		time.Sleep(500 * time.Millisecond)
 		_ = page.WaitLoad()
-		html, err = page.HTML()
-		if err != nil {
-			return "", err
-		}
 	}
-	return html, nil
+	return "", lastErr
+}
+
+func googleHeadlessExtractURLs(page *rod.Page) []string {
+	links, err := page.Elements("a")
+	if err != nil {
+		return nil
+	}
+	var hrefs []string
+	for _, link := range links {
+		href, err := link.Attribute("href")
+		if err != nil || href == nil || *href == "" {
+			continue
+		}
+		hrefs = append(hrefs, *href)
+	}
+	if len(hrefs) == 0 {
+		return nil
+	}
+	return parseGoogleResults(strings.Join(hrefs, "\n"))
 }
 
 func submitGoogleConsent(page *rod.Page) error {
@@ -138,14 +171,14 @@ func googleHeadlessFetch(ctx context.Context, query string, start int) ([]string
 	if err != nil {
 		return nil, err
 	}
-	html, err := googleHeadlessSearch(ctx, searchURL)
+	html, urls, err := googleHeadlessSearch(ctx, searchURL)
 	if err != nil {
 		return nil, err
 	}
 	if isGoogleHardBlocked(html) || strings.Contains(html, "/sorry") {
 		return nil, fmt.Errorf("google headless: blocage")
 	}
-	urls := filterSwissURLs(parseGoogleResults(html))
+	urls = filterSwissURLs(urls)
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("google headless: page vide")
 	}
