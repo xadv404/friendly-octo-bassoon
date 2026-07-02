@@ -18,7 +18,7 @@ type ProviderInfo struct {
 	Count    int
 }
 
-// Raccourcis sans TLD ambigu (yahoo.ch ≠ yahoo.com, gmx.ch ≠ gmx.de…).
+// Raccourcis sans TLD ambigu (yahoo.ch ≠ yahoo.com, gmx.ch ≠ gmx.com…).
 var providerAliases = map[string]string{
 	"gmail":      "gmail.com",
 	"googlemail": "gmail.com",

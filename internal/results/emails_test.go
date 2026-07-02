@@ -16,6 +16,8 @@ func TestEmailProvider(t *testing.T) {
 		"x@icloud.com":     "icloud.com",
 		"a@yahoo.ch":       "yahoo.ch",
 		"b@yahoo.com":      "yahoo.com",
+		"c@gmx.ch":         "gmx.ch",
+		"d@gmx.com":        "gmx.com",
 		"bad":              "",
 	}
 	for email, want := range cases {
@@ -87,6 +89,30 @@ func TestEmailWriter_YahooDomainsSeparate(t *testing.T) {
 	}
 	if !strings.Contains(string(com), "b@yahoo.com") || strings.Contains(string(com), "yahoo.ch") {
 		t.Fatalf("yahoo.com.txt:\n%s", com)
+	}
+}
+
+func TestEmailWriter_GmxDomainsSeparate(t *testing.T) {
+	dir := t.TempDir()
+	w, err := NewEmailWriter(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, em := range []string{"a@gmx.ch", "b@gmx.com"} {
+		if err := w.Append(em); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	ch, _ := os.ReadFile(filepath.Join(dir, "emails", "gmx.ch.txt"))
+	com, _ := os.ReadFile(filepath.Join(dir, "emails", "gmx.com.txt"))
+	if !strings.Contains(string(ch), "a@gmx.ch") {
+		t.Fatalf("gmx.ch.txt:\n%s", ch)
+	}
+	if !strings.Contains(string(com), "b@gmx.com") {
+		t.Fatalf("gmx.com.txt:\n%s", com)
 	}
 }
 

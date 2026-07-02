@@ -75,6 +75,32 @@ func TestResolveProvider_YahooDomains(t *testing.T) {
 	}
 }
 
+func TestResolveProvider_GmxDomains(t *testing.T) {
+	dir := t.TempDir()
+	emailsDir := filepath.Join(dir, "emails")
+	if err := os.MkdirAll(emailsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"gmx.ch.txt", "gmx.com.txt"} {
+		if err := os.WriteFile(filepath.Join(emailsDir, name), []byte("x@test\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	p, err := ResolveProvider(dir, "gmx.ch")
+	if err != nil || p != "gmx.ch" {
+		t.Fatalf("gmx.ch: %q %v", p, err)
+	}
+	p, err = ResolveProvider(dir, "gmx.com")
+	if err != nil || p != "gmx.com" {
+		t.Fatalf("gmx.com: %q %v", p, err)
+	}
+	_, err = ResolveProvider(dir, "gmx")
+	if err == nil {
+		t.Fatal("expected ambiguous error for gmx")
+	}
+}
+
 func TestListProviders(t *testing.T) {
 	dir := t.TempDir()
 	emailsDir := filepath.Join(dir, "emails")
