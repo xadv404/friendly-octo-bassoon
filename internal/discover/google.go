@@ -78,15 +78,27 @@ func (g *googleClient) fetchHTML(ctx context.Context, domain string, subs bool, 
 			case <-time.After(time.Duration(attempt*2) * time.Second):
 			}
 		}
+		// Essai rapide HTTP/TLS (gbv=1), puis headless Chromium si enablejs.
 		client, err := newGoogleTLSClient()
 		if err != nil {
 			lastErr = err
+		} else {
+			if attempt > 0 {
+				resetGoogleTLSProxy(client)
+			}
+			urls, err := g.searchHTML(ctx, client, dork, start)
+		if err != nil {
+				lastErr = err
+			} else if len(urls) > 0 {
+				return urls, nil
+			}
+		}
+
+		if lastErr != nil && isGoogleRateLimited(lastErr) {
 			continue
 		}
-		if attempt > 0 {
-			resetGoogleTLSProxy(client)
-		}
-		urls, err := g.searchHTML(ctx, client, dork, start)
+
+		urls, err := googleHeadlessFetch(ctx, dork, start)
 		if err != nil {
 			lastErr = err
 			continue
@@ -214,4 +226,12 @@ func buildGoogleSearchURL(strat googleSearchStrategy, query string, start int) (
 	}
 	u.RawQuery = q.Encode()
 	return u.String(), nil
+}
+
+func isGoogleRateLimited(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "429") || strings.Contains(msg, "sorry")
 }
