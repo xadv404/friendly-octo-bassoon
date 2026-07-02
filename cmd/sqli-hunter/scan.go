@@ -121,8 +121,8 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		persistCursor = true
 		printer.KV("curseur", fmt.Sprintf("page %d (rotation daily)", pageBase))
 	}
-	if discover.ParseSource(cfg.discoverSource) == discover.SourceGoogle {
-		printer.KV("source", discover.GoogleBackendLabel())
+	if discover.IsSearchEngineSource(discover.ParseSource(cfg.discoverSource)) {
+		printer.KV("source", discover.DiscoverBackendLabel(discover.ParseSource(cfg.discoverSource)))
 	}
 
 	opts := discover.Options{
@@ -143,7 +143,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		OnProgress: func(fetched, kept, page int) {
 			src := cfg.discoverSource
 			if src == "" {
-				src = "google"
+				src = "duckduckgo"
 			}
 			fmt.Fprintf(os.Stderr, "\r  %s page %d — %d urls lues, %d gardées", src, page+1, fetched, kept)
 		},
@@ -182,7 +182,7 @@ func discoverNoFilter(cfg config) bool {
 
 func discoverLabel(domain string) string {
 	if discover.IsSwissWide(domain) || discover.NormalizeSwissDomain(domain) == "ch" {
-		return "URLs vulnérables .ch (Google dorks)"
+		return "URLs vulnérables .ch (DuckDuckGo dorks)"
 	}
 	return discover.NormalizeSwissDomain(domain)
 }

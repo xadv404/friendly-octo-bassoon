@@ -15,7 +15,7 @@ const ddgSearchURL = "https://html.duckduckgo.com/html/"
 
 var reDDGUddg = regexp.MustCompile(`uddg=([^&"']+)`)
 
-// ddgClient collecte via DuckDuckGo HTML (souvent OK sur VPS, Bing = captcha).
+// ddgClient collecte via DuckDuckGo HTML (proxyless).
 type ddgClient struct {
 	http    *http.Client
 	delay   time.Duration
@@ -24,7 +24,7 @@ type ddgClient struct {
 
 func newDDGClient(daySeed int) *ddgClient {
 	return &ddgClient{
-		http:    newDiscoverHTTPClient(),
+		http:    newDirectHTTPClient(),
 		delay:   2 * time.Second,
 		daySeed: daySeed,
 	}
@@ -50,24 +50,20 @@ func (d *ddgClient) FetchPage(ctx context.Context, domain string, subs bool, abs
 }
 
 func (d *ddgClient) search(ctx context.Context, query string, offset int) ([]string, error) {
-	u, err := url.Parse(ddgSearchURL)
-	if err != nil {
-		return nil, err
-	}
-	q := u.Query()
-	q.Set("q", query)
+	form := url.Values{}
+	form.Set("q", query)
 	if offset > 0 {
-		q.Set("s", fmt.Sprintf("%d", offset))
+		form.Set("s", fmt.Sprintf("%d", offset))
 	}
-	u.RawQuery = q.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, ddgSearchURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", searchUserAgent)
-	req.Header.Set("Accept", "text/html")
-	req.Header.Set("Accept-Language", "fr-CH,fr;q=0.9")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+	req.Header.Set("Accept-Language", "fr-CH,fr;q=0.9,de-CH;q=0.8")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := d.http.Do(req)
 	if err != nil {
@@ -75,7 +71,7 @@ func (d *ddgClient) search(ctx context.Context, query string, offset int) ([]str
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		return nil, fmt.Errorf("ddg HTTP %d", resp.StatusCode)
 	}
 
@@ -83,8 +79,31 @@ func (d *ddgClient) search(ctx context.Context, query string, offset int) ([]str
 	if err != nil {
 		return nil, err
 	}
+	html := string(body)
+	if isDDGBlocked(html) {
+		return nil, fmt.Errorf("ddg: captcha/anomalie bot détectée")
+	}
 
-	return filterSwissURLs(parseDDGResults(string(body))), nil
+	urls := filterSwissURLs(parseDDGResults(html))
+	if len(urls) == 0 && !strings.Contains(html, "result__body") {
+		return nil, fmt.Errorf("ddg: aucun résultat (page vide ou bloquée)")
+	}
+	return urls, nil
+}
+
+func isDDGBlocked(html string) bool {
+	lower := strings.ToLower(html)
+	for _, marker := range []string{
+		"anomaly-modal",
+		"bots use duckduckgo",
+		"challenge-form",
+		"confirm this search was made by a human",
+	} {
+		if strings.Contains(lower, marker) {
+			return true
+		}
+	}
+	return isSearchBlocked(html)
 }
 
 func parseDDGResults(html string) []string {

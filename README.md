@@ -88,7 +88,7 @@ Cron (tous les jours à 3h) :
 ```
 
 Ce que fait le mode daily :
-1. **Discover Google** — dorks `.ch` via SerpAPI (`google_light`)
+1. **Discover DuckDuckGo** — dorks `.ch` proxyless (html.duckduckgo.com)
 2. **Curseur daily** — avance dans `results/discover_cursor.json`
 3. **Rotation dorks** — ordre des requêtes changé chaque jour
 4. Ignore domaines déjà dumpés + URLs déjà scannées
@@ -103,23 +103,24 @@ Fichiers d'état :
 
 ## Découverte d'URLs (`discover`)
 
-Collecte via **SerpAPI** uniquement ([google_light](https://serpapi.com/google-light-api) — service hébergé, pas de scraping direct).
+Collecte via **DuckDuckGo** proxyless par défaut (`html.duckduckgo.com/html/`).
 
 ```bash
-# Copier sqli-hunter.env.example → sqli-hunter.env
-# SERPAPI_API_KEY=...   (gratuit 250/mois — https://serpapi.com/manage-api-key)
 ./sqli-hunter daily
-
 ./sqli-hunter ch --discover-limit 500
+
+# Google via SerpAPI (optionnel)
+./sqli-hunter ch --source google --discover-limit 200
 ```
 
 | `--source` | Moteur |
 |------------|--------|
-| `google` | SerpAPI `google_light` [défaut] |
+| `duckduckgo` | DDG HTML proxyless [défaut] |
+| `google` | SerpAPI `google_light` (`SERPAPI_API_KEY`) |
 | `wayback` | Archive (1 domaine) |
 
-Variables (`sqli-hunter.env` ou env) :
-- `SERPAPI_API_KEY` — clé API SerpAPI **obligatoire**
+Variables (`sqli-hunter.env` optionnel) :
+- `SERPAPI_API_KEY` — uniquement pour `--source google`
 - `DISCOVER_PROXIES` — liste optionnelle (virgule / ligne)
 
 | Option | Description |

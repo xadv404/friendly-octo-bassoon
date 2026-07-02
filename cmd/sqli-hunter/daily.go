@@ -24,7 +24,7 @@ func runDaily(args []string) {
 	printer := output.New(cfg.noColor, cfg.verbose)
 	printer.Header(version)
 	printer.KV("mode", "daily — nouveaux emails uniquement")
-	printer.KV("discover", "URLs vuln .ch (Google)")
+	printer.KV("discover", "URLs vuln .ch (DuckDuckGo)")
 	printer.KV("limit", fmt.Sprintf("%d urls", cfg.discoverLimit))
 	printer.KV("threads", fmt.Sprintf("%d", cfg.urlConcurrency))
 	printer.KV("output", cfg.outputDir+"/emails/")
@@ -43,7 +43,7 @@ func runDaily(args []string) {
 	}()
 
 	cfg.discoverDomain = "ch"
-	cfg.discoverSource = "google"
+	cfg.discoverSource = "duckduckgo"
 	cfg.discoverSubs = true
 	cfg.discoverOutput = filepath.Join(cfg.outputDir, "scope_daily.txt")
 	cfg.skipScanned = true

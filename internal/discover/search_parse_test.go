@@ -18,6 +18,12 @@ func TestParseDDGResults(t *testing.T) {
 	}
 }
 
+func TestIsDDGBlocked(t *testing.T) {
+	if !isDDGBlocked(`<div class="anomaly-modal__title">Unfortunately, bots use DuckDuckGo too.</div>`) {
+		t.Fatal("expected blocked")
+	}
+}
+
 func TestIsSearchBlocked(t *testing.T) {
 	if !isSearchBlocked("<html>captcha verify</html>") {
 		t.Fatal("expected blocked")

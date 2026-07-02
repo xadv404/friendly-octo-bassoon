@@ -190,7 +190,7 @@ func parseArgs(args []string) (config, error) {
 		rateLimit:      100,
 		outputDir:      "results",
 		discoverSubs:   true,
-		discoverSource: "google",
+		discoverSource: "duckduckgo",
 		params:         make(map[string]string),
 		data:           make(map[string]string),
 		headers:        make(map[string]string),
@@ -259,7 +259,7 @@ func parseArgs(args []string) (config, error) {
 		case arg == "--source":
 			i++
 			if i >= len(args) {
-				return cfg, fmt.Errorf("--source nécessite google ou wayback")
+				return cfg, fmt.Errorf("--source nécessite duckduckgo, google ou wayback")
 			}
 			cfg.discoverSource = args[i]
 		case arg == "--rescan":
@@ -502,7 +502,7 @@ Mode daily (cron quotidien) :
   sqli-hunter daily
   sqli-hunter daily --discover-limit 3000 --url-threads 64
 
-  → Google dorks .ch via SerpAPI (SERPAPI_API_KEY dans sqli-hunter.env)
+  → DuckDuckGo dorks .ch (proxyless)
   → Skip URLs/domaines déjà traités
   → Seulement nouveaux emails dans results/emails/
 
@@ -522,7 +522,7 @@ Cible:
       --json <JSON>           Corps JSON (mode -u)
 
 Découverte (avec -D) :
-      --source <google|wayback> Collecteur URLs [défaut: google]
+      --source <duckduckgo|google|wayback> Collecteur URLs [défaut: duckduckgo]
       --paths <a,b,c>         Filtre manuel path (optionnel)
       --discover-params <a,b> Filtre manuel paramètres (optionnel)
       --discover-output <f>   Fichier scope [défaut: scope_DOMAIN.ch.txt]
