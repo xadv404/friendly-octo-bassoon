@@ -151,9 +151,6 @@ func (g *googleClient) searchOpenSerp(ctx context.Context, query string, start i
 	}
 
 	urls := filterSwissURLs(parseOpenSerpResults(parsed))
-	if len(urls) == 0 {
-		return nil, fmt.Errorf("openserp: aucun résultat .ch")
-	}
 	return urls, nil
 }
 

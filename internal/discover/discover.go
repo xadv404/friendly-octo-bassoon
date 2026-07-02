@@ -176,6 +176,12 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 			return collectResult{fetched, kept, skipped}, err
 		}
 		if len(batch) == 0 {
+			if IsSearchEngineSource(opts.Source) {
+				if page >= 400 {
+					break
+				}
+				continue
+			}
 			break
 		}
 
@@ -263,6 +269,12 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 			return Result{}, err
 		}
 		if len(batch) == 0 {
+			if IsSearchEngineSource(opts.Source) {
+				if page >= 400 {
+					break
+				}
+				continue
+			}
 			break
 		}
 
