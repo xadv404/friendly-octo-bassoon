@@ -187,20 +187,3 @@ func normalizeProviderQuery(q string) string {
 	q = strings.TrimSuffix(q, ".txt")
 	return q
 }
-
-func countLines(path string) (int, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return 0, err
-	}
-	defer f.Close()
-
-	n := 0
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if strings.TrimSpace(sc.Text()) != "" {
-			n++
-		}
-	}
-	return n, sc.Err()
-}
