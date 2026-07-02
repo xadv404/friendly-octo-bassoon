@@ -122,7 +122,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		printer.KV("curseur", fmt.Sprintf("page %d (rotation daily)", pageBase))
 	}
 	if discover.ParseSource(cfg.discoverSource) == discover.SourceGoogle {
-		printer.KV("source", "google (proxy BP)")
+		printer.KV("source", discover.GoogleBackendLabel())
 	}
 
 	opts := discover.Options{

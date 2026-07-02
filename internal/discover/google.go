@@ -22,7 +22,7 @@ var (
 	reGoogleSkip     = regexp.MustCompile(`(?i)(google\.|gstatic\.com|youtube\.com|webcache)`)
 )
 
-// googleClient collecte via Google Search (proxy BP — IP rotative par requête).
+// googleClient collecte via SerpAPI (prioritaire) ou Google Search + proxy BP.
 type googleClient struct {
 	delay   time.Duration
 	daySeed int
@@ -36,8 +36,8 @@ func newGoogleClient(daySeed int) *googleClient {
 }
 
 func (g *googleClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
-	if !getProxyPool().hasProxies() {
-		return nil, fmt.Errorf("google: configure DISCOVER_PROXY dans sqli-hunter.env")
+	if !UseSerpAPI() && !getProxyPool().hasProxies() {
+		return nil, fmt.Errorf("google: configure SERPAPI_API_KEY ou DISCOVER_PROXY dans sqli-hunter.env")
 	}
 
 	dorks := DailyDorkOrder(BuildVulnDorks(domain, subs), g.daySeed)
@@ -55,6 +55,10 @@ func (g *googleClient) FetchPage(ctx context.Context, domain string, subs bool, 
 	case <-time.After(g.delay):
 	}
 
+	if UseSerpAPI() {
+		return g.searchSerpAPI(ctx, dork, start)
+	}
+
 	var lastErr error
 	for attempt := 0; attempt < googleMaxRetry; attempt++ {
 		if attempt > 0 {
@@ -65,7 +69,7 @@ func (g *googleClient) FetchPage(ctx context.Context, domain string, subs bool, 
 			}
 		}
 
-		urls, err := g.searchOnce(ctx, dork, start)
+		urls, err := g.searchHTML(ctx, dork, start)
 		if err != nil {
 			lastErr = err
 			continue
@@ -81,7 +85,7 @@ func (g *googleClient) FetchPage(ctx context.Context, domain string, subs bool, 
 	return nil, nil
 }
 
-func (g *googleClient) searchOnce(ctx context.Context, query string, start int) ([]string, error) {
+func (g *googleClient) searchHTML(ctx context.Context, query string, start int) ([]string, error) {
 	u, err := url.Parse(googleSearchURL)
 	if err != nil {
 		return nil, err
@@ -101,7 +105,6 @@ func (g *googleClient) searchOnce(ctx context.Context, query string, start int) 
 	}
 	setGoogleHeaders(req)
 
-	// Nouveau client à chaque tentative → nouvelle IP via proxy BP.
 	client := newDiscoverHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {

