@@ -16,6 +16,7 @@ const (
 	openSerpDefaultBase = "https://api.openserp.dev"
 	openSerpEngine      = "google_search"
 	openSerpMaxResults  = 10
+	openSerpMaxRetry    = 3
 )
 
 // openSerpResponse — format documenté sur https://openserp.dev/docs
@@ -50,6 +51,13 @@ func UseOpenSerp() bool {
 	return openSerpAPIKey() != ""
 }
 
+func openSerpJitter(base time.Duration) time.Duration {
+	if base <= 0 {
+		return 0
+	}
+	return base/2 + time.Duration(time.Now().UnixNano()%int64(base/2+1))
+}
+
 func (g *googleClient) fetchOpenSerp(ctx context.Context, domain string, subs bool, absolutePage int) ([]string, error) {
 	dorks := DailyDorkOrder(BuildVulnDorks(domain, subs), g.daySeed)
 	if len(dorks) == 0 {
@@ -61,10 +69,25 @@ func (g *googleClient) fetchOpenSerp(ctx context.Context, domain string, subs bo
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-time.After(googleJitter(g.delay)):
+	case <-time.After(openSerpJitter(g.delay)):
 	}
 
-	return g.searchOpenSerp(ctx, dork, start)
+	var lastErr error
+	for attempt := 0; attempt < openSerpMaxRetry; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(openSerpJitter(time.Duration(attempt+1) * time.Second)):
+			}
+		}
+		urls, err := g.searchOpenSerp(ctx, dork, start)
+		if len(urls) > 0 {
+			return urls, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
 }
 
 func (g *googleClient) searchOpenSerp(ctx context.Context, query string, start int) ([]string, error) {
@@ -109,8 +132,8 @@ func (g *googleClient) searchOpenSerp(ctx context.Context, query string, start i
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, fmt.Errorf("openserp: clé API invalide")
 	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, fmt.Errorf("openserp HTTP 429")
+	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusBadGateway || resp.StatusCode == http.StatusServiceUnavailable {
+		return nil, fmt.Errorf("openserp HTTP %d", resp.StatusCode)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("openserp HTTP %d: %s", resp.StatusCode, truncateErrBody(body))

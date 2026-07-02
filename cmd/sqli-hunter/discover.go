@@ -190,7 +190,7 @@ func discoverNoFilterDiscover(cfg discoverConfig) bool {
 }
 
 func printDiscoverUsage() {
-	fmt.Print(`sqli-hunter discover — URLs suisses (.ch) via Google + proxy BP
+	fmt.Print(`sqli-hunter discover — URLs suisses (.ch) via Google (OpenSerp API)
 
 Usage:
   sqli-hunter discover -d <domaine.ch> [options]

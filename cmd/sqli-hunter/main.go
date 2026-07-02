@@ -502,7 +502,7 @@ Mode daily (cron quotidien) :
   sqli-hunter daily
   sqli-hunter daily --discover-limit 3000 --url-threads 64
 
-  → Google dorks .ch via proxy BP (DISCOVER_PROXY — IP rotative auto)
+  → Google dorks .ch via OpenSerp API (OPENSERP_API_KEY)
   → Skip URLs/domaines déjà traités
   → Seulement nouveaux emails dans results/emails/
 

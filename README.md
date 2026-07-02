@@ -103,24 +103,23 @@ Fichiers d'état :
 
 ## Découverte d'URLs (`discover`)
 
-Collecte via **Google** + **proxy BP résidentiel** (`DISCOVER_PROXY` — IP rotative côté fournisseur).
+Collecte via **Google** + **[OpenSerp API](https://openserp.dev/docs)**.
 
 ```bash
 # sqli-hunter.env
-DISCOVER_PROXY=http://user:pass:residential.bpproxy.at:1000
+OPENSERP_API_KEY=osk_votre_cle
 ./sqli-hunter daily
 ```
 
 | `--source` | Moteur |
 |------------|--------|
-| `google` | Scraping Google via proxy BP [défaut] |
+| `google` | OpenSerp API (`OPENSERP_API_KEY` requis) [défaut] |
 | `duckduckgo` | DDG HTML scraping |
-| `google` + `SERPAPI_API_KEY` | SerpAPI (optionnel) |
 | `wayback` | Archive (1 domaine) |
 
 Variables (`sqli-hunter.env`) :
-- `DISCOVER_PROXY` — proxy BP rotatif **obligatoire pour Google**
-- `SERPAPI_API_KEY` — optionnel, remplace le scraping si configuré
+- `OPENSERP_API_KEY` — clé API OpenSerp (https://openserp.dev)
+- `OPENSERP_API_URL` — optionnel, défaut `https://api.openserp.dev`
 - `DISCOVER_PROXIES` — liste optionnelle (virgule / ligne)
 
 | Option | Description |

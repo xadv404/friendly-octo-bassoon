@@ -30,8 +30,6 @@ func TestUseOpenSerp(t *testing.T) {
 
 func TestGoogleBackendLabel_OpenSerp(t *testing.T) {
 	t.Setenv("OPENSERP_API_KEY", "osk_test")
-	t.Setenv("DISCOVER_PROXY", "")
-	ReloadProxyPool()
 	if got := GoogleBackendLabel(); got != "google (OpenSerp API)" {
 		t.Fatalf("got %q", got)
 	}

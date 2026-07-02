@@ -2,7 +2,7 @@ package discover
 
 import "context"
 
-// autoFetcher = Google direct (proxy BP).
+// autoFetcher = Google via OpenSerp API.
 type autoFetcher struct {
 	google *googleClient
 }
