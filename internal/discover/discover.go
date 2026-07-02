@@ -15,17 +15,35 @@ import (
 type Source string
 
 const (
-	SourceBing    Source = "bing"
-	SourceWayback Source = "wayback"
+	SourceBing      Source = "bing"
+	SourceGoogle    Source = "google"
+	SourceDDG       Source = "duckduckgo"
+	SourceAuto      Source = "auto"
+	SourceWayback   Source = "wayback"
 )
 
-// ParseSource interprète --source (défaut: bing).
+// ParseSource interprète --source (défaut: auto).
 func ParseSource(s string) Source {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "wayback", "archive", "cdx":
 		return SourceWayback
+	case "google", "g":
+		return SourceGoogle
+	case "duckduckgo", "ddg":
+		return SourceDDG
+	case "auto", "":
+		return SourceAuto
 	default:
 		return SourceBing
+	}
+}
+
+func IsSearchEngineSource(s Source) bool {
+	switch s {
+	case SourceBing, SourceGoogle, SourceDDG, SourceAuto:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -72,7 +90,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, fmt.Errorf("domaine requis")
 	}
 	if opts.Source == "" {
-		opts.Source = SourceBing
+		opts.Source = SourceAuto
 	}
 	opts.Domain = NormalizeSwissDomain(opts.Domain)
 
@@ -91,14 +109,14 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 
 	if IsSwissWide(opts.Domain) {
 		if opts.Source == SourceWayback {
-			return Result{}, fmt.Errorf("découverte large: utilise --source bing (wayback ne supporte pas la chasse aux URLs vuln sans domaine cible)")
+			return Result{}, fmt.Errorf("découverte large: utilise --source auto|google|bing|duckduckgo")
 		}
 		return runVulnHunt(ctx, opts, skipper, scanned)
 	}
 	if !strings.HasSuffix(opts.Domain, ".ch") {
 		return Result{}, fmt.Errorf("domaine .ch requis ou ch pour chasse aux URLs vulnérables")
 	}
-	if opts.Source == SourceBing {
+	if IsSearchEngineSource(opts.Source) {
 		return runVulnHunt(ctx, opts, skipper, scanned)
 	}
 	return runSingleDomain(ctx, opts, skipper, scanned)
@@ -188,10 +206,10 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 			}
 		}
 
-		if len(batch) < pageSize && opts.Source != SourceBing {
+		if len(batch) < pageSize && !IsSearchEngineSource(opts.Source) {
 			break
 		}
-		if opts.Source == SourceBing && page > 400 {
+		if IsSearchEngineSource(opts.Source) && page >= 400 {
 			break
 		}
 	}
@@ -282,10 +300,10 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 
 		collectWithProgress(fetched, kept, page)
 
-		if len(batch) < pageSize && opts.Source != SourceBing {
+		if len(batch) < pageSize && !IsSearchEngineSource(opts.Source) {
 			break
 		}
-		if opts.Source == SourceBing && page >= 400 {
+		if IsSearchEngineSource(opts.Source) && page >= 400 {
 			break
 		}
 	}

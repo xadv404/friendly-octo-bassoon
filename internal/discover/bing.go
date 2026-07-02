@@ -14,7 +14,6 @@ import (
 
 const (
 	bingSearchURL = "https://www.bing.com/search"
-	bingUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 )
 
 var (
@@ -33,15 +32,7 @@ type bingClient struct {
 
 func newBingClient(daySeed int) *bingClient {
 	return &bingClient{
-		http: &http.Client{
-			Timeout: 30 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				if len(via) >= 5 {
-					return fmt.Errorf("trop de redirections")
-				}
-				return nil
-			},
-		},
+		http:    newDiscoverHTTPClient(false),
 		delay:   2 * time.Second,
 		daySeed: daySeed,
 	}
@@ -68,6 +59,17 @@ func (b *bingClient) FetchPage(ctx context.Context, domain string, subs bool, ab
 }
 
 func (b *bingClient) search(ctx context.Context, query string, first int) ([]string, error) {
+	urls, blocked, err := b.searchRaw(ctx, query, first)
+	if err != nil {
+		return nil, err
+	}
+	if blocked {
+		return nil, nil
+	}
+	return filterSwissURLs(urls), nil
+}
+
+func (b *bingClient) searchRaw(ctx context.Context, query string, first int) ([]string, bool, error) {
 	base := b.baseURL
 	if base == "" {
 		base = bingSearchURL
@@ -75,7 +77,7 @@ func (b *bingClient) search(ctx context.Context, query string, first int) ([]str
 
 	u, err := url.Parse(base)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	q := u.Query()
 	q.Set("q", query)
@@ -88,28 +90,32 @@ func (b *bingClient) search(ctx context.Context, query string, first int) ([]str
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	req.Header.Set("User-Agent", bingUserAgent)
+	req.Header.Set("User-Agent", searchUserAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml")
 	req.Header.Set("Accept-Language", "fr-CH,fr;q=0.9,de-CH;q=0.8")
 
 	resp, err := b.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("bing HTTP %d", resp.StatusCode)
+		return nil, false, fmt.Errorf("bing HTTP %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return filterSwissURLs(parseBingResults(string(body))), nil
+	html := string(body)
+	if isBingBlocked(html) {
+		return nil, true, nil
+	}
+	return parseBingResults(html), false, nil
 }
 
 func filterSwissURLs(urls []string) []string {
@@ -215,6 +221,12 @@ func defaultFetcher(source Source, daySeed int) CDXFetcher {
 	switch source {
 	case SourceWayback:
 		return newWaybackClient()
+	case SourceGoogle:
+		return newGoogleClient(daySeed)
+	case SourceDDG:
+		return newDDGClient(daySeed)
+	case SourceAuto:
+		return newAutoFetcher(daySeed)
 	default:
 		return newBingClient(daySeed)
 	}

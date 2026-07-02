@@ -88,8 +88,8 @@ Cron (tous les jours à 3h) :
 ```
 
 Ce que fait le mode daily :
-1. Bing dorks sur `.ch` — aucun site ciblé
-2. **Curseur daily** — avance dans `results/discover_cursor.json` (pages Bing suivantes chaque jour)
+1. **Auto discover** — DuckDuckGo → Google (proxies) → Bing
+2. **Curseur daily** — avance dans `results/discover_cursor.json`
 3. **Rotation dorks** — ordre des requêtes changé chaque jour
 4. Ignore domaines déjà dumpés + URLs déjà scannées
 5. Scan + extraction emails
@@ -103,20 +103,28 @@ Fichiers d'état :
 
 ## Découverte d'URLs (`discover`)
 
-Collecte **proxyless via Bing** — dorks larges `site:.ch` uniquement (Suisse verrouillée dans chaque requête + `cc=CH`). Pas de CMS/chemins ciblés : max d'URLs vulnérables avec paramètres.
+Collecte via **auto** (DDG sans proxy, puis Google avec proxies rotatifs, puis Bing).
 
 ```bash
-# Chercher des URLs vulnérables sur tout le .ch
-sqli-hunter ch --discover-limit 1000 --url-threads 64
+# Proxies rotatifs pour Google (recommandé VPS)
+export DISCOVER_PROXIES="http://user:pass@host1:port,http://user:pass@host2:port"
+./sqli-hunter daily
 
-# Wayback uniquement si tu cibles UN domaine précis
-sqli-hunter discover -d shop.ch --source wayback --limit 500
+# Forcer Google uniquement
+./sqli-hunter ch --source google --discover-limit 500
 ```
 
-| Option | Description |
-|--------|-------------|
-| `-D ch` | Chasse URLs vuln sur `.ch` via Bing [recommandé] |
-| `--source` | `bing` [défaut] ou `wayback` (1 domaine) |
+| `--source` | Moteur |
+|------------|--------|
+| `auto` | DDG → Google (si proxies) → Bing [défaut daily] |
+| `google` | Google + `DISCOVER_PROXIES` obligatoire |
+| `duckduckgo` | DuckDuckGo HTML |
+| `bing` | Bing direct |
+| `wayback` | Archive (1 domaine) |
+
+Variables :
+- `DISCOVER_PROXIES` — liste proxy rotatif (virgule / ligne)
+- `DISCOVER_PROXY` — un seul proxy
 | `--paths` | Filtre manuel path (optionnel) |
 | `--params` | Filtre manuel paramètres (optionnel) |
 | `--no-filter` | Toutes URLs .ch avec `?param=` |

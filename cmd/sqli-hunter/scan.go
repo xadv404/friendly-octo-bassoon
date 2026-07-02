@@ -113,11 +113,16 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	fmt.Println()
 
 	pageBase := 0
-	if discover.ParseSource(cfg.discoverSource) == discover.SourceBing && discover.IsSwissWide(cfg.discoverDomain) {
+	persistCursor := false
+	if discover.IsSearchEngineSource(discover.ParseSource(cfg.discoverSource)) && discover.IsSwissWide(cfg.discoverDomain) {
 		if p, err := discover.LoadCursor(cfg.outputDir); err == nil {
 			pageBase = p
 		}
-		printer.KV("curseur bing", fmt.Sprintf("page %d (rotation daily)", pageBase))
+		persistCursor = true
+		printer.KV("curseur", fmt.Sprintf("page %d (rotation daily)", pageBase))
+	}
+	if discover.ParseSource(cfg.discoverSource) == discover.SourceAuto {
+		printer.KV("source", "auto (ddg → google+proxy → bing)")
 	}
 
 	opts := discover.Options{
@@ -134,7 +139,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		SkipScanned:   cfg.skipScanned || discover.IsSwissWide(cfg.discoverDomain),
 		AllowEmpty:    cfg.allowEmptyDiscover,
 		PageBase:      pageBase,
-		PersistCursor: discover.ParseSource(cfg.discoverSource) == discover.SourceBing && discover.IsSwissWide(cfg.discoverDomain),
+		PersistCursor: persistCursor,
 		OnProgress: func(fetched, kept, page int) {
 			src := cfg.discoverSource
 			if src == "" {
