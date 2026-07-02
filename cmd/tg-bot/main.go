@@ -77,16 +77,8 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg config, msg *tgbotapi.Message) {
 	switch {
 	case text == "/start":
 		sendStart(bot, cfg, msg.Chat.ID)
-	case text == "/help":
-		reply(bot, msg.Chat.ID, helpText())
-	case strings.HasPrefix(text, "/get "):
-		handleGet(bot, cfg, msg.Chat.ID, strings.TrimSpace(text[len("/get "):]))
 	default:
-		if count, provider, ok := results.ParseEmailRequest(text); ok {
-			sendEmails(bot, cfg, msg.Chat.ID, count, provider)
-			return
-		}
-		reply(bot, msg.Chat.ID, "Format: `100 gmail` ou bouton Extraire")
+		reply(bot, msg.Chat.ID, "Utilise /start puis les boutons pour extraire.")
 	}
 }
 
@@ -219,20 +211,6 @@ func shortProvider(p string) string {
 	return p
 }
 
-func handleGet(bot *tgbotapi.BotAPI, cfg config, chatID int64, args string) {
-	parts := strings.Fields(args)
-	if len(parts) != 2 {
-		reply(bot, chatID, "Usage: `/get 100 gmail`")
-		return
-	}
-	count, err := strconv.Atoi(parts[0])
-	if err != nil || count <= 0 {
-		reply(bot, chatID, "Nombre invalide.")
-		return
-	}
-	sendEmails(bot, cfg, chatID, count, parts[1])
-}
-
 func sendEmails(bot *tgbotapi.BotAPI, cfg config, chatID int64, count int, providerQuery string) {
 	if count > cfg.maxEmails {
 		reply(bot, chatID, fmt.Sprintf("Max %d emails par requête.", cfg.maxEmails))
@@ -278,15 +256,4 @@ func reply(bot *tgbotapi.BotAPI, chatID int64, text string) {
 		msg.ParseMode = ""
 		_, _ = bot.Send(msg)
 	}
-}
-
-func helpText() string {
-	return strings.TrimSpace(`
-Bot emails sqli-hunter
-
-/start — stock + bouton Extraire
-100 gmail — envoie et retire du stock
-
-Les doublons et emails déjà livrés sont ignorés.
-`)
 }

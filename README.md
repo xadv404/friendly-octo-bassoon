@@ -185,11 +185,11 @@ go build -o tg-bot ./cmd/tg-bot
 Envoie `/myid` au bot pour obtenir ton ID Telegram, puis ajoute-le dans `tg-bot.env`.
 
 ```
-/myid              → ton ID Telegram (toujours accessible)
-/start             → stock + bouton « Extraire »
-100 gmail          → fichier .txt + retrait du stock
-/get 50 bluewin    → idem en commande
+/myid   → ton ID Telegram (toujours accessible)
+/start  → stock + boutons Extraire → fournisseur → quantité
 ```
+
+L'extraction se fait **uniquement via les boutons** (pas de commande texte).
 
 **Déduplication à l'export** — à chaque extraction le bot :
 
