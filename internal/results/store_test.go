@@ -2,6 +2,7 @@ package results
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
@@ -14,14 +15,17 @@ func TestSiteStore_Streaming(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	store.AppendExtraction("https://shop.com/p?id=1", models.ExtractedData{
+		DataType: models.DataPII,
+		Value:    "alice@bluewin.ch\n",
+	})
+	store.AppendExtraction("https://shop.com/p?id=2", models.ExtractedData{
+		DataType: models.DataPII,
+		Value:    "bob@gmail.com\n",
+	})
+
 	for i := 0; i < 100; i++ {
-		tr := TargetResult{
-			URL: "https://shop.com/p?id=" + fmtInt(i),
-		}
-		if i%10 == 0 {
-			tr.Findings = []models.Finding{{VulnType: models.SQLiError, Parameter: "id"}}
-		}
-		if err := store.Add(tr); err != nil {
+		if err := store.Add(TargetResult{URL: "https://shop.com/p?id=" + fmtInt(i)}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -31,10 +35,16 @@ func TestSiteStore_Streaming(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(files) != 2 {
-		t.Fatalf("expected 2 files, got %d", len(files))
+		t.Fatalf("expected 2 email files, got %d: %v", len(files), files)
 	}
-	if _, err := os.Stat(dir + "/shop.com/shop.com.json"); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, "emails", "bluewin.ch.txt")); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "emails", "gmail.com.txt")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "shop.com")); !os.IsNotExist(err) {
+		t.Fatal("should not create per-target directory")
 	}
 }
 

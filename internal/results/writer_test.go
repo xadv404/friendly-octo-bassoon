@@ -2,6 +2,8 @@ package results
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
@@ -24,43 +26,49 @@ func TestWriteSites(t *testing.T) {
 		Findings: []models.Finding{{
 			URL: "https://target.com/page?id=1", Parameter: "id",
 			VulnType: models.SQLiError, Confidence: models.Confirmed,
-			Payload: "'",
 		}},
 		Extractions: []models.ExtractedData{{
 			FindingURL: "https://target.com/page?id=1", Parameter: "id",
-			DataType: models.DataVersion, Value: "8.0.32-MySQL",
+			DataType: models.DataPII, Value: "user@bluewin.ch\n",
 		}},
-		DurationMs: 100,
 	}}
 
 	written, err := WriteSites(dir, "test", targets)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(written) != 2 {
-		t.Fatalf("expected 2 files, got %d", len(written))
+	if len(written) != 1 {
+		t.Fatalf("expected 1 email file, got %d: %v", len(written), written)
 	}
 
-	jsonPath := dir + "/target.com/target.com.json"
-	sqlPath := dir + "/target.com/target.com.sql"
-	for _, p := range written {
-		if p != jsonPath && p != sqlPath {
-			t.Fatalf("unexpected path %s", p)
-		}
-	}
-}
-
-func TestWriteSites_GroupsByDomain(t *testing.T) {
-	dir := t.TempDir()
-	targets := []TargetResult{
-		{URL: "https://shop.com/a?id=1", Findings: []models.Finding{{VulnType: models.SQLiError}}},
-		{URL: "https://shop.com/b?id=2", Findings: []models.Finding{{VulnType: models.SQLiUnion}}},
-	}
-	_, err := WriteSites(dir, "test", targets)
+	data, err := os.ReadFile(filepath.Join(dir, "emails", "bluewin.ch.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.ReadFile(dir + "/shop.com/shop.com.json"); err != nil {
-		t.Fatal("expected single merged report for shop.com")
+	if !strings.Contains(string(data), "user@bluewin.ch") {
+		t.Fatalf("unexpected content: %s", data)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "target.com")); !os.IsNotExist(err) {
+		t.Fatal("should not create per-target directory")
+	}
+}
+
+func TestWriteSites_NoEmails(t *testing.T) {
+	dir := t.TempDir()
+	targets := []TargetResult{{
+		URL: "https://target.com/page?id=1",
+		Findings: []models.Finding{{
+			VulnType: models.SQLiError,
+		}},
+		Extractions: []models.ExtractedData{{
+			DataType: models.DataVersion, Value: "8.0.32-MySQL",
+		}},
+	}}
+	written, err := WriteSites(dir, "test", targets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(written) != 0 {
+		t.Fatalf("expected no files without emails, got %v", written)
 	}
 }

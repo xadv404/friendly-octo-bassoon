@@ -117,13 +117,13 @@ sqli-hunter -l big_scope.txt --mass --url-threads 64 --progress-every 500
 | `--progress-every` | 100 | 100 |
 | Mémoire | streaming | écriture disque au fil de l'eau |
 
-- Résultats écrits **immédiatement** par domaine (`jsonl` → `json` final)
+- Résultats écrits **immédiatement** dans `results/emails/` (un fichier par fournisseur)
 - Affichage compact : progression + vulns uniquement
 - Pool HTTP optimisé (500 connexions idle)
 
 ## Sortie des résultats
 
-Par défaut, les rapports sont écrits dans `results/` :
+Seuls les **emails** sont écrits sur disque, un fichier par fournisseur dans `results/emails/` :
 
 ```
 results/
@@ -131,15 +131,12 @@ results/
     bluewin.ch.txt
     gmail.com.txt
     icloud.com.txt
-  target.com/
-    target.com.json
-    target.com.sql
 ```
 
-Les URLs d'un même domaine sont regroupées dans un seul rapport.
+Une adresse par ligne, sans préfixe ni rapport JSON/SQL par site.
 
 ```bash
-./sqli-hunter -l urls.txt                    # → results/
+./sqli-hunter -l urls.txt                    # → results/emails/
 ./sqli-hunter -u "https://x.com/p?id=1" -o results
 ```
 

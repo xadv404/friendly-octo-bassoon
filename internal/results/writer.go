@@ -1,13 +1,10 @@
 package results
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
 )
@@ -23,57 +20,15 @@ type TargetResult struct {
 	Error          string                 `json:"error,omitempty"`
 }
 
-// SiteReport rapport JSON par domaine.
-type SiteReport struct {
-	Domain      string       `json:"domain"`
-	ToolVersion string       `json:"tool_version"`
-	GeneratedAt string       `json:"generated_at"`
-	Summary     SiteSummary  `json:"summary"`
-	Targets     []TargetResult `json:"targets"`
-}
-
-// SiteSummary statistiques du domaine.
-type SiteSummary struct {
-	URLsScanned    int `json:"urls_scanned"`
-	URLsVulnerable int `json:"urls_vulnerable"`
-	Findings       int `json:"findings"`
-	Extractions    int `json:"extractions"`
-}
-
-// WriteSites écrit results/DOMAIN/DOMAIN.json et DOMAIN.sql pour chaque site.
+// WriteSites écrit les emails extraits dans results/emails/<fournisseur>.txt.
 func WriteSites(baseDir, toolVersion string, targets []TargetResult) ([]string, error) {
 	if baseDir == "" {
 		baseDir = "results"
 	}
-	grouped := groupByDomain(targets)
-	var written []string
-
-	for domain, siteTargets := range grouped {
-		dir := filepath.Join(baseDir, domain)
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return written, fmt.Errorf("mkdir %s: %w", dir, err)
-		}
-
-		report := buildSiteReport(domain, toolVersion, siteTargets)
-		jsonPath := filepath.Join(dir, domain+".json")
-		if err := writeJSON(jsonPath, report); err != nil {
-			return written, err
-		}
-		written = append(written, jsonPath)
-
-		sqlPath := filepath.Join(dir, domain+".sql")
-		if err := os.WriteFile(sqlPath, []byte(formatSQL(report)), 0644); err != nil {
-			return written, fmt.Errorf("write %s: %w", sqlPath, err)
-		}
-		written = append(written, sqlPath)
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return nil, fmt.Errorf("mkdir %s: %w", baseDir, err)
 	}
-
-	emailFiles, err := WriteEmailsFromTargets(baseDir, targets)
-	if err != nil {
-		return written, err
-	}
-	written = append(written, emailFiles...)
-	return written, nil
+	return WriteEmailsFromTargets(baseDir, targets)
 }
 
 // DomainFromURL extrait le hostname d'une URL.
@@ -89,97 +44,6 @@ func DomainFromURL(raw string) (string, error) {
 	return sanitizeDomain(strings.ToLower(host)), nil
 }
 
-func groupByDomain(targets []TargetResult) map[string][]TargetResult {
-	out := make(map[string][]TargetResult)
-	for _, t := range targets {
-		domain, err := DomainFromURL(t.URL)
-		if err != nil {
-			domain = "unknown"
-		}
-		out[domain] = append(out[domain], t)
-	}
-	return out
-}
-
-func buildSiteReport(domain, version string, targets []TargetResult) SiteReport {
-	summary := SiteSummary{URLsScanned: len(targets)}
-	for _, t := range targets {
-		if len(t.Findings) > 0 {
-			summary.URLsVulnerable++
-			summary.Findings += len(t.Findings)
-		}
-		summary.Extractions += len(t.Extractions)
-	}
-	return SiteReport{
-		Domain:      domain,
-		ToolVersion: version,
-		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		Summary:     summary,
-		Targets:     targets,
-	}
-}
-
-func writeJSON(path string, report SiteReport) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("create %s: %w", path, err)
-	}
-	defer f.Close()
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	return enc.Encode(report)
-}
-
-func formatSQL(report SiteReport) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "-- sqli-hunter extraction report\n")
-	fmt.Fprintf(&b, "-- Domain: %s\n", report.Domain)
-	fmt.Fprintf(&b, "-- Generated: %s\n", report.GeneratedAt)
-	fmt.Fprintf(&b, "-- URLs: %d scanned, %d vulnerable\n\n",
-		report.Summary.URLsScanned, report.Summary.URLsVulnerable)
-
-	for _, t := range report.Targets {
-		if len(t.Findings) == 0 && len(t.Extractions) == 0 {
-			continue
-		}
-		b.WriteString("/* " + strings.Repeat("=", 60) + " */\n")
-		fmt.Fprintf(&b, "/* URL: %s */\n", t.URL)
-		for _, f := range t.Findings {
-			fmt.Fprintf(&b, "/* VULN: %s | param: %s | confidence: %s */\n",
-				f.VulnType, f.Parameter, f.Confidence)
-			if f.Payload != "" {
-				fmt.Fprintf(&b, "/* Payload: %s */\n", truncate(f.Payload, 120))
-			}
-		}
-		b.WriteString("/* " + strings.Repeat("=", 60) + " */\n")
-
-		seen := make(map[string]bool)
-		piiNum := 0
-		for _, e := range t.Extractions {
-			key := string(e.DataType) + ":" + e.Value
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			if e.DataType == models.DataPII {
-				piiNum++
-				fmt.Fprintf(&b, "-- ── Utilisateur #%d ──\n", piiNum)
-				for _, line := range strings.Split(e.Value, "\n") {
-					if line == "" {
-						continue
-					}
-					fmt.Fprintf(&b, "-- %s\n", escapeSQLComment(line))
-				}
-				b.WriteString("--\n")
-				continue
-			}
-			fmt.Fprintf(&b, "-- %s: %s\n", e.DataType, escapeSQLComment(e.Value))
-		}
-		b.WriteByte('\n')
-	}
-	return b.String()
-}
-
 func sanitizeDomain(domain string) string {
 	domain = strings.Map(func(r rune) rune {
 		switch {
@@ -190,15 +54,4 @@ func sanitizeDomain(domain string) string {
 		}
 	}, domain)
 	return domain
-}
-
-func escapeSQLComment(s string) string {
-	return strings.ReplaceAll(s, "*/", "* /")
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n-1] + "…"
 }

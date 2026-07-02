@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.14.1"
+const version = "1.15.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -491,8 +491,8 @@ Cible:
   -u, --url <URL>             URL unique avec paramètres
   -l, --list <fichier>        Fichier d'URLs (une par ligne, # commentaires)
   -o, --output <dir>          Répertoire de sortie [défaut: results]
-                              → results/SITE.CH/SITE.CH.json
-                              → results/SITE.CH/SITE.CH.sql
+                              → results/emails/gmail.com.txt
+                              → results/emails/bluewin.ch.txt
   -m, --method <METHOD>       GET ou POST [défaut: GET]
   -p, --param <nom=valeur>    Paramètre GET additionnel (mode -u)
   -d, --data <nom=valeur>     Paramètre POST (mode -u)

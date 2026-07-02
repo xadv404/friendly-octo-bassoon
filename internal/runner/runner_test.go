@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sqli-hunter/sqli-hunter/internal/benchserver"
@@ -55,7 +56,7 @@ func TestRun_BulkURLs(t *testing.T) {
 	}
 }
 
-func TestRun_SiteOutputFiles(t *testing.T) {
+func TestRun_EmailOnlyOutput(t *testing.T) {
 	srv := benchserver.New()
 	defer srv.Close()
 
@@ -64,27 +65,35 @@ func TestRun_SiteOutputFiles(t *testing.T) {
 	r := &Runner{Version: "test", Printer: printer}
 
 	report, err := r.Run(context.Background(), Config{
-		Targets:    []models.ScanTarget{benchTarget(srv, 0)},
-		OutputDir:  outDir,
+		Targets:   []models.ScanTarget{benchTarget(srv, 0)},
+		OutputDir: outDir,
 		Opts: models.ScanOptions{
 			Mode: models.ScanFast, Categories: payloads.DefaultCategories(models.ScanFast),
-			TimeoutSec: 5, Threads: 4, RateLimitMs: 0, EarlyExit: true,
+			TimeoutSec: 5, Threads: 4, RateLimitMs: 0, EarlyExit: true, PIIOnly: true,
 		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(report.OutputFiles) != 2 {
-		t.Fatalf("expected 2 output files, got %d", len(report.OutputFiles))
+
+	for _, f := range report.OutputFiles {
+		if !strings.Contains(filepath.ToSlash(f), "/emails/") {
+			t.Fatalf("unexpected output file (emails only): %s", f)
+		}
+	}
+
+	entries, err := os.ReadDir(outDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Name() != "emails" {
+			t.Fatalf("unexpected output entry: %s (only emails/ allowed)", e.Name())
+		}
 	}
 
 	domain := "127.0.0.1"
-	jsonPath := filepath.Join(outDir, domain, domain+".json")
-	sqlPath := filepath.Join(outDir, domain, domain+".sql")
-	if _, err := os.Stat(jsonPath); err != nil {
-		t.Fatalf("missing json: %v", err)
-	}
-	if _, err := os.Stat(sqlPath); err != nil {
-		t.Fatalf("missing sql: %v", err)
+	if _, err := os.Stat(filepath.Join(outDir, domain)); !os.IsNotExist(err) {
+		t.Fatal("should not create per-target report directory")
 	}
 }
