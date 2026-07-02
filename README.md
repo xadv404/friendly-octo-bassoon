@@ -186,10 +186,18 @@ Envoie `/myid` au bot pour obtenir ton ID Telegram, puis ajoute-le dans `tg-bot.
 
 ```
 /myid              → ton ID Telegram (toujours accessible)
-/list              → fournisseurs dispo + stock
-100 gmail          → fichier gmail.com_100.txt
-/get 50 bluewin    → 50 emails bluewin.ch
+/start             → stock + bouton « Extraire »
+/list              → fournisseurs dispo + stock (uniques, non livrés)
+100 gmail          → fichier .txt + retrait du stock
+/get 50 bluewin    → idem en commande
 ```
+
+**Déduplication à l'export** — à chaque extraction le bot :
+
+1. Ignore les doublons dans le fichier fournisseur
+2. Ignore les emails déjà envoyés (`results/bot_delivered.txt`)
+3. Retire les emails livrés du stock (`results/emails/*.txt`)
+4. Au démarrage, compacte tous les fichiers (doublons intra/inter-fichiers + déjà livrés)
 
 | Variable | Description |
 |----------|-------------|
