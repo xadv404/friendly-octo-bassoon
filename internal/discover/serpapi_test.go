@@ -42,8 +42,9 @@ func TestDiscoverBackendLabel_WithProxy(t *testing.T) {
 	}
 }
 
-func TestGoogleBackendLabel(t *testing.T) {
-	if got := GoogleBackendLabel(); got != "google (SerpAPI)" {
+func TestGoogleBackendLabel_Proxy(t *testing.T) {
+	t.Setenv("SERPAPI_API_KEY", "")
+	if got := GoogleBackendLabel(); got != "google" {
 		t.Fatalf("got %q", got)
 	}
 }

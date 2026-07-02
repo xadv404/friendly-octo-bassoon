@@ -226,6 +226,6 @@ func defaultFetcher(source Source, daySeed int) CDXFetcher {
 	case SourceDDG:
 		return newDDGClient(daySeed)
 	default:
-		return newDDGClient(daySeed)
+		return newGoogleClient(daySeed)
 	}
 }

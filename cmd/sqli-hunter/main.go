@@ -190,7 +190,7 @@ func parseArgs(args []string) (config, error) {
 		rateLimit:      100,
 		outputDir:      "results",
 		discoverSubs:   true,
-		discoverSource: "duckduckgo",
+		discoverSource: "google",
 		params:         make(map[string]string),
 		data:           make(map[string]string),
 		headers:        make(map[string]string),
@@ -502,7 +502,7 @@ Mode daily (cron quotidien) :
   sqli-hunter daily
   sqli-hunter daily --discover-limit 3000 --url-threads 64
 
-  → DuckDuckGo dorks .ch (proxyless)
+  → Google dorks .ch via proxy BP (DISCOVER_PROXY — IP rotative auto)
   → Skip URLs/domaines déjà traités
   → Seulement nouveaux emails dans results/emails/
 
@@ -522,7 +522,7 @@ Cible:
       --json <JSON>           Corps JSON (mode -u)
 
 Découverte (avec -D) :
-      --source <duckduckgo|google|wayback> Collecteur URLs [défaut: duckduckgo]
+      --source <google|duckduckgo|wayback> Collecteur URLs [défaut: google]
       --paths <a,b,c>         Filtre manuel path (optionnel)
       --discover-params <a,b> Filtre manuel paramètres (optionnel)
       --discover-output <f>   Fichier scope [défaut: scope_DOMAIN.ch.txt]

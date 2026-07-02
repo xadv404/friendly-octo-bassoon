@@ -1,15 +1,16 @@
 package discover
 
 import "context"
-// autoFetcher délègue à DuckDuckGo (proxyless).
+
+// autoFetcher délègue à Google (proxy BP ou SerpAPI).
 type autoFetcher struct {
-	ddg *ddgClient
+	google *googleClient
 }
 
 func newAutoFetcher(daySeed int) *autoFetcher {
-	return &autoFetcher{ddg: newDDGClient(daySeed)}
+	return &autoFetcher{google: newGoogleClient(daySeed)}
 }
 
 func (a *autoFetcher) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
-	return a.ddg.FetchPage(ctx, domain, subs, absolutePage, limit)
+	return a.google.FetchPage(ctx, domain, subs, absolutePage, limit)
 }

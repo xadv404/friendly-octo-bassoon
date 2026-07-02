@@ -88,7 +88,7 @@ Cron (tous les jours à 3h) :
 ```
 
 Ce que fait le mode daily :
-1. **Discover DuckDuckGo** — dorks `.ch` proxyless (html.duckduckgo.com)
+1. **Discover Google** — dorks `.ch` via proxy BP résidentiel (`DISCOVER_PROXY`)
 2. **Curseur daily** — avance dans `results/discover_cursor.json`
 3. **Rotation dorks** — ordre des requêtes changé chaque jour
 4. Ignore domaines déjà dumpés + URLs déjà scannées
@@ -103,25 +103,24 @@ Fichiers d'état :
 
 ## Découverte d'URLs (`discover`)
 
-Collecte via **DuckDuckGo HTML scraping** + **proxy BP résidentiel** (`DISCOVER_PROXY` dans `sqli-hunter.env`).
+Collecte via **Google** + **proxy BP résidentiel** (`DISCOVER_PROXY` — IP rotative côté fournisseur).
 
 ```bash
+# sqli-hunter.env
+DISCOVER_PROXY=http://user:pass:residential.bpproxy.at:1000
 ./sqli-hunter daily
-./sqli-hunter ch --discover-limit 500
-
-# Google via SerpAPI (optionnel)
-./sqli-hunter ch --source google --discover-limit 200
 ```
 
 | `--source` | Moteur |
 |------------|--------|
-| `duckduckgo` | DDG HTML scraping [défaut] |
-| `google` | SerpAPI `google_light` (`SERPAPI_API_KEY`) |
+| `google` | Scraping Google via proxy BP [défaut] |
+| `duckduckgo` | DDG HTML scraping |
+| `google` + `SERPAPI_API_KEY` | SerpAPI (optionnel) |
 | `wayback` | Archive (1 domaine) |
 
 Variables (`sqli-hunter.env`) :
-- `DISCOVER_PROXY` — proxy BP résidentiel rotatif (`http://user:pass:host:port`)
-- `SERPAPI_API_KEY` — uniquement pour `--source google`
+- `DISCOVER_PROXY` — proxy BP rotatif **obligatoire pour Google**
+- `SERPAPI_API_KEY` — optionnel, remplace le scraping si configuré
 - `DISCOVER_PROXIES` — liste optionnelle (virgule / ligne)
 
 | Option | Description |

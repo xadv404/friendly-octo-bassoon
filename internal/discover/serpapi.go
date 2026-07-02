@@ -41,7 +41,13 @@ func UseSerpAPI() bool {
 
 // GoogleBackendLabel décrit le backend Google actif (CLI).
 func GoogleBackendLabel() string {
-	return "google (SerpAPI)"
+	if UseSerpAPI() {
+		return "google (SerpAPI)"
+	}
+	if HasDiscoverProxy() {
+		return "google + proxy BP"
+	}
+	return "google"
 }
 
 func (g *googleClient) searchSerpAPI(ctx context.Context, query string, start int) ([]string, error) {
