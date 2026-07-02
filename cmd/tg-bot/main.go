@@ -100,11 +100,40 @@ func sendStart(bot *tgbotapi.BotAPI, cfg config, chatID int64) {
 
 	if len(logoPNG) > 0 {
 		photo := tgbotapi.NewPhoto(chatID, tgbotapi.FileBytes{Name: "logo.png", Bytes: logoPNG})
-		photo.Caption = fmt.Sprintf("🇨🇭 *%s*", botName)
+		photo.Caption = caption
 		photo.ParseMode = "Markdown"
-		_, _ = bot.Send(photo)
+		photo.ReplyMarkup = kb
+		if _, err := bot.Send(photo); err != nil {
+			log.Printf("photo send: %v", err)
+			sendStartText(bot, chatID, caption, kb)
+		}
+		return
 	}
 	sendStartText(bot, chatID, caption, kb)
+}
+
+func isPhotoMessage(msg *tgbotapi.Message) bool {
+	return msg != nil && len(msg.Photo) > 0
+}
+
+func editMenu(bot *tgbotapi.BotAPI, chatID int64, messageID int, text string, kb tgbotapi.InlineKeyboardMarkup, photo bool) {
+	if photo {
+		edit := tgbotapi.NewEditMessageCaption(chatID, messageID, text)
+		edit.ParseMode = "Markdown"
+		edit.ReplyMarkup = &kb
+		if _, err := bot.Send(edit); err != nil {
+			edit.ParseMode = ""
+			_, _ = bot.Send(edit)
+		}
+		return
+	}
+	edit := tgbotapi.NewEditMessageText(chatID, messageID, text)
+	edit.ParseMode = "Markdown"
+	edit.ReplyMarkup = &kb
+	if _, err := bot.Send(edit); err != nil {
+		edit.ParseMode = ""
+		_, _ = bot.Send(edit)
+	}
 }
 
 func sendStartText(bot *tgbotapi.BotAPI, chatID int64, caption string, kb tgbotapi.InlineKeyboardMarkup) {
@@ -131,7 +160,7 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 
 	switch {
 	case data == "menu:start":
-		editStart(bot, cfg, chatID, cq.Message.MessageID)
+		editStart(bot, cfg, chatID, cq.Message)
 		answerCallback(bot, cq.ID, "")
 	case data == "menu:extract":
 		list, err := results.ListProviders(cfg.resultsDir)
@@ -153,18 +182,12 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 		rows = append(rows, tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(btnBack(), "menu:start"),
 		))
-		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, extractMenuText())
-		edit.ParseMode = "Markdown"
-		edit.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}
-		_, _ = bot.Send(edit)
+		editMenu(bot, chatID, cq.Message.MessageID, extractMenuText(), tgbotapi.InlineKeyboardMarkup{InlineKeyboard: rows}, isPhotoMessage(cq.Message))
 		answerCallback(bot, cq.ID, "")
 	case strings.HasPrefix(data, "prov:"):
 		provider := strings.TrimPrefix(data, "prov:")
 		qtyKeyboard := quantityKeyboard(provider)
-		edit := tgbotapi.NewEditMessageText(chatID, cq.Message.MessageID, quantityText(provider))
-		edit.ParseMode = "Markdown"
-		edit.ReplyMarkup = &qtyKeyboard
-		_, _ = bot.Send(edit)
+		editMenu(bot, chatID, cq.Message.MessageID, quantityText(provider), qtyKeyboard, isPhotoMessage(cq.Message))
 		answerCallback(bot, cq.ID, "")
 	case strings.HasPrefix(data, "qty:"):
 		rest := strings.TrimPrefix(data, "qty:")
@@ -186,13 +209,8 @@ func handleCallback(bot *tgbotapi.BotAPI, cfg config, cq *tgbotapi.CallbackQuery
 	}
 }
 
-func editStart(bot *tgbotapi.BotAPI, cfg config, chatID int64, messageID int) {
-	text := stockMessage(cfg)
-	kb := startKeyboard()
-	edit := tgbotapi.NewEditMessageText(chatID, messageID, fmt.Sprintf("🇨🇭 *%s*\n_Stock emails .ch_\n\n%s", botName, text))
-	edit.ParseMode = "Markdown"
-	edit.ReplyMarkup = &kb
-	_, _ = bot.Send(edit)
+func editStart(bot *tgbotapi.BotAPI, cfg config, chatID int64, msg *tgbotapi.Message) {
+	editMenu(bot, chatID, msg.MessageID, welcomeCaption(cfg), startKeyboard(), isPhotoMessage(msg))
 }
 
 func quantityKeyboard(provider string) tgbotapi.InlineKeyboardMarkup {
