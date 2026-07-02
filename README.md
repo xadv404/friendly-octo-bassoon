@@ -100,7 +100,7 @@ Fichiers d'état :
 
 ## Découverte d'URLs (`discover`)
 
-Collecte **proxyless via Bing** — dorks SQLi sur tout le `.ch` (pas de liste de sites type css.ch).
+Collecte **proxyless via Bing** — dorks larges `site:.ch` uniquement (Suisse verrouillée dans chaque requête + `cc=CH`). Pas de CMS/chemins ciblés : max d'URLs vulnérables avec paramètres.
 
 ```bash
 # Chercher des URLs vulnérables sur tout le .ch

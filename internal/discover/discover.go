@@ -186,7 +186,7 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 		if len(batch) < pageSize && opts.Source != SourceBing {
 			break
 		}
-		if opts.Source == SourceBing && page > 200 {
+		if opts.Source == SourceBing && page > 400 {
 			break
 		}
 	}
@@ -271,7 +271,7 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 		if len(batch) < pageSize && opts.Source != SourceBing {
 			break
 		}
-		if opts.Source == SourceBing && page > 200 {
+		if opts.Source == SourceBing && page > 400 {
 			break
 		}
 	}

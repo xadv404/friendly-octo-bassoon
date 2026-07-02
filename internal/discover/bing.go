@@ -78,7 +78,9 @@ func (b *bingClient) search(ctx context.Context, query string, first int) ([]str
 	q.Set("q", query)
 	q.Set("count", "50")
 	q.Set("first", fmt.Sprintf("%d", first))
-	q.Set("setlang", "fr")
+	q.Set("setlang", "fr-CH")
+	q.Set("cc", "CH")
+	q.Set("setmkt", "fr-CH")
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -87,7 +89,7 @@ func (b *bingClient) search(ctx context.Context, query string, first int) ([]str
 	}
 	req.Header.Set("User-Agent", bingUserAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml")
-	req.Header.Set("Accept-Language", "fr-CH,fr;q=0.9")
+	req.Header.Set("Accept-Language", "fr-CH,fr;q=0.9,de-CH;q=0.8")
 
 	resp, err := b.http.Do(req)
 	if err != nil {
@@ -104,7 +106,26 @@ func (b *bingClient) search(ctx context.Context, query string, first int) ([]str
 		return nil, err
 	}
 
-	return parseBingResults(string(body)), nil
+	return filterSwissURLs(parseBingResults(string(body))), nil
+}
+
+func filterSwissURLs(urls []string) []string {
+	if len(urls) == 0 {
+		return urls
+	}
+	out := make([]string, 0, len(urls))
+	seen := make(map[string]struct{}, len(urls))
+	for _, raw := range urls {
+		if !IsSwissURL(raw) {
+			continue
+		}
+		if _, ok := seen[raw]; ok {
+			continue
+		}
+		seen[raw] = struct{}{}
+		out = append(out, raw)
+	}
+	return out
 }
 
 func parseBingResults(html string) []string {

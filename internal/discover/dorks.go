@@ -2,80 +2,52 @@ package discover
 
 import "fmt"
 
-// BuildVulnDorks retourne des dorks Bing pour URLs vulnérables SQLi (.ch).
-// Mode large (ch) → site:.ch sans cibler un domaine précis.
+// BuildVulnDorks retourne des dorks Bing larges pour URLs vulnérables .ch uniquement.
+// La localisation suisse est dans chaque requête via site:.ch (pas de ciblage domaine/CMS).
 func BuildVulnDorks(domain string, subs bool) []string {
 	site := siteOperator(domain, subs)
 	if site == "" {
 		return nil
 	}
 
-	patterns := []string{
-		`%s inurl:?id=`,
-		`%s inurl:?page=`,
-		`%s inurl:?pid=`,
-		`%s inurl:?uid=`,
-		`%s inurl:?user=`,
-		`%s inurl:?user_id=`,
-		`%s inurl:?userid=`,
-		`%s inurl:?cat=`,
-		`%s inurl:?category=`,
-		`%s inurl:?product=`,
-		`%s inurl:?article=`,
-		`%s inurl:?news=`,
-		`%s inurl:?item=`,
-		`%s inurl:?view=`,
-		`%s inurl:?show=`,
-		`%s inurl:?detail=`,
-		`%s inurl:?ref=`,
-		`%s inurl:?order=`,
-		`%s inurl:?cmd=`,
-		`%s inurl:?action=`,
-		`%s inurl:?module=`,
-		`%s inurl:?file=`,
-		`%s inurl:?type=`,
-		`%s inurl:?sort=`,
-		`%s inurl:?filter=`,
-		`%s inurl:?search=`,
-		`%s inurl:?q=`,
-		`%s inurl:?query=`,
-		`%s inurl:?login=`,
-		`%s inurl:?member=`,
-		`%s inurl:?account=`,
-		`%s inurl:?register=`,
-		`%s inurl:php?id=`,
-		`%s inurl:index.php?id=`,
-		`%s inurl:product.php?id=`,
-		`%s inurl:page.php?id=`,
-		`%s inurl:article.php?id=`,
-		`%s inurl:news.php?id=`,
-		`%s inurl:view.php?id=`,
-		`%s inurl:category.php?id=`,
-		`%s inurl:detail.php?id=`,
-		`%s inurl:show.php?id=`,
-		`%s ext:php "?id="`,
-		`%s ext:php "?page="`,
-		`%s ext:php "?cat="`,
-		`%s ext:php "?product="`,
-		`%s ext:asp "?id="`,
-		`%s ext:aspx "?id="`,
+	// Tier 1 — ultra large : max d'URLs avec paramètres dynamiques
+	broad := []string{
+		`%s inurl:?`,
+		`%s inurl:&`,
 		`%s ext:php inurl:?`,
-		`%s inurl:wp-content inurl:?`,
-		`%s inurl:joomla inurl:?`,
-		`%s inurl:drupal inurl:?`,
-		`%s "sql syntax" ext:php`,
-		`%s inurl:api inurl:?`,
-		`%s inurl:ajax inurl:?`,
+		`%s ext:asp inurl:?`,
+		`%s ext:aspx inurl:?`,
+		`%s ext:jsp inurl:?`,
+		`%s ext:cfm inurl:?`,
+		`%s (ext:php | ext:asp | ext:aspx) inurl:?`,
+		`%s inurl:php?`,
+		`%s inurl:asp?`,
+		`%s inurl:aspx?`,
 	}
 
-	out := make([]string, 0, len(patterns))
-	for _, p := range patterns {
+	// Tier 2 — noms de paramètres SQLi fréquents (sans imposer un chemin/fichier)
+	params := []string{
+		"id", "page", "pid", "uid", "user", "user_id", "userid", "cat", "category",
+		"product", "article", "news", "item", "view", "show", "detail", "ref",
+		"order", "cmd", "action", "module", "file", "type", "sort", "filter",
+		"search", "q", "query", "login", "member", "account", "register",
+		"post", "nid", "aid", "sid", "tid", "num", "no", "nr", "doc", "report",
+		"client", "customer", "profil", "profile", "lang", "year", "month", "day",
+		"ticket", "invoice", "download", "gallery", "album", "photo", "video",
+	}
+
+	out := make([]string, 0, len(broad)+len(params)*2)
+	for _, p := range broad {
 		out = append(out, fmt.Sprintf(p, site))
+	}
+	for _, param := range params {
+		out = append(out, fmt.Sprintf(`%s inurl:?%s=`, site, param))
+		out = append(out, fmt.Sprintf(`%s inurl:&%s=`, site, param))
 	}
 	return out
 }
 
-// BuildEmailDorks alias rétrocompat (scan email après vuln trouvée).
+// BuildEmailDorks alias rétrocompat.
 func BuildEmailDorks(domain string, subs bool) []string {
 	return BuildVulnDorks(domain, subs)
 }
