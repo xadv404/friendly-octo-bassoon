@@ -21,25 +21,25 @@ func TestBuildVulnDorks_SwissWideBroad(t *testing.T) {
 	}
 
 	for _, d := range dorks {
-		if !strings.Contains(d, "site:.ch") {
-			t.Fatalf("dork must lock Switzerland: %s", d)
+		if strings.Contains(d, "site:.ch") {
+			t.Fatalf("wide mode must not use site:.ch (country=CH on OpenSerp): %s", d)
 		}
 	}
 
 	mustHave := []string{
-		"site:.ch inurl:?",
-		"site:.ch ext:php inurl:?",
-		"site:.ch inurl:?id=",
-		"site:.ch inurl:promo.php inurl:?",
-		"site:.ch inurl:kanton inurl:?",
-		"site:.ch inurl:?ID=",
-		"site:.ch inurl:immobilier inurl:detail.php inurl:?",
-		"site:.ch inurl:product.php inurl:?id=",
-		"site:.ch inurl:RegionRef inurl:.php inurl:?",
-		"site:.ch inurl:Gemeinde- inurl:.php inurl:?",
-		"site:.ch inurl:Kauf-Suche.php inurl:?",
-		"site:.ch inurl:news_view.php inurl:?id=",
-		"site:.ch (inurl:id= | inurl:pid= | inurl:cat=) inurl:&",
+		"inurl:?",
+		"ext:php inurl:?",
+		"inurl:?id=",
+		"inurl:promo.php inurl:?",
+		"inurl:kanton inurl:?",
+		"inurl:?ID=",
+		"inurl:immobilier inurl:detail.php inurl:?",
+		"inurl:product.php inurl:?id=",
+		"inurl:RegionRef inurl:.php inurl:?",
+		"inurl:Gemeinde- inurl:.php inurl:?",
+		"inurl:Kauf-Suche.php inurl:?",
+		"inurl:news_view.php inurl:?id=",
+		"(inurl:id= | inurl:pid= | inurl:cat=) inurl:&",
 	}
 	for _, want := range mustHave {
 		found := false
@@ -71,17 +71,17 @@ func TestBuildFreshDorks(t *testing.T) {
 		t.Fatalf("expected 150+ fresh dorks, got %d", len(fresh))
 	}
 	for _, d := range fresh {
-		if !strings.Contains(d, "site:.ch") {
-			t.Fatalf("fresh dork must lock Switzerland: %s", d)
+		if strings.Contains(d, "site:.ch") {
+			t.Fatalf("fresh dork must not use site:.ch: %s", d)
 		}
 	}
 	mustHave := []string{
-		"site:.ch inurl:view.php inurl:?",
-		"site:.ch inurl:promo.php inurl:?",
-		"site:.ch inurl:immobilier inurl:detail.php inurl:?",
-		"site:.ch inurl:product.php inurl:?id=",
-		"site:.ch inurl:Kauf-Suche.php inurl:?",
-		"site:.ch inurl:RegionRef inurl:.php inurl:?",
+		"inurl:view.php inurl:?",
+		"inurl:promo.php inurl:?",
+		"inurl:immobilier inurl:detail.php inurl:?",
+		"inurl:product.php inurl:?id=",
+		"inurl:Kauf-Suche.php inurl:?",
+		"inurl:RegionRef inurl:.php inurl:?",
 	}
 	for _, want := range mustHave {
 		found := false
@@ -116,6 +116,18 @@ func TestFilterSwissURLs(t *testing.T) {
 	}
 	out := filterSwissURLs(in)
 	if len(out) != 1 || !strings.Contains(out[0], "shop.ch") {
+		t.Fatalf("got %v", out)
+	}
+}
+
+func TestFilterDiscoveryURLs_CountryWide(t *testing.T) {
+	in := []string{
+		"https://shop.ch/page.php?id=1",
+		"https://swiss-example.com/product.php?id=2",
+		"https://example.com/static/page",
+	}
+	out := filterDiscoveryURLs(in, false)
+	if len(out) != 2 {
 		t.Fatalf("got %v", out)
 	}
 }

@@ -5,23 +5,23 @@ import (
 	"strings"
 )
 
-// BuildVulnDorks retourne des dorks Google/Bing pour URLs vulnérables .ch.
+// BuildVulnDorks retourne des dorks Google/Bing pour URLs vulnérables (Suisse).
 func BuildVulnDorks(domain string, subs bool) []string {
-	site := siteOperator(domain, subs)
-	if site == "" {
+	domain = NormalizeSwissDomain(domain)
+	if domain == "" {
 		return nil
 	}
-	return buildAllDorks(site)
+	return buildAllDorks(siteOperator(domain, subs))
 }
 
 // BuildFreshDorks retourne les dorks à fort rendement pour le fresh-pass quotidien
 // (page 0 à chaque run — nouveaux sites indexés par Google).
 func BuildFreshDorks(domain string, subs bool) []string {
-	site := siteOperator(domain, subs)
-	if site == "" {
+	domain = NormalizeSwissDomain(domain)
+	if domain == "" {
 		return nil
 	}
-	return buildFreshDorks(site)
+	return buildFreshDorks(siteOperator(domain, subs))
 }
 
 // DailyDorkOrder fait tourner la liste pour varier les requêtes chaque jour.
@@ -132,22 +132,36 @@ func (c *dorkCollector) add(d string) {
 
 func (c *dorkCollector) addTemplates(templates ...string) {
 	for _, p := range templates {
-		c.add(fmt.Sprintf(p, c.site))
+		c.add(formatDork(c.site, p))
 	}
 }
 
 func (c *dorkCollector) addScript(script string) {
-	c.add(fmt.Sprintf(`%s inurl:%s inurl:?`, c.site, script))
-	c.add(fmt.Sprintf(`%s inurl:%s inurl:&`, c.site, script))
+	c.add(dorkWithSite(c.site, fmt.Sprintf("inurl:%s inurl:?", script)))
+	c.add(dorkWithSite(c.site, fmt.Sprintf("inurl:%s inurl:&", script)))
 }
 
 func (c *dorkCollector) addScriptParam(script, param string) {
-	c.add(fmt.Sprintf(`%s inurl:%s inurl:?%s=`, c.site, script, param))
+	c.add(dorkWithSite(c.site, fmt.Sprintf("inurl:%s inurl:?%s=", script, param)))
 }
 
 func (c *dorkCollector) addParam(param string) {
-	c.add(fmt.Sprintf(`%s inurl:?%s=`, c.site, param))
-	c.add(fmt.Sprintf(`%s inurl:&%s=`, c.site, param))
+	c.add(dorkWithSite(c.site, fmt.Sprintf("inurl:?%s=", param)))
+	c.add(dorkWithSite(c.site, fmt.Sprintf("inurl:&%s=", param)))
+}
+
+func dorkWithSite(site, rest string) string {
+	if site == "" {
+		return rest
+	}
+	return site + " " + rest
+}
+
+func formatDork(site, pattern string) string {
+	if site == "" {
+		return strings.TrimSpace(strings.Replace(pattern, "%s ", "", 1))
+	}
+	return fmt.Sprintf(pattern, site)
 }
 
 func isForbiddenDork(d string) bool {
@@ -563,7 +577,7 @@ func BuildEmailDorks(domain string, subs bool) []string {
 func siteOperator(domain string, subs bool) string {
 	domain = NormalizeSwissDomain(domain)
 	if IsSwissWide(domain) {
-		return "site:.ch"
+		return "" // géo CH via OpenSerp country=CH / Bing cc=CH
 	}
 	if subs {
 		return "site:*." + domain

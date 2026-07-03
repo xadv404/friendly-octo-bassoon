@@ -25,8 +25,9 @@ var noiseURLFragments = []string{
 	"facebook.com", "twitter.com", "linkedin.com", "youtube.com",
 }
 
-// isScannable rejette le bruit Wayback et garde les URLs .ch avec paramètres.
-func isScannable(raw string) bool {
+// isScannable rejette le bruit et garde les URLs avec paramètres.
+// requireCHHost=false quand le pays est déjà filtré (OpenSerp country=CH, Bing cc=CH).
+func isScannable(raw string, requireCHHost bool) bool {
 	if len(raw) > 2048 {
 		return false
 	}
@@ -42,7 +43,7 @@ func isScannable(raw string) bool {
 	if _, err := url.ParseRequestURI(raw); err != nil {
 		return false
 	}
-	if !IsSwissURL(raw) {
+	if requireCHHost && !IsSwissURL(raw) {
 		return false
 	}
 	if isNoiseURL(raw) {

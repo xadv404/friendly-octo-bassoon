@@ -348,7 +348,7 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 			return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched}, nil
 		}
 		return Result{Fetched: fetched, Kept: 0, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched},
-			fmt.Errorf("aucune URL .ch scannable trouvée pour %s", opts.Domain)
+			fmt.Errorf("aucune URL scannable trouvée pour %s", opts.Domain)
 	}
 
 	return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched}, nil
@@ -373,7 +373,8 @@ func shouldSkipDumped(raw string, skipper *results.DumpRegistry) bool {
 }
 
 func passesFilters(raw string, opts Options) bool {
-	if !isScannable(raw) {
+	requireCH := !IsSwissWide(opts.Domain)
+	if !isScannable(raw, requireCH) {
 		return false
 	}
 	if opts.NoFilter {

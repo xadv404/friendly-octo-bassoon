@@ -61,7 +61,7 @@ func enStockSummary(baseDir string) string {
 }
 
 func enDailyLaunch(limit, threads int, outputDir string) string {
-	return fmt.Sprintf("discover: .ch Google\nlimit: %d urls\nthreads: %d\noutput: %s/emails/", limit, threads, outputDir)
+	return fmt.Sprintf("discover: Switzerland (country=CH)\nlimit: %d urls\nthreads: %d\noutput: %s/emails/", limit, threads, outputDir)
 }
 
 func enDailyNoNew(baseDir string) string {

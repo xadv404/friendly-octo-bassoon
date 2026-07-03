@@ -35,5 +35,5 @@ func (g *googleClient) FetchDork(ctx context.Context, dork string, start int) ([
 		return nil, ctx.Err()
 	case <-time.After(openSerpJitter(g.delay)):
 	}
-	return g.searchOpenSerp(ctx, dork, start)
+	return g.searchOpenSerp(ctx, dork, start, false)
 }

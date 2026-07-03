@@ -13,18 +13,18 @@ func TestBuildVulnDorks(t *testing.T) {
 	if len(dorks) < 30 {
 		t.Fatalf("expected many dorks, got %d", len(dorks))
 	}
-	if !strings.Contains(dorks[0], "site:.ch") {
+	if !strings.Contains(dorks[0], "inurl:") {
 		t.Fatalf("first dork: %s", dorks[0])
 	}
 	foundBroad := false
 	for _, d := range dorks {
-		if d == "site:.ch inurl:?" {
+		if d == "inurl:?" {
 			foundBroad = true
 			break
 		}
 	}
 	if !foundBroad {
-		t.Fatal("missing ultra-broad dork site:.ch inurl:?")
+		t.Fatal("missing ultra-broad dork inurl:?")
 	}
 }
 

@@ -10,6 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=lib/vps-env.sh
 source "$ROOT/scripts/lib/vps-env.sh"
+vps_require_vars
 
 if [[ $# -eq 0 ]]; then
   echo "usage: $0 <commande distante>" >&2

@@ -49,7 +49,7 @@ func (b *bingClient) FetchDork(ctx context.Context, dork string, start int) ([]s
 		return nil, ctx.Err()
 	case <-time.After(b.delay):
 	}
-	return b.search(ctx, dork, bingFirst)
+	return b.search(ctx, dork, bingFirst, false)
 }
 
 func (b *bingClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
@@ -68,10 +68,10 @@ func (b *bingClient) FetchPage(ctx context.Context, domain string, subs bool, ab
 	case <-time.After(b.delay):
 	}
 
-	return b.search(ctx, dork, bingFirst)
+	return b.search(ctx, dork, bingFirst, !IsSwissWide(domain))
 }
 
-func (b *bingClient) search(ctx context.Context, query string, first int) ([]string, error) {
+func (b *bingClient) search(ctx context.Context, query string, first int, requireCHHost bool) ([]string, error) {
 	urls, blocked, err := b.searchRaw(ctx, query, first)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func (b *bingClient) search(ctx context.Context, query string, first int) ([]str
 	if blocked {
 		return nil, nil
 	}
-	return filterSwissURLs(urls), nil
+	return filterDiscoveryURLs(urls, requireCHHost), nil
 }
 
 func (b *bingClient) searchRaw(ctx context.Context, query string, first int) ([]string, bool, error) {
@@ -131,14 +131,14 @@ func (b *bingClient) searchRaw(ctx context.Context, query string, first int) ([]
 	return parseBingResults(html), false, nil
 }
 
-func filterSwissURLs(urls []string) []string {
+func filterDiscoveryURLs(urls []string, requireCHHost bool) []string {
 	if len(urls) == 0 {
 		return urls
 	}
 	out := make([]string, 0, len(urls))
 	seen := make(map[string]struct{}, len(urls))
 	for _, raw := range urls {
-		if !IsSwissURL(raw) {
+		if !isScannable(raw, requireCHHost) {
 			continue
 		}
 		if _, ok := seen[raw]; ok {
@@ -148,6 +148,11 @@ func filterSwissURLs(urls []string) []string {
 		out = append(out, raw)
 	}
 	return out
+}
+
+// filterSwissURLs garde uniquement les hôtes .ch (mode domaine ciblé).
+func filterSwissURLs(urls []string) []string {
+	return filterDiscoveryURLs(urls, true)
 }
 
 func parseBingResults(html string) []string {

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// IsSwissWide indique une découverte sur tout le TLD .ch (pas un seul domaine).
+// IsSwissWide = chasse large Suisse (géo country=CH), pas un seul domaine.
 func IsSwissWide(d string) bool {
 	switch strings.ToLower(strings.TrimSpace(d)) {
 	case "ch", ".ch", "*", "suisse", "swiss", "all":

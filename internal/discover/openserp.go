@@ -81,7 +81,7 @@ func (g *googleClient) fetchOpenSerp(ctx context.Context, domain string, subs bo
 			case <-time.After(openSerpJitter(time.Duration(attempt+1) * time.Second)):
 			}
 		}
-		urls, err := g.searchOpenSerp(ctx, dork, start)
+		urls, err := g.searchOpenSerp(ctx, dork, start, !IsSwissWide(domain))
 		if len(urls) > 0 {
 			return urls, nil
 		}
@@ -90,7 +90,7 @@ func (g *googleClient) fetchOpenSerp(ctx context.Context, domain string, subs bo
 	return nil, lastErr
 }
 
-func (g *googleClient) searchOpenSerp(ctx context.Context, query string, start int) ([]string, error) {
+func (g *googleClient) searchOpenSerp(ctx context.Context, query string, start int, requireCHHost bool) ([]string, error) {
 	key := openSerpAPIKey()
 	if key == "" {
 		return nil, fmt.Errorf("openserp: OPENSERP_API_KEY manquant")
@@ -104,7 +104,7 @@ func (g *googleClient) searchOpenSerp(ctx context.Context, query string, start i
 	q.Set("q", query)
 	q.Set("engine", openSerpEngine)
 	q.Set("language", "fr")
-	q.Set("country", "ch")
+	q.Set("country", "CH")
 	if start > 0 {
 		q.Set("start", fmt.Sprintf("%d", start))
 	}
@@ -150,7 +150,7 @@ func (g *googleClient) searchOpenSerp(ctx context.Context, query string, start i
 		return nil, fmt.Errorf("openserp: requête échouée")
 	}
 
-	urls := filterSwissURLs(parseOpenSerpResults(parsed))
+	urls := filterDiscoveryURLs(parseOpenSerpResults(parsed), requireCHHost)
 	return urls, nil
 }
 

@@ -108,7 +108,7 @@ func runScanWithSignals(cfg config) {
 // discoverURLs collecte les URLs via Wayback et retourne le chemin du fichier scope.
 func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (string, int, error) {
 	printer.KV("discover", discoverLabel(cfg.discoverDomain))
-	printer.KV("profil", "urls .ch vulnérables")
+	printer.KV("profil", "urls vulnérables Suisse (country=CH)")
 	if cfg.discoverPaths != "" {
 		printer.KV("paths", cfg.discoverPaths)
 	}
@@ -180,7 +180,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	return result.Output, result.Kept, nil
 }
 
-// discoverNoFilter : par défaut toutes les URLs .ch avec paramètres.
+// discoverNoFilter : par défaut toutes les URLs avec paramètres (géo CH côté moteur).
 // --paths / --discover-params activent un filtre manuel ; --no-filter force tout garder.
 func discoverNoFilter(cfg config) bool {
 	if cfg.discoverNoFilter {
@@ -194,7 +194,7 @@ func discoverNoFilter(cfg config) bool {
 
 func discoverLabel(domain string) string {
 	if discover.IsSwissWide(domain) || discover.NormalizeSwissDomain(domain) == "ch" {
-		return "URLs vulnérables .ch (Google dorks)"
+		return "URLs vulnérables Suisse (Google dorks, country=CH)"
 	}
 	return discover.NormalizeSwissDomain(domain)
 }

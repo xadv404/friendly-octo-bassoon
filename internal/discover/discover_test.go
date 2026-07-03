@@ -155,11 +155,11 @@ func TestIsScannable_RejectsJunk(t *testing.T) {
 		"https://shop.ch/static/style.css?x=1",
 	}
 	for _, u := range junk {
-		if isScannable(u) {
+		if isScannable(u, true) {
 			t.Errorf("should reject %q", u)
 		}
 	}
-	if !isScannable("https://css.ch/page.php?id=1") {
+	if !isScannable("https://css.ch/page.php?id=1", true) {
 		t.Error("valid Swiss URL rejected")
 	}
 }
