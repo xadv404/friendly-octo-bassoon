@@ -145,6 +145,31 @@ func (lb *liveBoard) addVuln(f models.Finding) {
 	lb.markDirty(true)
 }
 
+func (lb *liveBoard) addDumpFail(_ models.Finding, _ string) {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+	lb.state.DumpFails++
+	lb.markDirty(false)
+}
+
+func (lb *liveBoard) addDumpOK(_ models.ExtractedData, email string) {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+	lb.state.DumpsOK++
+	if email != "" {
+		for _, e := range lb.state.EmailsList {
+			if e == email {
+				lb.markDirty(true)
+				return
+			}
+		}
+		if len(lb.state.EmailsList) < i18nalert.MaxBoardEmails {
+			lb.state.EmailsList = append(lb.state.EmailsList, email)
+		}
+	}
+	lb.markDirty(true)
+}
+
 func (lb *liveBoard) addEmail(email string) {
 	if email == "" {
 		return

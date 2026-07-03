@@ -85,7 +85,7 @@ func (t *telegramSender) Vuln(f models.Finding) {
 
 func (t *telegramSender) DumpFail(f models.Finding, reason string) {
 	if t.live != nil {
-		t.live.addVuln(f)
+		t.live.addDumpFail(f, reason)
 		return
 	}
 	t.send(t.texts.DumpFail(f, reason))
@@ -93,7 +93,7 @@ func (t *telegramSender) DumpFail(f models.Finding, reason string) {
 
 func (t *telegramSender) DumpOK(d models.ExtractedData, email string) {
 	if t.live != nil {
-		t.live.addEmail(email)
+		t.live.addDumpOK(d, email)
 		return
 	}
 	t.send(t.texts.DumpOK(d, email))

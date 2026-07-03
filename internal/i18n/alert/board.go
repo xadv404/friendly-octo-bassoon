@@ -30,6 +30,8 @@ type BoardState struct {
 	ScanTotal  int
 	Vulns      int
 	Findings   int
+	DumpsOK    int
+	DumpFails  int
 	NewEmails  int
 	ScanDone   bool
 	Stock      string
@@ -114,6 +116,7 @@ type boardL10n struct {
 	scanWaitLine                                 string
 	dorks, pages, urls                           string
 	vulnsHeader, vulnsMore                       string
+	dumpsLine                                    string
 	emailsHeader                                 string
 }
 
@@ -132,6 +135,7 @@ func labelsForBoard(loc string) boardL10n {
 			urls:           "URLs",
 			vulnsHeader:    "Vulnerabilities",
 			vulnsMore:      "… +%d more",
+			dumpsLine:      "dumps: %d OK · %d failed",
 			emailsHeader:   "New emails",
 		}
 	}
@@ -148,6 +152,7 @@ func labelsForBoard(loc string) boardL10n {
 		urls:           "URLs",
 		vulnsHeader:    "Vulnérabilités",
 		vulnsMore:      "… +%d autres",
+		dumpsLine:      "dumps : %d OK · %d échecs",
 		emailsHeader:   "Nouveaux emails",
 	}
 }
@@ -234,6 +239,10 @@ func renderScanSection(l boardL10n, st BoardState) string {
 	if st.Vulns > 0 || st.Findings > 0 {
 		b.WriteString("\n")
 		b.WriteString(fmt.Sprintf("%d vuln · %d findings", st.Vulns, st.Findings))
+	}
+	if st.Findings > 0 || st.DumpsOK > 0 || st.DumpFails > 0 {
+		b.WriteString("\n")
+		b.WriteString(fmt.Sprintf(l.dumpsLine, st.DumpsOK, st.DumpFails))
 	}
 	if st.NewEmails > 0 && (st.ScanDone || st.Phase == "done") {
 		b.WriteString("\n")

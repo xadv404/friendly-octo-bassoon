@@ -91,15 +91,20 @@ func DetectUnionSuccess(body, baseline, payload string) bool {
 }
 
 // DetectDBLeak détecte des fuites de métadonnées DB dans la réponse.
+// Le corps doit différer du baseline (évite faux positifs sur pages statiques).
 func DetectDBLeak(body, baseline string) (bool, string) {
+	if similarityRatio(baseline, body) < 0.03 {
+		return false, ""
+	}
 	leaks := []struct {
 		pattern string
 		desc    string
 	}{
-		{`(?i)\d+\.\d+\.\d+`, "version DB exposée"},
+		{`(?i)\d+\.\d+\.\d+-log\b`, "version MySQL exposée"},
+		{`(?i)(postgresql|postgres)\s+\d+\.\d+`, "version PostgreSQL exposée"},
 		{`(?i)(root@|postgres@|sa@)`, "utilisateur DB exposé"},
 		{`(?i)(information_schema|pg_catalog|sys\.tables)`, "schéma DB exposé"},
-		{`(?i)~[0-9a-f]{20,}`, "données extraites via EXTRACTVALUE/UPDATEXML"},
+		{`(?i)~[^~\s]{4,}~`, "données extraites via EXTRACTVALUE/UPDATEXML"},
 	}
 	for _, l := range leaks {
 		re := regexp.MustCompile(l.pattern)

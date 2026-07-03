@@ -185,6 +185,14 @@ func TestDetectUnionSuccess_RealCases(t *testing.T) {
 
 // ── DB leak ──
 
+func TestDetectDBLeak_NoLeakOnStaticPage(t *testing.T) {
+	baseline := `<html><body><p>Service i=144</p><span>1.0.0</span></body></html>`
+	body := `<html><body><p>Service i=1 OR 1=1--</p><span>2.0.0</span></body></html>`
+	if leak, _ := DetectDBLeak(body, baseline); leak {
+		t.Fatalf("expected no leak on generic version numbers, got leak")
+	}
+}
+
 func TestDetectDBLeak_RealCases(t *testing.T) {
 	cases := []struct {
 		name     string
