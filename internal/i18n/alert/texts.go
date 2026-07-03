@@ -25,6 +25,8 @@ type Texts struct {
 	StockSummary  func(baseDir string) string
 	DailyLaunch   func(limit, threads int, outputDir string) string
 	DailyNoNew    func(baseDir string) string
+	DiscoverProgress func(phase string, step, total, kept, fetched, skipped int) string
+	ScanProgress  func(scanned, total, vulns, findings int) string
 }
 
 // For retourne les textes notify pour une locale (fr, en).

@@ -29,6 +29,8 @@ func (a *App) handleMessage(msg *tgbotapi.Message) {
 	case "/start":
 		a.pending.Clear(msg.From.ID)
 		a.sendStart(msg.Chat.ID)
+	case "/status":
+		a.sendStatus(msg.Chat.ID)
 	default:
 		if provider, ok := a.pending.Get(msg.From.ID); ok {
 			a.handleQuantityInput(msg.Chat.ID, msg.From.ID, provider, text)

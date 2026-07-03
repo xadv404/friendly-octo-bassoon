@@ -10,9 +10,10 @@ import (
 )
 
 type telegramSender struct {
-	bc     *telegram.Broadcaster
-	texts  i18nalert.Texts
-	locale string
+	bc       *telegram.Broadcaster
+	texts    i18nalert.Texts
+	locale   string
+	progress *progressGate
 }
 
 func newFromEnv() Sender {
@@ -35,9 +36,10 @@ func newFromEnv() Sender {
 	log.Printf("notify: alertes Telegram → %d ID(s) [%s]", len(cfg.Allowed), cfg.Locale)
 
 	return &telegramSender{
-		bc:     bc,
-		texts:  bundle.Alert,
-		locale: cfg.Locale,
+		bc:       bc,
+		texts:    bundle.Alert,
+		locale:   cfg.Locale,
+		progress: &progressGate{},
 	}
 }
 

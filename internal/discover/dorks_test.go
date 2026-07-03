@@ -71,8 +71,8 @@ func TestBuildVulnDorks_SwissWideBroad(t *testing.T) {
 
 func TestBuildFreshDorks(t *testing.T) {
 	fresh := BuildFreshDorks("ch", false)
-	if len(fresh) < 100 {
-		t.Fatalf("expected 100+ fresh dorks, got %d", len(fresh))
+	if len(fresh) < 40 {
+		t.Fatalf("expected 40+ fresh dorks, got %d", len(fresh))
 	}
 	for _, d := range fresh {
 		if strings.Contains(d, "site:.ch") {

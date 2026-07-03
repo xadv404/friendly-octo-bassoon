@@ -157,6 +157,17 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 				findings.Add(int64(len(tr.Findings)))
 			}
 
+			if cfg.Notify != nil && cfg.Notify.Enabled() {
+				cfg.Notify.ScanProgress(int(n), total, int(vulnerable.Load()), int(findings.Load()))
+			}
+			_ = results.WriteRunStatus(cfg.OutputDir, results.RunStatus{
+				Phase:     "scan",
+				Scanned:   int(n),
+				ScanTotal: total,
+				Vulns:     int(vulnerable.Load()),
+				Findings:  int(findings.Load()),
+			})
+
 			elapsed := time.Since(start)
 			rate := float64(n) / elapsed.Seconds()
 			r.Printer.MassProgress(int(n), total, int(vulnerable.Load()), int(skipped.Load()), rate, elapsed)
@@ -189,6 +200,14 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 	if cfg.Notify != nil && cfg.Notify.Enabled() {
 		notify.ScanComplete(cfg.Notify, report.Scanned, total, report.Vulnerable, report.Findings, newEmails, notify.StockSummary(cfg.OutputDir))
 	}
+	_ = results.WriteRunStatus(cfg.OutputDir, results.RunStatus{
+		Phase:     "done",
+		Scanned:   report.Scanned,
+		ScanTotal: total,
+		Vulns:     report.Vulnerable,
+		Findings:  report.Findings,
+		NewEmails: newEmails,
+	})
 	for _, f := range files {
 		r.Printer.Success("→ " + f)
 	}

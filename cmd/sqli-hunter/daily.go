@@ -34,6 +34,7 @@ func runDaily(args []string) {
 
 	n := notify.Default()
 	notify.DailyLaunch(n, cfg.discoverLimit, cfg.urlConcurrency, cfg.outputDir)
+	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{Phase: "daily"})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

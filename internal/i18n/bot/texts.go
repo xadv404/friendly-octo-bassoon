@@ -1,5 +1,7 @@
 package bot
 
+import "github.com/sqli-hunter/sqli-hunter/internal/results"
+
 // Texts messages UI du bot d'export emails.
 type Texts struct {
 	BotName string
@@ -29,6 +31,8 @@ type Texts struct {
 
 	CallbackDenied func() string
 	CallbackEmpty  func() string
+
+	Status func(scopeN, scannedN int, st results.RunStatus, updatedAgo string) string
 }
 
 // For retourne les textes bot pour une locale (fr, en).

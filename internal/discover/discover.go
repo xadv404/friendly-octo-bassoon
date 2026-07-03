@@ -74,6 +74,7 @@ type Options struct {
 	FreshPass   bool // page 0 des dorks à fort rendement avant le curseur
 	Fetcher     CDXFetcher
 	OnProgress  func(fetched, kept int, page int)
+	OnFreshProgress func(dorkIndex, dorkTotal, kept, fetched, skipped int)
 }
 
 // Result résumé d'une découverte.

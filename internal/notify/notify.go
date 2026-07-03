@@ -18,6 +18,8 @@ type Sender interface {
 	DumpOK(d models.ExtractedData, email string)
 	Complete(title, detail string)
 	Error(msg string)
+	DiscoverProgress(phase string, step, total, kept, fetched, skipped int)
+	ScanProgress(scanned, total, vulns, findings int)
 }
 
 // Noop désactive les notifications.
@@ -32,6 +34,8 @@ func (Noop) DumpFail(models.Finding, string)     {}
 func (Noop) DumpOK(models.ExtractedData, string) {}
 func (Noop) Complete(string, string)             {}
 func (Noop) Error(string)                        {}
+func (Noop) DiscoverProgress(string, int, int, int, int, int) {}
+func (Noop) ScanProgress(int, int, int, int)     {}
 
 var (
 	defaultOnce sync.Once

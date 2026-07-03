@@ -38,7 +38,7 @@ func runFreshPass(
 	}
 
 	var st freshCollectState
-	for _, dork := range dorks {
+	for i, dork := range dorks {
 		if ctx.Err() != nil {
 			return st, ctx.Err()
 		}
@@ -48,6 +48,9 @@ func runFreshPass(
 
 		batch, err := direct.FetchDork(ctx, dork, 0)
 		if err != nil {
+			if opts.OnFreshProgress != nil {
+				opts.OnFreshProgress(i+1, len(dorks), st.kept, st.fetched, st.skipped)
+			}
 			continue
 		}
 		if len(batch) == 0 {
@@ -79,6 +82,9 @@ func runFreshPass(
 				return st, err
 			}
 			st.kept++
+		}
+		if opts.OnFreshProgress != nil {
+			opts.OnFreshProgress(i+1, len(dorks), st.kept, st.fetched, st.skipped)
 		}
 	}
 	return st, nil

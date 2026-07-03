@@ -22,6 +22,8 @@ var en = Texts{
 	StockSummary: enStockSummary,
 	DailyLaunch:  enDailyLaunch,
 	DailyNoNew:   enDailyNoNew,
+	DiscoverProgress: enDiscoverProgress,
+	ScanProgress: enScanProgress,
 }
 
 func enLaunch(title, detail string) string {
@@ -66,4 +68,22 @@ func enDailyLaunch(limit, threads int, outputDir string) string {
 
 func enDailyNoNew(baseDir string) string {
 	return "Nothing new\n" + enStockSummary(baseDir)
+}
+
+func enDiscoverProgress(phase string, step, total, kept, fetched, skipped int) string {
+	if phase == "fresh-pass" && total > 0 {
+		return fmt.Sprintf("📊 Discover — %s\n%d/%d dorks\nURLs: %d kept · %d fetched · %d skipped",
+			phase, step, total, kept, fetched, skipped)
+	}
+	if total > 0 {
+		return fmt.Sprintf("📊 Discover — %s\npage %d/%d\nURLs: %d kept · %d fetched · %d skipped",
+			phase, step, total, kept, fetched, skipped)
+	}
+	return fmt.Sprintf("📊 Discover — %s\npage %d\nURLs: %d kept · %d fetched · %d skipped",
+		phase, step, kept, fetched, skipped)
+}
+
+func enScanProgress(scanned, total, vulns, findings int) string {
+	return fmt.Sprintf("📊 Scan in progress\n%d/%d URLs · %d vulns · %d findings",
+		scanned, total, vulns, findings)
 }

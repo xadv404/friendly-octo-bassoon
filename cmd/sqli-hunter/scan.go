@@ -11,6 +11,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
 	"github.com/sqli-hunter/sqli-hunter/internal/notify"
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
+	"github.com/sqli-hunter/sqli-hunter/internal/results"
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 	"github.com/sqli-hunter/sqli-hunter/internal/targets"
 	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
@@ -133,6 +134,24 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		printer.KV("source", discover.DiscoverBackendLabel(discover.ParseSource(cfg.discoverSource)))
 	}
 
+	n := notify.Default()
+	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{Phase: "discover"})
+
+	pushDiscover := func(phase string, step, total, kept, fetched, skipped int) {
+		_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{
+			Phase:        phase,
+			DorkIndex:    step,
+			DorkTotal:    total,
+			URLsKept:     kept,
+			URLsFetched:  fetched,
+			URLsSkipped:  skipped,
+			DiscoverPage: step,
+		})
+		if n.Enabled() {
+			n.DiscoverProgress(phase, step, total, kept, fetched, skipped)
+		}
+	}
+
 	opts := discover.Options{
 		Domain:        cfg.discoverDomain,
 		Output:        cfg.discoverOutput,
@@ -149,12 +168,16 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		PageBase:      pageBase,
 		PersistCursor: persistCursor,
 		FreshPass:     persistCursor,
+		OnFreshProgress: func(idx, total, kept, fetched, skipped int) {
+			pushDiscover("fresh-pass", idx, total, kept, fetched, skipped)
+		},
 		OnProgress: func(fetched, kept, page int) {
 			src := cfg.discoverSource
 			if src == "" {
 				src = "google"
 			}
 			fmt.Fprintf(os.Stderr, "\r  %s page %d — %d urls lues, %d gardées", src, page+1, fetched, kept)
+			pushDiscover("discover", page+1, 0, kept, fetched, 0)
 		},
 	}
 
@@ -172,9 +195,15 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	if result.PagesFetched > 0 && opts.PersistCursor {
 		printer.KV("curseur", fmt.Sprintf("→ page %d demain", pageBase+result.PagesFetched))
 	}
-	if n := notify.Default(); n.Enabled() {
+	if n.Enabled() {
 		n.DiscoverDone(result.Kept, result.Skipped, result.Fetched)
 	}
+	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{
+		Phase:       "discover_done",
+		URLsKept:    result.Kept,
+		URLsFetched: result.Fetched,
+		URLsSkipped: result.Skipped,
+	})
 	fmt.Println()
 
 	return result.Output, result.Kept, nil
