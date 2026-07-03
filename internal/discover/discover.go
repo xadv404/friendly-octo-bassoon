@@ -286,6 +286,12 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 			if opts.PersistCursor {
 				_ = SaveCursor(opts.ResultsDir, opts.PageBase+pagesFetched)
 			}
+			if kept > 0 {
+				if err := w.Flush(); err != nil {
+					return Result{}, err
+				}
+				return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched}, nil
+			}
 			return Result{}, err
 		}
 		if len(batch) == 0 {

@@ -52,9 +52,21 @@ func (e *LiveEditor) setOne(chatID int64, text string) {
 	edit := tgbotapi.NewEditMessageText(chatID, mid, text)
 	edit.DisableWebPagePreview = true
 	if _, err := e.bot.Send(edit); err != nil {
+		if isEditUnchanged(err) {
+			return
+		}
 		log.Printf("telegram: edit %d msg %d: %v", chatID, mid, err)
 		e.sendNew(chatID, text)
 	}
+}
+
+func isEditUnchanged(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "message is not modified") ||
+		strings.Contains(msg, "MESSAGE_NOT_MODIFIED")
 }
 
 func (e *LiveEditor) sendNew(chatID int64, text string) {
