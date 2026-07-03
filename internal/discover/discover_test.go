@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -121,9 +122,20 @@ func TestRun_FreshPass(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "scope.txt")
 
+	var viewDork string
+	for _, d := range BuildFreshDorks("css.ch", false) {
+		if strings.Contains(d, "view.php") {
+			viewDork = d
+			break
+		}
+	}
+	if viewDork == "" {
+		t.Fatal("no view.php fresh dork")
+	}
+
 	fetcher := &mockDorkFetcher{
 		fresh: map[string][]string{
-			"site:css.ch inurl:view.php inurl:?": {"https://css.ch/view.php?id=1"},
+			viewDork: {"https://css.ch/view.php?id=1"},
 		},
 		mockFetcher: mockFetcher{pages: [][]string{
 			{"https://css.ch/page.php?id=2"},
@@ -153,6 +165,9 @@ func TestIsScannable_RejectsJunk(t *testing.T) {
 		"https://git.wsl.ch/EnviDat/ckan/-/blob/main/app.js?ref=tags",
 		"https://shop.ch/assets/app.min.js?v=1",
 		"https://shop.ch/static/style.css?x=1",
+		"https://shop.ch/wp-content/plugins/foo/?id=1",
+		"https://forum.ch/viewtopic.php?t=1",
+		"https://school.ch/moodle/mod/url/view.php?id=1",
 	}
 	for _, u := range junk {
 		if isScannable(u, true) {

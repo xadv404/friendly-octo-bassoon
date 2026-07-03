@@ -18,13 +18,13 @@ func TestBuildVulnDorks(t *testing.T) {
 	}
 	foundBroad := false
 	for _, d := range dorks {
-		if d == "inurl:?" {
+		if strings.Contains(d, "inurl:product.php inurl:?id=") {
 			foundBroad = true
 			break
 		}
 	}
 	if !foundBroad {
-		t.Fatal("missing ultra-broad dork inurl:?")
+		t.Fatal("missing tight dork inurl:product.php inurl:?id=")
 	}
 }
 

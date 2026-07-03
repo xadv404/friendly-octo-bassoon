@@ -9,6 +9,9 @@ func TestDorkCounts(t *testing.T) {
 	all := BuildVulnDorks("ch", false)
 	fresh := BuildFreshDorks("ch", false)
 	t.Logf("dorks: all=%d fresh=%d", len(all), len(fresh))
+	if len(all) < 1500 {
+		t.Fatalf("expected 1500+ tight dorks, got %d", len(all))
+	}
 	if len(all) > 3500 {
 		t.Fatalf("dork set unexpectedly large: %d", len(all))
 	}
@@ -16,50 +19,51 @@ func TestDorkCounts(t *testing.T) {
 
 func TestBuildVulnDorks_SwissWideBroad(t *testing.T) {
 	dorks := BuildVulnDorks("ch", false)
-	if len(dorks) < 2000 {
-		t.Fatalf("expected 2000+ broad dorks, got %d", len(dorks))
+	if len(dorks) < 1500 {
+		t.Fatalf("expected 1500+ dorks, got %d", len(dorks))
 	}
 
 	for _, d := range dorks {
 		if strings.Contains(d, "site:.ch") {
-			t.Fatalf("wide mode must not use site:.ch (country=CH on OpenSerp): %s", d)
+			t.Fatalf("wide mode must not use site:.ch: %s", d)
+		}
+		if strings.Contains(d, "inurl:? ") && !strings.Contains(d, "inurl:?id=") &&
+			!strings.Contains(d, "inurl:?pid=") && !strings.Contains(d, "inurl:?D1=") &&
+			!strings.Contains(d, "inurl:?num=") && !strings.Contains(d, "inurl:?objekt_id=") {
+			t.Fatalf("dork too broad (bare inurl:?): %s", d)
+		}
+		if strings.HasSuffix(strings.TrimSpace(d), "inurl:?") {
+			t.Fatalf("dork ends with bare inurl:?: %s", d)
 		}
 	}
 
 	mustHave := []string{
-		"inurl:?",
-		"ext:php inurl:?",
-		"inurl:?id=",
-		"inurl:promo.php inurl:?",
-		"inurl:kanton inurl:?",
-		"inurl:?ID=",
-		"inurl:immobilier inurl:detail.php inurl:?",
 		"inurl:product.php inurl:?id=",
-		"inurl:RegionRef inurl:.php inurl:?",
-		"inurl:Gemeinde- inurl:.php inurl:?",
-		"inurl:Kauf-Suche.php inurl:?",
+		"inurl:promo.php inurl:?id=",
+		"inurl:immobilier inurl:detail.php inurl:?id=",
+		"inurl:RegionRef inurl:.php inurl:?id=",
+		"inurl:Kauf-Suche.php inurl:?id=",
 		"inurl:news_view.php inurl:?id=",
-		"(inurl:id= | inurl:pid= | inurl:cat=) inurl:&",
 	}
 	for _, want := range mustHave {
 		found := false
 		for _, d := range dorks {
-			if d == want {
+			if strings.Contains(d, want) {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Fatalf("missing dork %q in %d dorks", want, len(dorks))
+			t.Fatalf("missing dork containing %q in %d dorks", want, len(dorks))
 		}
 	}
 
-	forbidden := []string{"joomla", "drupal", "wp-content", "index.php?id=", "sql syntax"}
+	forbidden := []string{"index.php?id=", "sql syntax", "ext:php inurl:?", "inurl:login.php"}
 	for _, d := range dorks {
 		lower := strings.ToLower(d)
 		for _, bad := range forbidden {
 			if strings.Contains(lower, bad) {
-				t.Fatalf("dork too narrow: %s", d)
+				t.Fatalf("forbidden pattern in dork: %s", d)
 			}
 		}
 	}
@@ -67,8 +71,8 @@ func TestBuildVulnDorks_SwissWideBroad(t *testing.T) {
 
 func TestBuildFreshDorks(t *testing.T) {
 	fresh := BuildFreshDorks("ch", false)
-	if len(fresh) < 150 {
-		t.Fatalf("expected 150+ fresh dorks, got %d", len(fresh))
+	if len(fresh) < 100 {
+		t.Fatalf("expected 100+ fresh dorks, got %d", len(fresh))
 	}
 	for _, d := range fresh {
 		if strings.Contains(d, "site:.ch") {
@@ -76,23 +80,20 @@ func TestBuildFreshDorks(t *testing.T) {
 		}
 	}
 	mustHave := []string{
-		"inurl:view.php inurl:?",
-		"inurl:promo.php inurl:?",
-		"inurl:immobilier inurl:detail.php inurl:?",
 		"inurl:product.php inurl:?id=",
-		"inurl:Kauf-Suche.php inurl:?",
-		"inurl:RegionRef inurl:.php inurl:?",
+		"inurl:Kauf-Suche.php inurl:?id=",
+		"inurl:RegionRef inurl:.php inurl:?id=",
 	}
 	for _, want := range mustHave {
 		found := false
 		for _, d := range fresh {
-			if d == want {
+			if strings.Contains(d, want) {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Fatalf("missing fresh dork %q", want)
+			t.Fatalf("missing fresh dork containing %q", want)
 		}
 	}
 	all := BuildVulnDorks("ch", false)
@@ -125,9 +126,17 @@ func TestFilterDiscoveryURLs_CountryWide(t *testing.T) {
 		"https://shop.ch/page.php?id=1",
 		"https://swiss-example.com/product.php?id=2",
 		"https://example.com/static/page",
+		"https://shop.ch/wp-content/plugins/foo/?id=1",
 	}
 	out := filterDiscoveryURLs(in, false)
 	if len(out) != 2 {
 		t.Fatalf("got %v", out)
+	}
+}
+
+func TestDorkNoiseExcludePresent(t *testing.T) {
+	d := BuildVulnDorks("ch", false)[0]
+	if !strings.Contains(d, "-inurl:wp-content") {
+		t.Fatalf("dork should exclude wp noise: %s", d)
 	}
 }

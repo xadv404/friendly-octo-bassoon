@@ -23,6 +23,9 @@ var noiseURLFragments = []string{
 	"/blob/", "/-/blob/", "/-/tree/", "/-/raw/", "/git/", "/assets/", "/static/",
 	"/ckeditor/", "/fckeditor/", "/tinymce/", "googleusercontent", "gstatic.com",
 	"facebook.com", "twitter.com", "linkedin.com", "youtube.com",
+	"/wp-content/", "/wp-includes/", "/wordpress/", "/joomla/", "/typo3/", "/moodle/",
+	"/concrete/", "/plugins/", "viewtopic.php", "/mod/url/", "com_jmap", "com_joomla",
+	"/wglobal/", "/component/", "jetpack", "woocommerce", "elementor",
 }
 
 // isScannable rejette le bruit et garde les URLs avec paramètres.
