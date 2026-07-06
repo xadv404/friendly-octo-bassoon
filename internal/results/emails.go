@@ -47,7 +47,10 @@ func (w *EmailWriter) loadExisting() error {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".txt") {
 			continue
 		}
-		provider := strings.TrimSuffix(e.Name(), ".txt")
+	provider := strings.TrimSuffix(e.Name(), ".txt")
+		if !IsKnownProvider(provider) {
+			continue
+		}
 		path := filepath.Join(w.dir, e.Name())
 		f, err := os.Open(path)
 		if err != nil {
@@ -86,7 +89,7 @@ func (w *EmailWriter) Append(email string) error {
 		return nil
 	}
 	provider := EmailProvider(email)
-	if provider == "" {
+	if provider == "" || !IsKnownProvider(provider) {
 		return nil
 	}
 
@@ -167,6 +170,9 @@ func EmailFromExtraction(d models.ExtractedData) string {
 		}
 	}
 	if email == "" || !extractor.ValidEmail(email) {
+		return ""
+	}
+	if !IsKnownProvider(EmailProvider(email)) {
 		return ""
 	}
 	return email

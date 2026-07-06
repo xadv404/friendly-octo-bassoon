@@ -28,6 +28,11 @@ var providerAliases = map[string]string{
 	"hispeed":    "hispeed.ch",
 	"hotmail":    "hotmail.com",
 	"outlook":    "outlook.com",
+	"proton":     "protonmail.com",
+	"protonmail": "protonmail.com",
+	"webde":      "web.de",
+	"orange":     "orange.fr",
+	"free":       "free.fr",
 }
 
 // EmailsDir retourne le chemin results/emails/.
@@ -56,6 +61,9 @@ func ListProviders(baseDir string) ([]ProviderInfo, error) {
 			continue
 		}
 		provider := strings.TrimSuffix(e.Name(), ".txt")
+		if !IsKnownProvider(provider) {
+			continue
+		}
 		n, err := countUniqueEmails(filepath.Join(dir, e.Name()), delivered)
 		if err != nil {
 			return nil, err

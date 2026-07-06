@@ -161,6 +161,10 @@ func CompactAllEmails(baseDir string) error {
 		}
 		provider := strings.TrimSuffix(e.Name(), ".txt")
 		path := filepath.Join(dir, e.Name())
+		if !IsKnownProvider(provider) {
+			_ = os.Remove(path)
+			continue
+		}
 		lines, err := readEmailLines(path)
 		if err != nil {
 			return err
@@ -182,6 +186,9 @@ func dedupeProviderLines(lines []string, provider string, delivered *DeliveredRe
 			continue
 		}
 		if EmailProvider(em) != provider {
+			continue
+		}
+		if !IsKnownProvider(provider) {
 			continue
 		}
 		if delivered != nil && delivered.Contains(em) {
@@ -263,6 +270,9 @@ func writeEmailLines(path string, emails []string) error {
 func normalizeEmailLine(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	if s == "" || !extractor.ValidEmail(s) {
+		return ""
+	}
+	if !IsKnownEmail(s) {
 		return ""
 	}
 	return s
