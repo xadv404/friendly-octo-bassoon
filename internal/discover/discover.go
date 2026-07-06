@@ -85,6 +85,9 @@ func optsMaxPages(opts Options) int {
 	if opts.MaxPages > 0 {
 		return opts.MaxPages
 	}
+	if opts.DorkSet == DorkSetBig && DefaultMaxPages(opts.DorkSet, opts.BigTier) == 0 {
+		return 1 << 30
+	}
 	return DefaultMaxPages(opts.DorkSet, opts.BigTier)
 }
 

@@ -261,8 +261,8 @@ func parseArgs(args []string) (config, error) {
 				return cfg, fmt.Errorf("--discover-limit nécessite une valeur")
 			}
 			v, err := strconv.Atoi(args[i])
-			if err != nil || v < 1 {
-				return cfg, fmt.Errorf("--discover-limit doit être >= 1")
+			if err != nil || v < 0 {
+				return cfg, fmt.Errorf("--discover-limit doit être >= 0 (0 = illimité)")
 			}
 			cfg.discoverLimit = v
 		case arg == "--source":

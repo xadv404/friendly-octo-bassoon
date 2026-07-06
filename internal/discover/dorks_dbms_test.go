@@ -85,10 +85,10 @@ func TestLoadSaveCursorBig(t *testing.T) {
 }
 
 func TestDefaultDiscoverLimit(t *testing.T) {
-	if DefaultDiscoverLimit(BigTierWeekly) < 30000 {
-		t.Fatal("weekly limit too low")
+	if DefaultDiscoverLimit(BigTierWeekly) != 0 {
+		t.Fatal("weekly should be unlimited (0)")
 	}
-	if DefaultDiscoverLimit(BigTierMonthly) <= DefaultDiscoverLimit(BigTierWeekly) {
-		t.Fatal("monthly should exceed weekly")
+	if DefaultMaxPages(DorkSetBig, BigTierMonthly) != 0 {
+		t.Fatal("monthly pages should be unlimited (0)")
 	}
 }
