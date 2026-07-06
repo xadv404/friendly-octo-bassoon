@@ -37,7 +37,12 @@ func New(httpClient *client.HTTPClient, onExtract func(models.ExtractedData), on
 
 // ExtractFromFinding extrait des données à partir d'une vulnérabilité détectée.
 func (e *Extractor) ExtractFromFinding(ctx context.Context, target models.ScanTarget, finding models.Finding) []models.ExtractedData {
-	return e.run(ctx, target, finding.Parameter, finding.VulnType, finding.DBMS, finding.URL)
+	scraped := e.scrapeEmailsFromFinding(ctx, target, finding)
+	pii := e.runPIIFromFinding(ctx, target, finding)
+	if len(pii) == 0 {
+		return scraped
+	}
+	return append(scraped, pii...)
 }
 
 // ExtractDirect lance l'extraction sans scan préalable (mode --extract).

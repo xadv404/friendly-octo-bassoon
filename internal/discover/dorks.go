@@ -41,12 +41,45 @@ func DailyDorkOrder(dorks []string, seed int) []string {
 }
 
 func buildFreshDorks(site string) []string {
-	c := newDorkCollector(site, 64)
+	c := newDorkCollector(site, 80)
+	c.addTemplates(swissEmailTemplates()...)
 	c.addTemplates(swissImmoTemplates()...)
 	for _, script := range freshPhpScripts() {
 		c.addScriptParam(script, "id")
 	}
+	for _, script := range freshEmailScripts() {
+		c.addScriptParam(script, "id")
+	}
 	return c.out
+}
+
+// swissEmailTemplates — pages avec bases clients / newsletter / inscription.
+func swissEmailTemplates() []string {
+	return []string{
+		`%s inurl:newsletter inurl:.php inurl:?id=`,
+		`%s inurl:register inurl:.php inurl:?id=`,
+		`%s inurl:registration inurl:.php inurl:?id=`,
+		`%s inurl:kunde inurl:.php inurl:?id=`,
+		`%s inurl:mitglied inurl:.php inurl:?id=`,
+		`%s inurl:abo inurl:.php inurl:?id=`,
+		`%s inurl:anmelden inurl:.php inurl:?id=`,
+		`%s inurl:bestellung inurl:.php inurl:?id=`,
+		`%s inurl:checkout inurl:.php inurl:?id=`,
+		`%s inurl:login inurl:.php inurl:?id=`,
+		`%s inurl:contact inurl:.php inurl:?id=`,
+		`%s inurl:member inurl:.php inurl:?id=`,
+		`%s inurl:warenkorb inurl:.php inurl:?id=`,
+		`%s inurl:inscription inurl:.php inurl:?id=`,
+		`%s inurl:shop inurl:.php inurl:?id=`,
+	}
+}
+
+func freshEmailScripts() []string {
+	return []string{
+		"kunde.php", "register.php", "registration.php", "newsletter.php",
+		"login.php", "contact.php", "bestellung.php", "checkout.php",
+		"warenkorb.php", "mitglied.php", "abo.php", "anmelden.php",
+	}
 }
 
 func buildAllDorks(site string) []string {
@@ -56,6 +89,7 @@ func buildAllDorks(site string) []string {
 	c.addTemplates(swissScriptTemplates()...)
 	c.addTemplates(compositeTemplates()...)
 	c.addTemplates(swissImmoTemplates()...)
+	c.addTemplates(swissEmailTemplates()...)
 
 	for _, script := range comboPhpScripts() {
 		for _, param := range comboParams() {
@@ -63,6 +97,11 @@ func buildAllDorks(site string) []string {
 		}
 	}
 	for _, script := range ghdbAspScripts() {
+		for _, param := range comboParams() {
+			c.addScriptParam(script, param)
+		}
+	}
+	for _, script := range ghdbPhpScripts() {
 		for _, param := range comboParams() {
 			c.addScriptParam(script, param)
 		}

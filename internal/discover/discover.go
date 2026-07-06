@@ -380,7 +380,8 @@ func shouldSkipDumped(raw string, skipper *results.DumpRegistry) bool {
 }
 
 func passesFilters(raw string, opts Options) bool {
-	requireCH := !IsSwissWide(opts.Domain)
+	// Toujours exiger un hôte .ch — on cible des emails issus de sites suisses.
+	requireCH := true
 	if !isScannable(raw, requireCH) {
 		return false
 	}

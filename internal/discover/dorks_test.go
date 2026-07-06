@@ -12,7 +12,7 @@ func TestDorkCounts(t *testing.T) {
 	if len(all) < 1500 {
 		t.Fatalf("expected 1500+ tight dorks, got %d", len(all))
 	}
-	if len(all) > 3500 {
+	if len(all) > 6000 {
 		t.Fatalf("dork set unexpectedly large: %d", len(all))
 	}
 }
@@ -71,8 +71,8 @@ func TestBuildVulnDorks_SwissWideBroad(t *testing.T) {
 
 func TestBuildFreshDorks(t *testing.T) {
 	fresh := BuildFreshDorks("ch", false)
-	if len(fresh) < 40 {
-		t.Fatalf("expected 40+ fresh dorks, got %d", len(fresh))
+	if len(fresh) < 60 {
+		t.Fatalf("expected 60+ fresh dorks, got %d", len(fresh))
 	}
 	for _, d := range fresh {
 		if strings.Contains(d, "site:.ch") {
