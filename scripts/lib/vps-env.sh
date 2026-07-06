@@ -32,8 +32,34 @@ vps_load_dotenv() {
   return 0
 }
 
+vps_materialize_ssh_key() {
+  [[ -n "${VPS_SSH_PRIVATE_KEY:-}" ]] || return 0
+  local key="${SSH_KEY_PATH:-}"
+  if [[ -z "$key" ]]; then
+    key="${TMPDIR:-/tmp}/sqli-hunter-vps-ssh-$$"
+    SSH_KEY_PATH="$key"
+    export SSH_KEY_PATH
+  else
+    key="${key/#\~/$HOME}"
+    SSH_KEY_PATH="$key"
+    export SSH_KEY_PATH
+  fi
+  if [[ ! -f "$key" ]]; then
+    printf '%s\n' "$VPS_SSH_PRIVATE_KEY" >"$key"
+    chmod 600 "$key"
+  fi
+}
+
 vps_load_env() {
   [[ "${VPS_ENV_LOADED:-0}" -eq 1 ]] && return 0
+
+  if [[ -n "${VPS_HOST:-}" && -n "${VPS_USER:-}" && -n "${VPS_PATH:-}" ]]; then
+    VPS_ENV_LOADED=1
+    VPS_ENV_FILE="${VPS_ENV_FILE:-<env>}"
+    export VPS_ENV_FILE
+    vps_materialize_ssh_key
+    return 0
+  fi
 
   local root candidates path
   root="$(vps_repo_root)"
@@ -50,6 +76,7 @@ vps_load_env() {
       VPS_ENV_LOADED=1
       VPS_ENV_FILE="$path"
       export VPS_ENV_FILE
+      vps_materialize_ssh_key
       return 0
     fi
   done
