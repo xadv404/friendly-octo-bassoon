@@ -35,12 +35,14 @@ func (a *App) handleCallback(cq *tgbotapi.CallbackQuery) {
 		a.tg.AnswerCallback(cq.ID, "")
 		a.tg.EditMenu(chatID, cq.Message.MessageID, t.ExtractMenu(), a.providerKeyboard(list), isPhotoMessage(cq.Message))
 	case strings.HasPrefix(data, "scan:"):
-		tier := strings.TrimPrefix(data, "scan:")
-		switch tier {
-		case "weekly", "monthly":
-			a.startScanTier(chatID, tier)
-		case "stop":
-			a.stopScan(chatID)
+		action := strings.TrimPrefix(data, "scan:")
+		switch action {
+		case "hunt", "weekly", "monthly", "stop":
+			if action == "stop" {
+				a.stopScan(chatID)
+			} else {
+				a.startScan(chatID)
+			}
 		}
 		a.tg.AnswerCallback(cq.ID, "")
 	case strings.HasPrefix(data, "prov:"):

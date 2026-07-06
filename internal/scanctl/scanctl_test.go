@@ -7,13 +7,13 @@ import (
 )
 
 func TestNormalizeTier(t *testing.T) {
-	tier, err := normalizeTier("monthly")
-	if err != nil || tier != TierMonthly {
+	tier, err := normalizeTier("hunt")
+	if err != nil || tier != TierHunt {
 		t.Fatalf("got %q %v", tier, err)
 	}
-	tier, err = normalizeTier("big")
-	if err != nil || tier != TierWeekly {
-		t.Fatalf("got %q %v", tier, err)
+	tier, err = normalizeTier("weekly")
+	if err != nil || tier != TierHunt {
+		t.Fatalf("weekly alias: %q %v", tier, err)
 	}
 	if _, err := normalizeTier("daily"); err == nil {
 		t.Fatal("expected error")
@@ -21,8 +21,8 @@ func TestNormalizeTier(t *testing.T) {
 }
 
 func TestParseStarted(t *testing.T) {
-	tier, pid, log := ParseStarted("STARTED weekly pid=4242 log=results/weekly.log")
-	if tier != "weekly" || pid != "4242" || log != "results/weekly.log" {
+	tier, pid, log := ParseStarted("STARTED hunt pid=4242 log=results/hunt.log")
+	if tier != "hunt" || pid != "4242" || log != "results/hunt.log" {
 		t.Fatalf("got %q %q %q", tier, pid, log)
 	}
 }
@@ -40,7 +40,7 @@ func TestRootFromResultsDir(t *testing.T) {
 
 func TestStartMissingScript(t *testing.T) {
 	dir := t.TempDir()
-	_, err := Start(filepath.Join(dir, "results"), "weekly")
+	_, err := Start(filepath.Join(dir, "results"), "hunt")
 	if err == nil {
 		t.Fatal("expected error")
 	}

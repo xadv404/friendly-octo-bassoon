@@ -10,16 +10,13 @@ import (
 	"strings"
 )
 
-// Tier passe discover+scan.
+// Tier passe discover+scan (mode hunt).
 type Tier string
 
-const (
-	TierWeekly  Tier = "weekly"
-	TierMonthly Tier = "monthly"
-)
+const TierHunt Tier = "hunt"
 
 var (
-	ErrInvalidTier    = errors.New("tier invalide: weekly ou monthly")
+	ErrInvalidTier    = errors.New("tier invalide: hunt")
 	ErrAlreadyRunning = errors.New("scan déjà en cours")
 )
 
@@ -41,19 +38,16 @@ func Root(resultsDir string) string {
 
 func normalizeTier(t string) (Tier, error) {
 	switch strings.ToLower(strings.TrimSpace(t)) {
-	case "", "weekly", "big":
-		return TierWeekly, nil
-	case "monthly":
-		return TierMonthly, nil
+	case "", "hunt", "weekly", "monthly", "big":
+		return TierHunt, nil
 	default:
 		return "", ErrInvalidTier
 	}
 }
 
-// Start lance un scan en arrière-plan via scan.sh.
-func Start(resultsDir string, tier string) (string, error) {
-	t, err := normalizeTier(tier)
-	if err != nil {
+// Start lance un scan hunt en arrière-plan via scan.sh.
+func Start(resultsDir string, tier string, extraArgs ...string) (string, error) {
+	if _, err := normalizeTier(tier); err != nil {
 		return "", err
 	}
 	root := Root(resultsDir)
@@ -61,7 +55,8 @@ func Start(resultsDir string, tier string) (string, error) {
 	if _, err := os.Stat(script); err != nil {
 		return "", fmt.Errorf("scan.sh introuvable dans %s", root)
 	}
-	cmd := exec.Command(script, string(t))
+	args := append([]string{"hunt"}, extraArgs...)
+	cmd := exec.Command(script, args...)
 	cmd.Dir = root
 	out, err := cmd.CombinedOutput()
 	text := strings.TrimSpace(string(out))
@@ -121,7 +116,7 @@ func Status(resultsDir string) (string, error) {
 	return text, nil
 }
 
-// Running indique si un scan weekly/monthly/big tourne.
+// Running indique si un scan hunt tourne.
 func Running(resultsDir string) (bool, string, error) {
 	text, err := Status(resultsDir)
 	if err != nil {
@@ -132,16 +127,16 @@ func Running(resultsDir string) (bool, string, error) {
 	}
 	for _, line := range strings.Split(text, "\n") {
 		if strings.Contains(line, "sqli-hunter") &&
-			(strings.Contains(line, "weekly") || strings.Contains(line, "monthly") || strings.Contains(line, " big")) {
+			(strings.Contains(line, " hunt") || strings.Contains(line, " weekly") || strings.Contains(line, " monthly")) {
 			return true, line, nil
 		}
 	}
 	return strings.Contains(text, "sqli-hunter"), text, nil
 }
 
-// ParseStarted extrait tier/pid/log depuis la sortie de scan.sh.
+// ParseStarted extrait pid/log depuis la sortie de scan.sh.
 func ParseStarted(out string) (tier, pid, log string) {
-	// STARTED weekly pid=12345 log=results/weekly.log
+	tier = "hunt"
 	fields := strings.Fields(out)
 	for _, f := range fields {
 		if strings.HasPrefix(f, "pid=") {

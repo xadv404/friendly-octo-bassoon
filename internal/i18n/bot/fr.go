@@ -42,8 +42,7 @@ var fr = Texts{
 	ScanStopIdle:       frScanStopIdle,
 	ScanError:          frScanError,
 
-	BtnScanWeekly:  frBtnScanWeekly,
-	BtnScanMonthly: frBtnScanMonthly,
+	BtnScanStart: frBtnScanStart,
 	BtnScanStop:    frBtnScanStop,
 }
 
@@ -80,7 +79,7 @@ func frInvalidQty(provider string) string {
 }
 
 func frHint() string {
-	return "👆 /start — export emails\n📊 /status — progression\n▶️ /scan weekly|monthly — lancer\n⏹ /stop — arrêter"
+	return "👆 /start — export emails\n📊 /status — progression\n▶️ /scan hunt — lancer\n⏹ /stop — arrêter"
 }
 
 func frDelivery(emoji, provider string, count int) string {
@@ -142,7 +141,7 @@ func frStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) str
 }
 
 func frScanUsage() string {
-	return "▶️ *Lancer un scan*\n\n`/scan weekly` — passe hebdo\n`/scan monthly` — passe mensuelle\n\n⏹ `/stop` — arrêter"
+	return "▶️ *Lancer hunt*\n\n`/scan hunt` — discover + scan .ch\n`/scan hunt --cycle-weeks 3` — cycle 3 sem.\n\n⏹ `/stop` — arrêter"
 }
 
 func frScanStarted(tier, pid, log string) string {
@@ -176,6 +175,5 @@ func frScanError(msg string) string {
 	return "❌ " + msg
 }
 
-func frBtnScanWeekly() string  { return "▶️ Weekly" }
-func frBtnScanMonthly() string { return "▶️ Monthly" }
-func frBtnScanStop() string    { return "⏹ Stop scan" }
+func frBtnScanStart() string { return "▶️ Lancer hunt" }
+func frBtnScanStop() string    { return "⏹ Stop" }

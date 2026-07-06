@@ -29,7 +29,7 @@ func (a *App) sendStatus(chatID int64) {
 
 func latestScopeCount(dir string) int {
 	best := 0
-	for _, name := range []string{"scope_monthly.txt", "scope_weekly.txt", "scope_big.txt"} {
+	for _, name := range []string{"scope_hunt.txt", "scope_weekly.txt", "scope_monthly.txt", "scope_big.txt"} {
 		if n := results.CountLines(filepath.Join(dir, name)); n > best {
 			best = n
 		}

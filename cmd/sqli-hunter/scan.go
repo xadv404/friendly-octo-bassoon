@@ -124,27 +124,22 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	persistCursor := false
 	cursorKind := discover.CursorDaily
 	dorkSet := discover.DorkSetVuln
-	bigTier := discover.BigTierWeekly
+	cycleWeeks := discover.CycleWeeksFromEnv()
 	maxPages := 0
 	freshPass := false
 	daySeed := 0
+	dorkCount := 0
 	if discover.IsSearchEngineSource(discover.ParseSource(cfg.discoverSource)) && discover.IsSwissWide(cfg.discoverDomain) {
-		if cfg.bigScan {
-			bigTier = cfg.bigTier
-			if bigTier == 0 {
-				bigTier = discover.BigTierWeekly
+		if cfg.huntScan {
+			cycleWeeks = discover.ClampCycleWeeks(cfg.cycleWeeks)
+			if cycleWeeks < 1 {
+				cycleWeeks = discover.CycleWeeksFromEnv()
 			}
-			cursorKind = discover.CursorBig
-			if bigTier == discover.BigTierMonthly {
-				cursorKind = discover.CursorMonthly
-			}
+			cursorKind = discover.CursorHunt
 			dorkSet = discover.DorkSetBig
-			maxPages = discover.DefaultMaxPages(discover.DorkSetBig, bigTier)
-			if bigTier == discover.BigTierMonthly {
-				daySeed = discover.MonthSeed(0)
-			} else {
-				daySeed = discover.WeekSeed(0)
-			}
+			dorkCount = len(discover.BuildBigDorks(cfg.discoverDomain, cfg.discoverSubs))
+			maxPages = discover.MaxPagesPerRun(cycleWeeks, dorkCount)
+			daySeed = discover.WeekSeed(0)
 			freshPass = false
 		} else {
 			daySeed = discover.DaySeed(0)
@@ -154,13 +149,9 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 			pageBase = p
 		}
 		persistCursor = true
-		if cfg.bigScan {
-			tierLabel := "hebdo"
-			if bigTier == discover.BigTierMonthly {
-				tierLabel = "mensuel"
-			}
-			printer.KV("curseur", fmt.Sprintf("page %d (rotation %s)", pageBase, tierLabel))
-			printer.KV("dorks", fmt.Sprintf("%d requêtes DBMS+vuln", len(discover.BuildBigDorks(cfg.discoverDomain, cfg.discoverSubs))))
+		if cfg.huntScan {
+			printer.KV("curseur", fmt.Sprintf("page %d", pageBase))
+			printer.KV("dorks", fmt.Sprintf("%d total · %d cette passe · cycle %d sem.", dorkCount, maxPages, cycleWeeks))
 			printer.KV("rescan", "domaines dumpés inclus")
 		} else {
 			printer.KV("curseur", fmt.Sprintf("page %d", pageBase))
@@ -202,13 +193,13 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		Source:        discover.ParseSource(cfg.discoverSource),
 		ResultsDir:    cfg.outputDir,
 		SkipDumped:    !cfg.rescan,
-		SkipScanned:   cfg.skipScanned || (!cfg.bigScan && discover.IsSwissWide(cfg.discoverDomain)),
+		SkipScanned:   cfg.skipScanned || (!cfg.huntScan && discover.IsSwissWide(cfg.discoverDomain)),
 		AllowEmpty:    cfg.allowEmptyDiscover,
 		PageBase:      pageBase,
 		PersistCursor: persistCursor,
 		CursorKind:    cursorKind,
 		DorkSet:       dorkSet,
-		BigTier:       bigTier,
+		CycleWeeks:    cycleWeeks,
 		MaxPages:      maxPages,
 		DaySeed:       daySeed,
 		FreshPass:     freshPass,

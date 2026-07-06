@@ -42,8 +42,7 @@ var en = Texts{
 	ScanStopIdle:       enScanStopIdle,
 	ScanError:          enScanError,
 
-	BtnScanWeekly:  enBtnScanWeekly,
-	BtnScanMonthly: enBtnScanMonthly,
+	BtnScanStart: enBtnScanStart,
 	BtnScanStop:    enBtnScanStop,
 }
 
@@ -80,7 +79,7 @@ func enInvalidQty(provider string) string {
 }
 
 func enHint() string {
-	return "👆 /start — export emails\n📊 /status — progress\n▶️ /scan weekly|monthly — start\n⏹ /stop — stop"
+	return "👆 /start — export emails\n📊 /status — progress\n▶️ /scan hunt — start\n⏹ /stop — stop"
 }
 
 func enDelivery(emoji, provider string, count int) string {
@@ -142,7 +141,7 @@ func enStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) str
 }
 
 func enScanUsage() string {
-	return "▶️ *Start a scan*\n\n`/scan weekly` — weekly pass\n`/scan monthly` — monthly pass\n\n⏹ `/stop` — stop"
+	return "▶️ *Start hunt*\n\n`/scan hunt` — discover + scan .ch\n`/scan hunt --cycle-weeks 3` — 3-week cycle\n\n⏹ `/stop` — stop"
 }
 
 func enScanStarted(tier, pid, log string) string {
@@ -176,6 +175,5 @@ func enScanError(msg string) string {
 	return "❌ " + msg
 }
 
-func enBtnScanWeekly() string  { return "▶️ Weekly" }
-func enBtnScanMonthly() string { return "▶️ Monthly" }
-func enBtnScanStop() string    { return "⏹ Stop scan" }
+func enBtnScanStart() string { return "▶️ Start hunt" }
+func enBtnScanStop() string    { return "⏹ Stop" }

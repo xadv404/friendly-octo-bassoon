@@ -2,27 +2,29 @@
 # Lance ou arrête les scans sqli-hunter sur le VPS.
 #
 # Usage:
-#   ./scan.sh weekly|monthly   démarre en arrière-plan (log dans results/)
-#   ./scan.sh stop             arrête les scans en cours
-#   ./scan.sh status           liste les processus
+#   ./scan.sh [hunt]           démarre hunt en arrière-plan (défaut)
+#   ./scan.sh hunt --cycle-weeks 3
+#   ./scan.sh stop
+#   ./scan.sh status
 #
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-cmd="${1:-}"
+cmd="${1:-hunt}"
+shift || true
+
 case "$cmd" in
-  weekly|monthly|big)
-    tier="$cmd"
-    [[ "$tier" == "big" ]] && tier=weekly
-    if pgrep -f "./sqli-hunter ${tier}" >/dev/null 2>&1; then
-      echo "ALREADY_RUNNING ${tier}"
+  hunt|weekly|monthly|big)
+    [[ "$cmd" == "weekly" || "$cmd" == "monthly" || "$cmd" == "big" ]] && cmd=hunt
+    if pgrep -f "./sqli-hunter hunt" >/dev/null 2>&1; then
+      echo "ALREADY_RUNNING hunt"
       exit 2
     fi
     mkdir -p results
-    log="results/${tier}.log"
-    nohup ./sqli-hunter "$tier" >>"$log" 2>&1 &
-    echo "STARTED ${tier} pid=$! log=${log}"
+    log="results/hunt.log"
+    nohup ./sqli-hunter hunt "$@" >>"$log" 2>&1 &
+    echo "STARTED hunt pid=$! log=${log}"
     ;;
   stop)
     exec ./stop-scans.sh
@@ -31,7 +33,7 @@ case "$cmd" in
     pgrep -af './sqli-hunter' || echo "IDLE"
     ;;
   *)
-    echo "usage: $0 weekly|monthly|stop|status" >&2
+    echo "usage: $0 [hunt] [--cycle-weeks N] | stop | status" >&2
     exit 1
     ;;
 esac

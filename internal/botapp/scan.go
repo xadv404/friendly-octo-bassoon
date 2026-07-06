@@ -10,27 +10,29 @@ import (
 func (a *App) handleScanCommand(chatID int64, text string) {
 	t := a.i18n.Bot
 	parts := strings.Fields(text)
-	tier := "weekly"
-	if len(parts) >= 2 {
-		tier = parts[1]
-	}
 	if len(parts) == 1 {
 		a.tg.Reply(chatID, t.ScanUsage())
 		return
 	}
 
-	out, err := scanctl.Start(a.cfg.ResultsDir, tier)
+	var extra []string
+	for i := 1; i < len(parts); i++ {
+		if parts[i] == "--cycle-weeks" && i+1 < len(parts) {
+			extra = append(extra, "--cycle-weeks", parts[i+1])
+			i++
+			continue
+		}
+	}
+
+	out, err := scanctl.Start(a.cfg.ResultsDir, "hunt", extra...)
 	switch {
 	case errors.Is(err, scanctl.ErrAlreadyRunning):
-		a.tg.Reply(chatID, t.ScanAlreadyRunning(tier))
+		a.tg.Reply(chatID, t.ScanAlreadyRunning("hunt"))
 	case err != nil:
 		a.tg.Reply(chatID, t.ScanError(err.Error()))
 	default:
-		gotTier, pid, log := scanctl.ParseStarted(out)
-		if gotTier == "" {
-			gotTier = tier
-		}
-		a.tg.Reply(chatID, t.ScanStarted(gotTier, pid, log))
+		_, pid, log := scanctl.ParseStarted(out)
+		a.tg.Reply(chatID, t.ScanStarted("hunt", pid, log))
 	}
 }
 
@@ -48,8 +50,8 @@ func (a *App) handleStopScan(chatID int64) {
 	a.tg.Reply(chatID, t.ScanStopped(scanctl.FormatLines(out)))
 }
 
-func (a *App) startScanTier(chatID int64, tier string) {
-	a.handleScanCommand(chatID, "/scan "+tier)
+func (a *App) startScan(chatID int64) {
+	a.handleScanCommand(chatID, "/scan hunt")
 }
 
 func (a *App) stopScan(chatID int64) {

@@ -17,8 +17,9 @@ type CursorKind int
 
 const (
 	CursorDaily CursorKind = iota
-	CursorBig      // hebdo (weekly)
-	CursorMonthly
+	CursorHunt // passe manuelle (ex-big weekly/monthly)
+	CursorBig      // déprécié — migration vers CursorHunt
+	CursorMonthly  // déprécié
 )
 
 func cursorPath(baseDir string, kind CursorKind) string {
@@ -27,6 +28,8 @@ func cursorPath(baseDir string, kind CursorKind) string {
 	}
 	name := "discover_cursor.json"
 	switch kind {
+	case CursorHunt:
+		name = "discover_cursor_hunt.json"
 	case CursorBig:
 		name = "discover_cursor_big.json"
 	case CursorMonthly:
@@ -40,9 +43,24 @@ func LoadCursor(baseDir string) (int, error) {
 	return LoadCursorKind(baseDir, CursorDaily)
 }
 
-// LoadCursorKind charge un curseur typé.
+// LoadCursorKind charge un curseur typé (migration big/monthly → hunt).
 func LoadCursorKind(baseDir string, kind CursorKind) (int, error) {
-	path := cursorPath(baseDir, kind)
+	page, err := loadCursorFile(cursorPath(baseDir, kind))
+	if err != nil {
+		return 0, err
+	}
+	if page > 0 || kind != CursorHunt {
+		return page, nil
+	}
+	for _, legacy := range []CursorKind{CursorBig, CursorMonthly} {
+		if p, err2 := loadCursorFile(cursorPath(baseDir, legacy)); err2 == nil && p > 0 {
+			return p, nil
+		}
+	}
+	return 0, nil
+}
+
+func loadCursorFile(path string) (int, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -100,7 +118,7 @@ func WeekSeed(custom int) int {
 	return week + now.Year()*100
 }
 
-// MonthSeed rotation mensuelle pour le mode monthly.
+// MonthSeed rotation mensuelle (legacy).
 func MonthSeed(custom int) int {
 	if custom != 0 {
 		return custom
@@ -109,28 +127,10 @@ func MonthSeed(custom int) int {
 	return int(now.Month()) + now.Year()*100
 }
 
-// BigTier niveau d'agressivité discover (weekly / monthly).
-type BigTier int
-
-const (
-	BigTierWeekly BigTier = iota
-	BigTierMonthly
-)
-
-// DefaultMaxPages retourne la limite de pages discover (0 = illimité).
-func DefaultMaxPages(set DorkSet, tier BigTier) int {
-	if set != DorkSetBig {
-		return 400
-	}
-	switch tier {
-	case BigTierMonthly:
-		return 0
-	default:
+// DefaultMaxPages retourne la limite de pages discover pour le mode daily/vuln.
+func DefaultMaxPages(set DorkSet) int {
+	if set == DorkSetBig {
 		return 0
 	}
-}
-
-// DefaultDiscoverLimit URLs à collecter (0 = pas de plafond).
-func DefaultDiscoverLimit(tier BigTier) int {
-	return 0
+	return 400
 }

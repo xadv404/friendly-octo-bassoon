@@ -41,8 +41,7 @@ type Texts struct {
 	ScanStopIdle       func() string
 	ScanError          func(msg string) string
 
-	BtnScanWeekly  func() string
-	BtnScanMonthly func() string
+	BtnScanStart func() string
 	BtnScanStop    func() string
 }
 

@@ -3,8 +3,7 @@
 #
 # Usage (autres agents / environnements):
 #   ./scripts/vps-agent.sh check
-#   ./scripts/vps-agent.sh info
-#   ./scripts/vps-agent.sh daily
+#   ./scripts/vps-agent.sh hunt
 #
 set -euo pipefail
 
@@ -26,7 +25,7 @@ case "$CMD" in
   ssh "${SSH_ARGS[@]}" "$TARGET" "echo 'OK — connected as' \$(whoami)@\$(hostname) && test -d '${VPS_PATH}' && echo 'OK — path exists: ${VPS_PATH}'"
     ;;
   info)
-    "$ROOT/scripts/vps-run.sh" -- 'pwd && ls -la && test -f sqli-hunter && ./sqli-hunter -h | head -3'
+    "$ROOT/scripts/vps-run.sh" -- 'pwd && ls -la && test -f sqli-hunter && ./sqli-hunter -h | head -5'
     ;;
   ssh)
     exec "$ROOT/scripts/vps-ssh.sh" "$@"
@@ -37,11 +36,8 @@ case "$CMD" in
   sync)
     exec "$ROOT/scripts/vps-sync.sh" "$@"
     ;;
-  weekly)
-    exec "$ROOT/scripts/vps-run.sh" -- './scan.sh weekly'
-    ;;
-  monthly)
-    exec "$ROOT/scripts/vps-run.sh" -- './scan.sh monthly'
+  hunt|weekly|monthly)
+    exec "$ROOT/scripts/vps-run.sh" -- './scan.sh hunt' "$@"
     ;;
   stop)
     exec "$ROOT/scripts/vps-run.sh" -- './scan.sh stop'
@@ -50,8 +46,7 @@ case "$CMD" in
     exec "$ROOT/scripts/vps-run.sh" -- './scan.sh status'
     ;;
   scan)
-    tier="${1:-weekly}"
-    exec "$ROOT/scripts/vps-run.sh" -- "./scan.sh ${tier}"
+    exec "$ROOT/scripts/vps-run.sh" -- "./scan.sh hunt $*"
     ;;
   bot)
     exec "$ROOT/scripts/vps-run.sh" -- 'nohup ./tg-bot >> results/tg-bot.log 2>&1 & sleep 1 && tail -3 results/tg-bot.log'
@@ -65,9 +60,7 @@ vps-agent.sh — outils VPS pour agents Cursor / CI
   ssh       Shell interactif (vps-ssh.sh)
   run CMD   Commande distante (vps-run.sh)
   sync      Build + rsync binaires/env
-  weekly    Lance ./scan.sh weekly sur le VPS (arrière-plan)
-  monthly   Lance ./scan.sh monthly sur le VPS
-  scan T    weekly|monthly|stop|status via scan.sh
+  hunt      Lance ./scan.sh hunt sur le VPS
   stop      Arrête les scans en cours
   status    Processus sqli-hunter actifs
   bot       Démarre tg-bot en arrière-plan

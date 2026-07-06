@@ -13,8 +13,7 @@ func (a *App) startKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData(t.BtnExtract(), "menu:extract"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanWeekly(), "scan:weekly"),
-			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanMonthly(), "scan:monthly"),
+			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanStart(), "scan:hunt"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanStop(), "scan:stop"),

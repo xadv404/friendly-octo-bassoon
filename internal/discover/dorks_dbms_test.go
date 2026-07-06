@@ -84,11 +84,30 @@ func TestLoadSaveCursorBig(t *testing.T) {
 	}
 }
 
-func TestDefaultDiscoverLimit(t *testing.T) {
-	if DefaultDiscoverLimit(BigTierWeekly) != 0 {
-		t.Fatal("weekly should be unlimited (0)")
+func TestLoadSaveCursorHunt(t *testing.T) {
+	dir := t.TempDir()
+	if err := SaveCursorKind(dir, CursorHunt, 42); err != nil {
+		t.Fatal(err)
 	}
-	if DefaultMaxPages(DorkSetBig, BigTierMonthly) != 0 {
-		t.Fatal("monthly pages should be unlimited (0)")
+	p, err := LoadCursorKind(dir, CursorHunt)
+	if err != nil || p != 42 {
+		t.Fatalf("hunt cursor: %d %v", p, err)
+	}
+}
+
+func TestLoadCursorHuntMigratesFromBig(t *testing.T) {
+	dir := t.TempDir()
+	if err := SaveCursorKind(dir, CursorBig, 99); err != nil {
+		t.Fatal(err)
+	}
+	p, err := LoadCursorKind(dir, CursorHunt)
+	if err != nil || p != 99 {
+		t.Fatalf("migration: got %d %v", p, err)
+	}
+}
+
+func TestDefaultMaxPagesVuln(t *testing.T) {
+	if DefaultMaxPages(DorkSetVuln) != 400 {
+		t.Fatal("vuln daily pages")
 	}
 }

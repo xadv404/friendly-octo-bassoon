@@ -73,8 +73,8 @@ type Options struct {
 	PersistCursor bool
 	CursorKind  CursorKind
 	DorkSet     DorkSet
-	BigTier     BigTier
-	MaxPages    int  // 0 = défaut selon DorkSet + BigTier
+	CycleWeeks  int // 1–4 semaines pour parcourir tous les dorks (mode hunt)
+	MaxPages    int // 0 = calculé depuis CycleWeeks
 	FreshPass   bool // page 0 des dorks à fort rendement avant le curseur
 	Fetcher     CDXFetcher
 	OnProgress  func(fetched, kept int, page int)
@@ -86,10 +86,18 @@ func optsMaxPages(opts Options) int {
 	if opts.MaxPages > 0 {
 		return opts.MaxPages
 	}
-	if opts.DorkSet == DorkSetBig && DefaultMaxPages(opts.DorkSet, opts.BigTier) == 0 {
-		return 1 << 30
+	if opts.DorkSet == DorkSetBig {
+		total := len(BuildDorks(opts.DorkSet, opts.Domain, opts.Subs))
+		if total == 0 {
+			return 0
+		}
+		pages := MaxPagesPerRun(opts.CycleWeeks, total)
+		if pages <= 0 {
+			return 1 << 30
+		}
+		return pages
 	}
-	return DefaultMaxPages(opts.DorkSet, opts.BigTier)
+	return DefaultMaxPages(opts.DorkSet)
 }
 
 func saveRunCursor(opts Options, page int) {
@@ -121,9 +129,6 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		seed := DaySeed(opts.DaySeed)
 		if opts.DorkSet == DorkSetBig {
 			seed = WeekSeed(opts.DaySeed)
-			if opts.BigTier == BigTierMonthly {
-				seed = MonthSeed(opts.DaySeed)
-			}
 		}
 		opts.Fetcher = defaultFetcher(opts.Source, seed, opts.DorkSet)
 	}
