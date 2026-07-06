@@ -80,14 +80,14 @@ var (
 var columnPatterns = map[PIIColumnKind]*regexp.Regexp{
 	PIINom:     regexp.MustCompile(`(?i)(?:^|_)(?:nom|nachname|lastname|last_name|surname|family_name)(?:$|_)`),
 	PIIPrenom:  regexp.MustCompile(`(?i)(?:^|_)(?:prenom|vorname|firstname|first_name|given_name)(?:$|_)`),
-	PIIEmail:   regexp.MustCompile(`(?i)(?:^|_)(?:email|e_mail|mail|courriel|email_address)(?:$|_)`),
+	PIIEmail:   regexp.MustCompile(`(?i)(?:^|_)(?:e?-?mail|email|courriel|mail|mailadresse|emailadresse|user_?mail|kunde_?mail|login_?mail|mail_addr|email_addr)(?:$|_)`),
 	PIIPhone:   regexp.MustCompile(`(?i)(?:^|_)(?:tel|telefon|telephone|phone|mobile|gsm|handy|numero|num_tel|phone_number|natel)(?:$|_)`),
 	PIIDOB:     regexp.MustCompile(`(?i)(?:^|_)(?:date_naissance|geburtsdatum|birthdate|birth_date|dob|naissance|date_of_birth)(?:$|_)`),
 	PIIAddress: regexp.MustCompile(`(?i)(?:^|_)(?:adresse|address|addr|strasse|rue|street|ort|ville|city|plz|npa|zip|postal_code|code_postal|gemeinde)(?:$|_)`),
 	PIIIBAN:    regexp.MustCompile(`(?i)(?:^|_)(?:iban|konto|bank_account|compte_bancaire|kontonummer)(?:$|_)`),
 }
 
-var userTablePattern = regexp.MustCompile(`(?i)(?:^|_)(?:users?|kunden?|clients?|customers?|adherents?|versicherte?|members?|membres?|assures?|insured|subscribers?|policy_holders?|beneficiaires?|patients?|contacts?|accounts?|comptes?|personen?)(?:$|_)`)
+var userTablePattern = regexp.MustCompile(`(?i)(?:^|_)(?:users?|kunden?|clients?|customers?|adherents?|versicherte?|members?|membres?|assures?|insured|subscribers?|abonnent|newsletter|policy_holders?|beneficiaires?|patients?|contacts?|accounts?|comptes?|personen?|benutzer|nutzer|bestellung|orders?|inscription|registrierung)(?:$|_)`)
 
 // ClassifyColumn associe un nom de colonne SQL à un type PII.
 func ClassifyColumn(name string) (PIIColumnKind, bool) {

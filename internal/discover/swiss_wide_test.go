@@ -26,8 +26,8 @@ func TestRun_VulnHuntWide(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Kept != 3 {
-		t.Fatalf("kept %d want 3 (URLs with params, any TLD in country-wide mode)", result.Kept)
+	if result.Kept != 2 {
+		t.Fatalf("kept %d want 2 (.ch only, example.com filtered)", result.Kept)
 	}
 }
 

