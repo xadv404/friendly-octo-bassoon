@@ -78,9 +78,11 @@ func (lb *liveBoard) flushLocked(_ bool) {
 func (lb *liveBoard) setLaunch(title, detail string) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
-	lb.state.Title = title
-	lb.state.Subtitle = detail
-	lb.state.Phase = "discover"
+	lb.state = i18nalert.BoardState{
+		Title:    title,
+		Subtitle: detail,
+		Phase:    "discover",
+	}
 	lb.markDirty(true)
 }
 
@@ -94,9 +96,28 @@ func (lb *liveBoard) updateDiscover(phase string, step, total, kept, fetched, sk
 	lb.state.Fetched = fetched
 	lb.state.Skipped = skipped
 	if phase == "fresh-pass" {
-		lb.state.DiscoverLabel = "fresh-pass"
+		lb.state.DiscoverLabel = ""
 	} else {
 		lb.state.DiscoverLabel = ""
+	}
+	lb.markDirty(false)
+}
+
+func (lb *liveBoard) addURL(url string) {
+	if url == "" {
+		return
+	}
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+	for _, u := range lb.state.URLsList {
+		if u == url {
+			return
+		}
+	}
+	if len(lb.state.URLsList) >= i18nalert.MaxBoardURLs {
+		lb.state.URLsList = append(lb.state.URLsList[1:], url)
+	} else {
+		lb.state.URLsList = append(lb.state.URLsList, url)
 	}
 	lb.markDirty(false)
 }

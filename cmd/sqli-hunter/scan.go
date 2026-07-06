@@ -211,6 +211,11 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		MaxPages:      maxPages,
 		DaySeed:       daySeed,
 		FreshPass:     freshPass,
+		OnURLKept: func(url string) {
+			if n.Enabled() {
+				n.URLFound(url)
+			}
+		},
 		OnFreshProgress: func(idx, total, kept, fetched, skipped int) {
 			pushDiscover("fresh-pass", idx, total, kept, fetched, skipped)
 		},

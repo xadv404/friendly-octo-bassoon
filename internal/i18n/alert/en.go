@@ -8,6 +8,8 @@ import (
 
 var en = Texts{
 	TitleDailyLaunch:   "Daily started",
+	TitleWeeklyLaunch:  "Weekly started",
+	TitleMonthlyLaunch: "Monthly started",
 	TitleScanComplete:  "Scan complete",
 	TitleDailyComplete: "Daily complete",
 
@@ -21,6 +23,7 @@ var en = Texts{
 	Error:        enError,
 	StockSummary: enStockSummary,
 	DailyLaunch:  enDailyLaunch,
+	BigLaunch:    enBigLaunch,
 	DailyNoNew:   enDailyNoNew,
 	DiscoverProgress: enDiscoverProgress,
 	ScanProgress: enScanProgress,
@@ -63,7 +66,19 @@ func enStockSummary(baseDir string) string {
 }
 
 func enDailyLaunch(limit, threads int, outputDir string) string {
-	return fmt.Sprintf("discover: Switzerland (country=CH)\nlimit: %d urls\nthreads: %d\noutput: %s/emails/", limit, threads, outputDir)
+	return enLaunchDetail(limit, threads, outputDir, "🇨🇭 Switzerland (.ch) · OpenSerp")
+}
+
+func enBigLaunch(limit, threads int, outputDir string) string {
+	return enLaunchDetail(limit, threads, outputDir, "🇨🇭 Max emails .ch · 6525 DBMS dorks")
+}
+
+func enLaunchDetail(limit, threads int, outputDir, header string) string {
+	lim := "∞"
+	if limit > 0 {
+		lim = fmt.Sprintf("%d", limit)
+	}
+	return fmt.Sprintf("%s\n📊 Limit: %s URLs\n⚡ %d threads\n📁 %s/emails/", header, lim, threads, outputDir)
 }
 
 func enDailyNoNew(baseDir string) string {

@@ -79,6 +79,7 @@ type Options struct {
 	Fetcher     CDXFetcher
 	OnProgress  func(fetched, kept int, page int)
 	OnFreshProgress func(dorkIndex, dorkTotal, kept, fetched, skipped int)
+	OnURLKept       func(url string) // URL .ch gardée (progression live)
 }
 
 func optsMaxPages(opts Options) int {
@@ -236,6 +237,9 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 				return collectResult{}, err
 			}
 			kept++
+			if opts.OnURLKept != nil {
+				opts.OnURLKept(norm)
+			}
 			if opts.Limit > 0 && kept >= opts.Limit {
 				return collectResult{fetched, kept, skipped}, nil
 			}
@@ -349,6 +353,9 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 				return Result{}, err
 			}
 			kept++
+			if opts.OnURLKept != nil {
+				opts.OnURLKept(norm)
+			}
 			if opts.Limit > 0 && kept >= opts.Limit {
 				collectWithProgress(fetched, kept, page)
 				res := Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched}

@@ -82,6 +82,9 @@ func runFreshPass(
 				return st, err
 			}
 			st.kept++
+			if opts.OnURLKept != nil {
+				opts.OnURLKept(norm)
+			}
 		}
 		if opts.OnFreshProgress != nil {
 			opts.OnFreshProgress(i+1, len(dorks), st.kept, st.fetched, st.skipped)

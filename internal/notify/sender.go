@@ -131,6 +131,25 @@ func (t *telegramSender) ScanProgress(scanned, total, vulns, findings int) {
 	t.send(t.texts.ScanProgress(scanned, total, vulns, findings))
 }
 
+func (t *telegramSender) URLFound(url string) {
+	if t.live != nil {
+		t.live.addURL(url)
+	}
+}
+
+// BigLaunch alerte démarrage weekly/monthly.
+func BigLaunch(n Sender, monthly bool, limit, threads int, outputDir string) {
+	ts, ok := n.(*telegramSender)
+	if !ok || !ts.Enabled() {
+		return
+	}
+	title := ts.texts.TitleWeeklyLaunch
+	if monthly {
+		title = ts.texts.TitleMonthlyLaunch
+	}
+	ts.Launch(title, ts.texts.BigLaunch(limit, threads, outputDir))
+}
+
 // DailyLaunch alerte démarrage daily.
 func DailyLaunch(n Sender, limit, threads int, outputDir string) {
 	ts, ok := n.(*telegramSender)

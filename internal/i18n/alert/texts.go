@@ -11,20 +11,23 @@ import (
 // Texts messages d'alerte scan (sqli-hunter daily).
 type Texts struct {
 	TitleDailyLaunch   string
+	TitleWeeklyLaunch  string
+	TitleMonthlyLaunch string
 	TitleScanComplete  string
 	TitleDailyComplete string
 
-	Launch        func(title, detail string) string
-	DiscoverDone  func(kept, skipped, fetched int) string
-	ScanStarted   func(urlCount int, listFile string) string
-	Vuln          func(f models.Finding) string
-	DumpFail      func(f models.Finding, reason string) string
-	DumpOK        func(d models.ExtractedData, email string) string
-	Complete      func(title, detail string) string
-	Error         func(msg string) string
-	StockSummary  func(baseDir string) string
-	DailyLaunch   func(limit, threads int, outputDir string) string
-	DailyNoNew    func(baseDir string) string
+	Launch           func(title, detail string) string
+	DiscoverDone     func(kept, skipped, fetched int) string
+	ScanStarted      func(urlCount int, listFile string) string
+	Vuln             func(f models.Finding) string
+	DumpFail         func(f models.Finding, reason string) string
+	DumpOK           func(d models.ExtractedData, email string) string
+	Complete         func(title, detail string) string
+	Error            func(msg string) string
+	StockSummary     func(baseDir string) string
+	DailyLaunch      func(limit, threads int, outputDir string) string
+	BigLaunch        func(limit, threads int, outputDir string) string
+	DailyNoNew       func(baseDir string) string
 	DiscoverProgress func(phase string, step, total, kept, fetched, skipped int) string
 	ScanProgress  func(scanned, total, vulns, findings int) string
 }

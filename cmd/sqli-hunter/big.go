@@ -49,7 +49,11 @@ func runBigTier(tier discover.BigTier, args []string) {
 	fmt.Println()
 
 	n := notify.Default()
-	notify.DailyLaunch(n, cfg.discoverLimit, cfg.urlConcurrency, cfg.outputDir)
+	if tier == discover.BigTierMonthly {
+		notify.BigLaunch(n, true, cfg.discoverLimit, cfg.urlConcurrency, cfg.outputDir)
+	} else {
+		notify.BigLaunch(n, false, cfg.discoverLimit, cfg.urlConcurrency, cfg.outputDir)
+	}
 	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{Phase: bigPhaseName(tier)})
 
 	ctx, cancel := context.WithCancel(context.Background())
