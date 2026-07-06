@@ -75,15 +75,15 @@ func (lb *liveBoard) flushLocked(_ bool) {
 	lb.dirty = false
 }
 
-func (lb *liveBoard) setLaunch(title, detail string) {
+func (lb *liveBoard) setLaunch(_, _ string) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
-	lb.state = i18nalert.BoardState{
-		Title:    title,
-		Subtitle: detail,
-		Phase:    "discover",
-	}
+	lb.state = i18nalert.BoardState{Phase: "fresh-pass"}
 	lb.markDirty(true)
+}
+
+func (lb *liveBoard) resetBoard() {
+	lb.setLaunch("", "")
 }
 
 func (lb *liveBoard) updateDiscover(phase string, step, total, kept, fetched, skipped int) {
@@ -211,9 +211,6 @@ func (lb *liveBoard) addEmail(email string) {
 func (lb *liveBoard) complete(title, detail, stock string, scanned, total, vulns, findings, newEmails int, done bool) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
-	if title != "" {
-		lb.state.Title = title
-	}
 	lb.state.Phase = "done"
 	if done && total == 0 && scanned == 0 {
 		lb.state.Phase = "no-new"

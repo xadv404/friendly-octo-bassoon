@@ -8,30 +8,39 @@ import (
 
 func TestRenderBoardDiscoverFreshPass(t *testing.T) {
 	text := RenderBoard("fr", BoardState{
-		Title:    "Weekly lancé",
-		Subtitle: "🇨🇭 Max emails .ch · 6525 dorks DBMS\n📊 Limite : ∞ URLs",
-		Phase:    "fresh-pass",
-		DorkStep: 21,
+		Phase:     "fresh-pass",
+		DorkStep:  9,
 		DorkTotal: 78,
-		Kept:     8,
-		Fetched:  15,
-		Skipped:  4,
-		URLsList: []string{
-			"https://shop.example.ch/page.php?id=1",
-			"https://news.site.ch/article.php?id=3",
-		},
+		Kept:      0,
 	})
-	if text == "" {
-		t.Fatal("empty board")
+	if !containsAll(text,
+		"🎯 SQLi Hunter",
+		"🔍 DÉCOUVERTE",
+		"⚡ Fresh pass",
+		"9/78 dorks",
+		"📌 0 URLs",
+		"🛡 SCAN",
+		"⏳ En attente…",
+	) {
+		t.Fatalf("unexpected board:\n%s", text)
 	}
-	if !containsAll(text, "SQLi Hunter", "Weekly", "🔍 DÉCOUVERTE", "⚡ Fresh pass", "21/78", "📌 8 URLs", "🔗 shop.example.ch", "Dernières URLs") {
+}
+
+func TestRenderBoardWithURLs(t *testing.T) {
+	text := RenderBoard("fr", BoardState{
+		Phase:     "fresh-pass",
+		DorkStep:  20,
+		DorkTotal: 78,
+		Kept:      3,
+		URLsList:  []string{"https://shop.ch/page.php?id=1"},
+	})
+	if !containsAll(text, "🔗 Dernières URLs", "shop.ch") {
 		t.Fatalf("unexpected board:\n%s", text)
 	}
 }
 
 func TestRenderBoardScanWithVulns(t *testing.T) {
 	text := RenderBoard("fr", BoardState{
-		Title:        "Daily lancé",
 		Phase:        "scan",
 		DiscoverDone: true,
 		DorkTotal:    78,
@@ -45,22 +54,15 @@ func TestRenderBoardScanWithVulns(t *testing.T) {
 			{URL: "https://example.ch/page.php?id=1", Parameter: "id", VulnType: models.SQLiError},
 		},
 	})
-	if !containsAll(text, "🛡 SCAN", "Vulnérabilités", "example.ch", "120/500", "💥") {
+	if !containsAll(text, "🛡 SCAN", "Vulnérabilités", "example.ch", "120/500") {
 		t.Fatalf("unexpected board:\n%s", text)
-	}
-}
-
-func TestRenderBoardMonthlyTitle(t *testing.T) {
-	text := RenderBoard("fr", BoardState{Title: "Monthly lancé"})
-	if !contains(text, "📅") {
-		t.Fatalf("expected monthly emoji:\n%s", text)
 	}
 }
 
 func TestProgressBar(t *testing.T) {
 	bar := progressBar(5, 10)
 	if len([]rune(bar)) != 14 {
-		t.Fatalf("bar wrong length: %q (%d runes)", bar, len([]rune(bar)))
+		t.Fatalf("bar wrong length: %q", bar)
 	}
 }
 

@@ -49,11 +49,7 @@ func runBigTier(tier discover.BigTier, args []string) {
 	fmt.Println()
 
 	n := notify.Default()
-	if tier == discover.BigTierMonthly {
-		notify.BigLaunch(n, true, cfg.discoverLimit, cfg.urlConcurrency, cfg.outputDir)
-	} else {
-		notify.BigLaunch(n, false, cfg.discoverLimit, cfg.urlConcurrency, cfg.outputDir)
-	}
+	notify.BoardLaunch(n)
 	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{Phase: bigPhaseName(tier)})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -107,6 +103,19 @@ func runBigTier(tier discover.BigTier, args []string) {
 	}
 
 	printEmailStock(printer, cfg.outputDir)
+}
+
+func printEmailStock(printer *output.Printer, outputDir string) {
+	list, err := results.ListProviders(outputDir)
+	if err != nil || len(list) == 0 {
+		return
+	}
+	printer.Rule()
+	fmt.Println()
+	printer.KV("stock emails", "")
+	for _, p := range list {
+		fmt.Printf("  • %s — %d\n", p.Provider, p.Count)
+	}
 }
 
 func bigTierLabel(tier discover.BigTier) (label, scope string) {

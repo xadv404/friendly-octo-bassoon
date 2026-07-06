@@ -137,41 +137,13 @@ func (t *telegramSender) URLFound(url string) {
 	}
 }
 
-// BigLaunch alerte démarrage weekly/monthly.
-func BigLaunch(n Sender, monthly bool, limit, threads int, outputDir string) {
+// BoardLaunch initialise le message live (format minimal).
+func BoardLaunch(n Sender) {
 	ts, ok := n.(*telegramSender)
-	if !ok || !ts.Enabled() {
+	if !ok || !ts.Enabled() || ts.live == nil {
 		return
 	}
-	title := ts.texts.TitleWeeklyLaunch
-	if monthly {
-		title = ts.texts.TitleMonthlyLaunch
-	}
-	ts.Launch(title, ts.texts.BigLaunch(limit, threads, outputDir))
-}
-
-// DailyLaunch alerte démarrage daily.
-func DailyLaunch(n Sender, limit, threads int, outputDir string) {
-	ts, ok := n.(*telegramSender)
-	if !ok || !ts.Enabled() {
-		return
-	}
-	ts.Launch(ts.texts.TitleDailyLaunch, ts.texts.DailyLaunch(limit, threads, outputDir))
-}
-
-// DailyNoNew alerte fin daily sans nouvelles URLs.
-func DailyNoNew(n Sender, baseDir string) {
-	ts, ok := n.(*telegramSender)
-	if !ok || !ts.Enabled() {
-		return
-	}
-	detail := ts.texts.DailyNoNew(baseDir)
-	stock := ts.texts.StockSummary(baseDir)
-	if ts.live != nil {
-		ts.live.complete(ts.texts.TitleDailyComplete, detail, stock, 0, 0, 0, 0, 0, true)
-		return
-	}
-	ts.Complete(ts.texts.TitleDailyComplete, detail)
+	ts.live.resetBoard()
 }
 
 // ScanComplete alerte fin de scan massif.

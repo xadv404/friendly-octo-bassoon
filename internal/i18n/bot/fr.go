@@ -69,7 +69,7 @@ func frInvalidQty(provider string) string {
 }
 
 func frHint() string {
-	return "👆 /start — export emails\n📊 /status — progression du daily"
+	return "👆 /start — export emails\n📊 /status — progression scan"
 }
 
 func frDelivery(emoji, provider string, count int) string {
@@ -125,7 +125,7 @@ func frStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) str
 		b.WriteString(fmt.Sprintf("scan: %d/%d · %d vuln · %d findings\n",
 			st.Scanned, st.ScanTotal, st.Vulns, st.Findings))
 	}
-	b.WriteString(fmt.Sprintf("scope_daily: *%d* URLs\n", scopeN))
+	b.WriteString(fmt.Sprintf("scope: *%d* URLs\n", scopeN))
 	b.WriteString(fmt.Sprintf("déjà scannées: *%d*", scannedN))
 	return b.String()
 }

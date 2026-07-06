@@ -37,8 +37,11 @@ case "$CMD" in
   sync)
     exec "$ROOT/scripts/vps-sync.sh" "$@"
     ;;
-  daily)
-    exec "$ROOT/scripts/vps-run.sh" -- './sqli-hunter daily'
+  weekly)
+    exec "$ROOT/scripts/vps-run.sh" -- './start-weekly.sh'
+    ;;
+  monthly)
+    exec "$ROOT/scripts/vps-run.sh" -- './start-monthly.sh'
     ;;
   bot)
     exec "$ROOT/scripts/vps-run.sh" -- 'nohup ./tg-bot >> results/tg-bot.log 2>&1 & sleep 1 && tail -3 results/tg-bot.log'
@@ -52,7 +55,8 @@ vps-agent.sh — outils VPS pour agents Cursor / CI
   ssh       Shell interactif (vps-ssh.sh)
   run CMD   Commande distante (vps-run.sh)
   sync      Build + rsync binaires/env
-  daily     Lance ./sqli-hunter daily sur le VPS
+  weekly    Lance ./start-weekly.sh sur le VPS
+  monthly   Lance ./start-monthly.sh sur le VPS
   bot       Démarre tg-bot en arrière-plan
 
 Prérequis: vps.env (voir vps.env.example) + clé SSH

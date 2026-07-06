@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Arrête les scans sqli-hunter en cours (daily/weekly/monthly/ch).
+# Arrête les scans sqli-hunter en cours (weekly/monthly/ch).
 # Ne touche pas au tg-bot.
 set -euo pipefail
 cd /opt/sqli-hunter

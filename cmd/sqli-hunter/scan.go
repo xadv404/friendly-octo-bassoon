@@ -164,7 +164,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 			printer.KV("fresh-pass", "top dorks page 0")
 			printer.KV("rescan", "domaines dumpés inclus")
 		} else {
-			printer.KV("curseur", fmt.Sprintf("page %d (rotation daily)", pageBase))
+			printer.KV("curseur", fmt.Sprintf("page %d", pageBase))
 			printer.KV("fresh-pass", "page 0 des top dorks")
 		}
 	}

