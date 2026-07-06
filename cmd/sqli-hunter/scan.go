@@ -124,17 +124,28 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	persistCursor := false
 	cursorKind := discover.CursorDaily
 	dorkSet := discover.DorkSetVuln
+	bigTier := discover.BigTierWeekly
 	maxPages := 0
 	freshPass := false
 	daySeed := 0
 	if discover.IsSearchEngineSource(discover.ParseSource(cfg.discoverSource)) && discover.IsSwissWide(cfg.discoverDomain) {
-		cursorKind = discover.CursorDaily
 		if cfg.bigScan {
+			bigTier = cfg.bigTier
+			if bigTier == 0 {
+				bigTier = discover.BigTierWeekly
+			}
 			cursorKind = discover.CursorBig
+			if bigTier == discover.BigTierMonthly {
+				cursorKind = discover.CursorMonthly
+			}
 			dorkSet = discover.DorkSetBig
-			maxPages = discover.DefaultMaxPages(discover.DorkSetBig)
-			daySeed = discover.WeekSeed(0)
-			freshPass = false
+			maxPages = discover.DefaultMaxPages(discover.DorkSetBig, bigTier)
+			if bigTier == discover.BigTierMonthly {
+				daySeed = discover.MonthSeed(0)
+			} else {
+				daySeed = discover.WeekSeed(0)
+			}
+			freshPass = true
 		} else {
 			daySeed = discover.DaySeed(0)
 			freshPass = true
@@ -144,8 +155,14 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		}
 		persistCursor = true
 		if cfg.bigScan {
-			printer.KV("curseur", fmt.Sprintf("page %d (rotation big/hebdo)", pageBase))
-			printer.KV("dorks", fmt.Sprintf("big — %d+ requêtes DBMS+vuln", len(discover.BuildBigDorks(cfg.discoverDomain, cfg.discoverSubs))))
+			tierLabel := "hebdo"
+			if bigTier == discover.BigTierMonthly {
+				tierLabel = "mensuel"
+			}
+			printer.KV("curseur", fmt.Sprintf("page %d (rotation %s)", pageBase, tierLabel))
+			printer.KV("dorks", fmt.Sprintf("%d requêtes DBMS+vuln", len(discover.BuildBigDorks(cfg.discoverDomain, cfg.discoverSubs))))
+			printer.KV("fresh-pass", "top dorks page 0")
+			printer.KV("rescan", "domaines dumpés inclus")
 		} else {
 			printer.KV("curseur", fmt.Sprintf("page %d (rotation daily)", pageBase))
 			printer.KV("fresh-pass", "page 0 des top dorks")
@@ -190,6 +207,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		PersistCursor: persistCursor,
 		CursorKind:    cursorKind,
 		DorkSet:       dorkSet,
+		BigTier:       bigTier,
 		MaxPages:      maxPages,
 		DaySeed:       daySeed,
 		FreshPass:     freshPass,

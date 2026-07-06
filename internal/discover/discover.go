@@ -73,7 +73,8 @@ type Options struct {
 	PersistCursor bool
 	CursorKind  CursorKind
 	DorkSet     DorkSet
-	MaxPages    int  // 0 = défaut selon DorkSet
+	BigTier     BigTier
+	MaxPages    int  // 0 = défaut selon DorkSet + BigTier
 	FreshPass   bool // page 0 des dorks à fort rendement avant le curseur
 	Fetcher     CDXFetcher
 	OnProgress  func(fetched, kept int, page int)
@@ -84,7 +85,7 @@ func optsMaxPages(opts Options) int {
 	if opts.MaxPages > 0 {
 		return opts.MaxPages
 	}
-	return DefaultMaxPages(opts.DorkSet)
+	return DefaultMaxPages(opts.DorkSet, opts.BigTier)
 }
 
 func saveRunCursor(opts Options, page int) {
@@ -116,6 +117,9 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		seed := DaySeed(opts.DaySeed)
 		if opts.DorkSet == DorkSetBig {
 			seed = WeekSeed(opts.DaySeed)
+			if opts.BigTier == BigTierMonthly {
+				seed = MonthSeed(opts.DaySeed)
+			}
 		}
 		opts.Fetcher = defaultFetcher(opts.Source, seed, opts.DorkSet)
 	}

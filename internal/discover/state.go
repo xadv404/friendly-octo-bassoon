@@ -17,7 +17,8 @@ type CursorKind int
 
 const (
 	CursorDaily CursorKind = iota
-	CursorBig
+	CursorBig      // hebdo (weekly)
+	CursorMonthly
 )
 
 func cursorPath(baseDir string, kind CursorKind) string {
@@ -25,8 +26,11 @@ func cursorPath(baseDir string, kind CursorKind) string {
 		baseDir = "results"
 	}
 	name := "discover_cursor.json"
-	if kind == CursorBig {
+	switch kind {
+	case CursorBig:
 		name = "discover_cursor_big.json"
+	case CursorMonthly:
+		name = "discover_cursor_monthly.json"
 	}
 	return filepath.Join(baseDir, name)
 }
@@ -96,10 +100,42 @@ func WeekSeed(custom int) int {
 	return week + now.Year()*100
 }
 
-// DefaultMaxPages retourne la limite de pages discover pour un profil.
-func DefaultMaxPages(set DorkSet) int {
-	if set == DorkSetBig {
-		return 1200
+// MonthSeed rotation mensuelle pour le mode monthly.
+func MonthSeed(custom int) int {
+	if custom != 0 {
+		return custom
 	}
-	return 400
+	now := time.Now()
+	return int(now.Month()) + now.Year()*100
+}
+
+// BigTier niveau d'agressivité discover (weekly / monthly).
+type BigTier int
+
+const (
+	BigTierWeekly BigTier = iota
+	BigTierMonthly
+)
+
+// DefaultMaxPages retourne la limite de pages discover pour un profil.
+func DefaultMaxPages(set DorkSet, tier BigTier) int {
+	if set != DorkSetBig {
+		return 400
+	}
+	switch tier {
+	case BigTierMonthly:
+		return 3000
+	default:
+		return 1500
+	}
+}
+
+// DefaultDiscoverLimit URLs à collecter selon le tier big.
+func DefaultDiscoverLimit(tier BigTier) int {
+	switch tier {
+	case BigTierMonthly:
+		return 80000
+	default:
+		return 40000
+	}
 }

@@ -75,4 +75,20 @@ func TestLoadSaveCursorBig(t *testing.T) {
 	if pDaily != 0 {
 		t.Fatalf("daily cursor should be separate, got %d", pDaily)
 	}
+	if err := SaveCursorKind(dir, CursorMonthly, 200); err != nil {
+		t.Fatal(err)
+	}
+	pm, _ := LoadCursorKind(dir, CursorMonthly)
+	if pm != 200 {
+		t.Fatalf("monthly cursor got %d", pm)
+	}
+}
+
+func TestDefaultDiscoverLimit(t *testing.T) {
+	if DefaultDiscoverLimit(BigTierWeekly) < 30000 {
+		t.Fatal("weekly limit too low")
+	}
+	if DefaultDiscoverLimit(BigTierMonthly) <= DefaultDiscoverLimit(BigTierWeekly) {
+		t.Fatal("monthly should exceed weekly")
+	}
 }

@@ -11,12 +11,13 @@ import (
 	"syscall"
 
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
+	"github.com/sqli-hunter/sqli-hunter/internal/discover"
 	"github.com/sqli-hunter/sqli-hunter/internal/output"
 	"github.com/sqli-hunter/sqli-hunter/internal/payloads"
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.19.0"
+const version = "1.20.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -29,6 +30,9 @@ func main() {
 			return
 		case "big", "weekly":
 			runBig(os.Args[2:])
+			return
+		case "monthly":
+			runMonthly(os.Args[2:])
 			return
 		case "-h", "--help":
 			printUsage()
@@ -181,6 +185,7 @@ type config struct {
 	showHelp           bool
 	showVersion        bool
 	bigScan            bool
+	bigTier            discover.BigTier
 }
 
 func parseArgs(args []string) (config, error) {
@@ -498,8 +503,9 @@ func printUsage() {
 Usage:
   sqli-hunter                    Mode daily (nouveaux emails)
   sqli-hunter daily [options]    Idem — discover + scan automatique
-  sqli-hunter big [options]      Grosse passe hebdo/bi-mensuelle (DBMS dorks)
-  sqli-hunter weekly [options]   Alias de big
+  sqli-hunter big [options]      Grosse passe hebdo (40k URLs, rescan)
+  sqli-hunter weekly [options]   Idem — max vulns + emails / semaine
+  sqli-hunter monthly [options]  Passe mensuelle (80k URLs, max agressif)
   sqli-hunter ch [options]       Discover + scan manuel
   sqli-hunter discover -d ch     Collecte URLs seulement
   sqli-hunter -l scope.txt       Scan une liste
@@ -508,11 +514,17 @@ Mode daily (cron quotidien) :
   sqli-hunter daily
   sqli-hunter daily --discover-limit 3000 --url-threads 64
 
-Mode big (cron hebdo / bi-mensuel) :
-  sqli-hunter big
-  sqli-hunter weekly --discover-limit 30000
-  # curseur séparé: results/discover_cursor_big.json
-  # dorks: vuln + MySQL/MSSQL/PostgreSQL/Oracle/Access/SQLite/HSQLdb/… + WAF
+Mode weekly (max chaque semaine) :
+  sqli-hunter weekly
+  # 40k URLs · 1500 pages Google · rescan · full+waf · fresh-pass
+
+Mode monthly (max chaque mois) :
+  sqli-hunter monthly
+  # 80k URLs · 3000 pages · rescan tous domaines dumpés
+
+Cron :
+  0 2 * * 0  cd /opt/sqli-hunter && ./sqli-hunter weekly >> results/weekly.log 2>&1
+  0 3 1 * *  cd /opt/sqli-hunter && ./sqli-hunter monthly >> results/monthly.log 2>&1
 
   → Google dorks .ch via OpenSerp API (OPENSERP_API_KEY)
   → Skip URLs/domaines déjà traités
