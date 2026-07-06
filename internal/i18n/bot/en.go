@@ -34,6 +34,17 @@ var en = Texts{
 	CallbackDenied: enCallbackDenied,
 	CallbackEmpty:  enCallbackEmpty,
 	Status:         enStatus,
+
+	ScanUsage:          enScanUsage,
+	ScanStarted:        enScanStarted,
+	ScanAlreadyRunning: enScanAlreadyRunning,
+	ScanStopped:        enScanStopped,
+	ScanStopIdle:       enScanStopIdle,
+	ScanError:          enScanError,
+
+	BtnScanWeekly:  enBtnScanWeekly,
+	BtnScanMonthly: enBtnScanMonthly,
+	BtnScanStop:    enBtnScanStop,
 }
 
 func enWelcome(stock string) string {
@@ -69,7 +80,7 @@ func enInvalidQty(provider string) string {
 }
 
 func enHint() string {
-	return "👆 /start — export emails\n📊 /status — scan progress"
+	return "👆 /start — export emails\n📊 /status — progress\n▶️ /scan weekly|monthly — start\n⏹ /stop — stop"
 }
 
 func enDelivery(emoji, provider string, count int) string {
@@ -129,3 +140,42 @@ func enStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) str
 	b.WriteString(fmt.Sprintf("already scanned: *%d*", scannedN))
 	return b.String()
 }
+
+func enScanUsage() string {
+	return "▶️ *Start a scan*\n\n`/scan weekly` — weekly pass\n`/scan monthly` — monthly pass\n\n⏹ `/stop` — stop"
+}
+
+func enScanStarted(tier, pid, log string) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("✅ *Scan %s started*", tier))
+	if pid != "" {
+		b.WriteString(fmt.Sprintf("\nPID `%s`", pid))
+	}
+	if log != "" {
+		b.WriteString(fmt.Sprintf("\nlog `%s`", log))
+	}
+	return b.String()
+}
+
+func enScanAlreadyRunning(tier string) string {
+	return fmt.Sprintf("⚠️ A *%s* scan is already running.\n\n⏹ `/stop` to stop it.", tier)
+}
+
+func enScanStopped(detail string) string {
+	if detail == "" {
+		return "⏹ *Scan stopped*"
+	}
+	return fmt.Sprintf("⏹ *Scan stopped*\n\n```\n%s\n```", detail)
+}
+
+func enScanStopIdle() string {
+	return "ℹ️ No scan running."
+}
+
+func enScanError(msg string) string {
+	return "❌ " + msg
+}
+
+func enBtnScanWeekly() string  { return "▶️ Weekly" }
+func enBtnScanMonthly() string { return "▶️ Monthly" }
+func enBtnScanStop() string    { return "⏹ Stop scan" }

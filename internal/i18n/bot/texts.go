@@ -33,6 +33,17 @@ type Texts struct {
 	CallbackEmpty  func() string
 
 	Status func(scopeN, scannedN int, st results.RunStatus, updatedAgo string) string
+
+	ScanUsage          func() string
+	ScanStarted        func(tier, pid, log string) string
+	ScanAlreadyRunning func(tier string) string
+	ScanStopped        func(detail string) string
+	ScanStopIdle       func() string
+	ScanError          func(msg string) string
+
+	BtnScanWeekly  func() string
+	BtnScanMonthly func() string
+	BtnScanStop    func() string
 }
 
 // For retourne les textes bot pour une locale (fr, en).

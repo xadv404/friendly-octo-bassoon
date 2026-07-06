@@ -38,10 +38,20 @@ case "$CMD" in
     exec "$ROOT/scripts/vps-sync.sh" "$@"
     ;;
   weekly)
-    exec "$ROOT/scripts/vps-run.sh" -- './start-weekly.sh'
+    exec "$ROOT/scripts/vps-run.sh" -- './scan.sh weekly'
     ;;
   monthly)
-    exec "$ROOT/scripts/vps-run.sh" -- './start-monthly.sh'
+    exec "$ROOT/scripts/vps-run.sh" -- './scan.sh monthly'
+    ;;
+  stop)
+    exec "$ROOT/scripts/vps-run.sh" -- './scan.sh stop'
+    ;;
+  status)
+    exec "$ROOT/scripts/vps-run.sh" -- './scan.sh status'
+    ;;
+  scan)
+    tier="${1:-weekly}"
+    exec "$ROOT/scripts/vps-run.sh" -- "./scan.sh ${tier}"
     ;;
   bot)
     exec "$ROOT/scripts/vps-run.sh" -- 'nohup ./tg-bot >> results/tg-bot.log 2>&1 & sleep 1 && tail -3 results/tg-bot.log'
@@ -55,8 +65,11 @@ vps-agent.sh — outils VPS pour agents Cursor / CI
   ssh       Shell interactif (vps-ssh.sh)
   run CMD   Commande distante (vps-run.sh)
   sync      Build + rsync binaires/env
-  weekly    Lance ./start-weekly.sh sur le VPS
-  monthly   Lance ./start-monthly.sh sur le VPS
+  weekly    Lance ./scan.sh weekly sur le VPS (arrière-plan)
+  monthly   Lance ./scan.sh monthly sur le VPS
+  scan T    weekly|monthly|stop|status via scan.sh
+  stop      Arrête les scans en cours
+  status    Processus sqli-hunter actifs
   bot       Démarre tg-bot en arrière-plan
 
 Prérequis: vps.env (voir vps.env.example) + clé SSH

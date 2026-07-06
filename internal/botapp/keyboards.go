@@ -12,6 +12,13 @@ func (a *App) startKeyboard() tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(t.BtnExtract(), "menu:extract"),
 		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanWeekly(), "scan:weekly"),
+			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanMonthly(), "scan:monthly"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanStop(), "scan:stop"),
+		),
 	)
 }
 

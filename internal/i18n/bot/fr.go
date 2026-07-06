@@ -34,6 +34,17 @@ var fr = Texts{
 	CallbackDenied: frCallbackDenied,
 	CallbackEmpty:  frCallbackEmpty,
 	Status:         frStatus,
+
+	ScanUsage:          frScanUsage,
+	ScanStarted:        frScanStarted,
+	ScanAlreadyRunning: frScanAlreadyRunning,
+	ScanStopped:        frScanStopped,
+	ScanStopIdle:       frScanStopIdle,
+	ScanError:          frScanError,
+
+	BtnScanWeekly:  frBtnScanWeekly,
+	BtnScanMonthly: frBtnScanMonthly,
+	BtnScanStop:    frBtnScanStop,
 }
 
 func frWelcome(stock string) string {
@@ -69,7 +80,7 @@ func frInvalidQty(provider string) string {
 }
 
 func frHint() string {
-	return "👆 /start — export emails\n📊 /status — progression scan"
+	return "👆 /start — export emails\n📊 /status — progression\n▶️ /scan weekly|monthly — lancer\n⏹ /stop — arrêter"
 }
 
 func frDelivery(emoji, provider string, count int) string {
@@ -129,3 +140,42 @@ func frStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) str
 	b.WriteString(fmt.Sprintf("déjà scannées: *%d*", scannedN))
 	return b.String()
 }
+
+func frScanUsage() string {
+	return "▶️ *Lancer un scan*\n\n`/scan weekly` — passe hebdo\n`/scan monthly` — passe mensuelle\n\n⏹ `/stop` — arrêter"
+}
+
+func frScanStarted(tier, pid, log string) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("✅ *Scan %s lancé*", tier))
+	if pid != "" {
+		b.WriteString(fmt.Sprintf("\nPID `%s`", pid))
+	}
+	if log != "" {
+		b.WriteString(fmt.Sprintf("\nlog `%s`", log))
+	}
+	return b.String()
+}
+
+func frScanAlreadyRunning(tier string) string {
+	return fmt.Sprintf("⚠️ Un scan *%s* tourne déjà.\n\n⏹ `/stop` pour arrêter.", tier)
+}
+
+func frScanStopped(detail string) string {
+	if detail == "" {
+		return "⏹ *Scan arrêté*"
+	}
+	return fmt.Sprintf("⏹ *Scan arrêté*\n\n```\n%s\n```", detail)
+}
+
+func frScanStopIdle() string {
+	return "ℹ️ Aucun scan en cours."
+}
+
+func frScanError(msg string) string {
+	return "❌ " + msg
+}
+
+func frBtnScanWeekly() string  { return "▶️ Weekly" }
+func frBtnScanMonthly() string { return "▶️ Monthly" }
+func frBtnScanStop() string    { return "⏹ Stop scan" }

@@ -31,7 +31,13 @@ func (a *App) handleMessage(msg *tgbotapi.Message) {
 		a.sendStart(msg.Chat.ID)
 	case "/status":
 		a.sendStatus(msg.Chat.ID)
+	case "/stop":
+		a.handleStopScan(msg.Chat.ID)
 	default:
+		if strings.HasPrefix(text, "/scan") {
+			a.handleScanCommand(msg.Chat.ID, text)
+			return
+		}
 		if provider, ok := a.pending.Get(msg.From.ID); ok {
 			a.handleQuantityInput(msg.Chat.ID, msg.From.ID, provider, text)
 			return

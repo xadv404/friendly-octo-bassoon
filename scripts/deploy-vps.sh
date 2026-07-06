@@ -26,6 +26,7 @@ scp -o ConnectTimeout=15 -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
   "$ROOT/scripts/start-monthly.sh" \
   "$ROOT/scripts/start-big.sh" \
   "$ROOT/scripts/stop-scans.sh" \
+  "$ROOT/scripts/scan.sh" \
   "${TARGET}:/tmp/"
 
 echo "→ install..." >&2
@@ -33,7 +34,7 @@ ssh -o ConnectTimeout=15 -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
   -p "$VPS_PORT" -i "$KEY" "$TARGET" '
 set -e
 mv -f /tmp/sqli-hunter /tmp/tg-bot /opt/sqli-hunter/
-for f in start-weekly.sh start-monthly.sh start-big.sh stop-scans.sh; do
+for f in start-weekly.sh start-monthly.sh start-big.sh stop-scans.sh scan.sh; do
   mv -f "/tmp/$f" /opt/sqli-hunter/ 2>/dev/null || true
 done
 chmod +x /opt/sqli-hunter/sqli-hunter /opt/sqli-hunter/tg-bot
@@ -44,5 +45,5 @@ systemctl restart sqli-tg-bot.service 2>/dev/null || true
 /opt/sqli-hunter/sqli-hunter --version
 '
 
-echo "→ scan non lancé — ./start-weekly.sh ou ./start-monthly.sh sur le VPS" >&2
+echo "→ scan non lancé — ./scan.sh weekly|monthly ou /scan sur Telegram" >&2
 echo "✓ déployé" >&2
