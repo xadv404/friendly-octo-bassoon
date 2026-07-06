@@ -308,6 +308,8 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 			return Result{}, ctx.Err()
 		}
 
+		collectWithProgress(fetched, kept, page)
+
 		absPage := opts.PageBase + page
 		batch, err := opts.Fetcher.FetchPage(ctx, opts.Domain, opts.Subs, absPage, pageSize)
 		pagesFetched++

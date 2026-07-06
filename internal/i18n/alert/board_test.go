@@ -86,6 +86,30 @@ func TestRenderBoardScanWithVulns(t *testing.T) {
 	}
 }
 
+func TestRenderDiscoverBoardErrorKeepsProgress(t *testing.T) {
+	text := RenderDiscoverBoard("fr", BoardState{
+		Phase:     "error",
+		DorkStep:  42,
+		DorkTotal: 6525,
+		Kept:      5,
+		Fetched:   120,
+		Error:     "discover interrompu",
+	})
+	if !containsAll(text, "🌐 Discover", "42/6525 dorks", "📌 5 URLs", "120 lues") {
+		t.Fatalf("unexpected board:\n%s", text)
+	}
+}
+
+func TestRenderDiscoverBoardStarting(t *testing.T) {
+	text := RenderDiscoverBoard("fr", BoardState{
+		Phase:     "discover",
+		DorkTotal: 6525,
+	})
+	if !containsAll(text, "0/6525 dorks", "📌 0 URLs") {
+		t.Fatalf("unexpected board:\n%s", text)
+	}
+}
+
 func TestProgressBar(t *testing.T) {
 	bar := progressBar(5, 10)
 	if len([]rune(bar)) != 14 {

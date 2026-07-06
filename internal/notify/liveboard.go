@@ -245,6 +245,8 @@ func (lb *liveBoard) setError(msg string) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
 	lb.state.Error = msg
-	lb.state.Phase = "error"
+	if lb.state.Phase == "" {
+		lb.state.Phase = "error"
+	}
 	lb.markDirty(true)
 }

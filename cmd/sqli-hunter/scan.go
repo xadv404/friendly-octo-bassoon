@@ -174,6 +174,8 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	n := notify.Default()
 	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{Phase: "discover"})
 
+	dorkTotal := len(discover.BuildDorks(dorkSet, cfg.discoverDomain, cfg.discoverSubs))
+
 	pushDiscover := func(phase string, step, total, kept, fetched, skipped int) {
 		_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{
 			Phase:        phase,
@@ -188,8 +190,6 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 			n.DiscoverProgress(phase, step, total, kept, fetched, skipped)
 		}
 	}
-
-	dorkTotal := len(discover.BuildDorks(dorkSet, cfg.discoverDomain, cfg.discoverSubs))
 
 	opts := discover.Options{
 		Domain:        cfg.discoverDomain,
@@ -233,6 +233,12 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 			fmt.Fprintf(os.Stderr, "\r  %s dork %d/%d — %d urls lues, %d gardées", src, step, dorkTotal, fetched, kept)
 			pushDiscover("discover", step, dorkTotal, kept, fetched, 0)
 		},
+	}
+
+	if freshPass {
+		pushDiscover("fresh-pass", 0, len(discover.BuildFreshDorks(cfg.discoverDomain, cfg.discoverSubs)), 0, 0, 0)
+	} else {
+		pushDiscover("discover", 0, dorkTotal, 0, 0, 0)
 	}
 
 	result, err := discover.Run(ctx, opts)

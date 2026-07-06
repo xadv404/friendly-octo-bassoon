@@ -111,7 +111,13 @@ func (g *googleClient) searchOpenSerp(ctx context.Context, query string, start i
 	q.Set("num", fmt.Sprintf("%d", openSerpMaxResults))
 	u.RawQuery = q.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	reqCtx, cancel := context.WithTimeout(context.Background(), searchHTTPTimeout+15*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err
 	}

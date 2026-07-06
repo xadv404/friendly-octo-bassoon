@@ -200,6 +200,7 @@ func labelsForBoard(loc string) boardL10n {
 
 func renderDiscoverSection(l boardL10n, st BoardState) string {
 	var b strings.Builder
+	showProgress := st.Phase == "discover" || st.Phase == "fresh-pass" || st.Phase == "error"
 	switch {
 	case st.DiscoverDone || st.Phase == "scan" || st.Phase == "done" || st.Phase == "no-new":
 		b.WriteString(l.discoverHeader)
@@ -209,7 +210,7 @@ func renderDiscoverSection(l boardL10n, st BoardState) string {
 		b.WriteString(l.discoverHeader)
 		b.WriteString("\n")
 		b.WriteString(l.freshPass)
-	case st.Phase == "discover":
+	case st.Phase == "discover" || st.Phase == "error":
 		b.WriteString(l.discoverHeader)
 		b.WriteString("\n")
 		b.WriteString(l.discoverMain)
@@ -227,7 +228,7 @@ func renderDiscoverSection(l boardL10n, st BoardState) string {
 		return b.String()
 	}
 
-	if st.Phase == "discover" || st.Phase == "fresh-pass" {
+	if showProgress {
 		if st.DorkTotal > 0 || st.DorkStep > 0 {
 			b.WriteString("\n")
 			if st.DorkTotal > 0 {
@@ -237,13 +238,18 @@ func renderDiscoverSection(l boardL10n, st BoardState) string {
 				b.WriteString(progressBar(st.DorkStep, 0))
 				b.WriteString(fmt.Sprintf(" %s %d", l.pages, st.DorkStep))
 			}
+		} else {
+			b.WriteString("\n⏳ Démarrage…")
 		}
 		b.WriteString("\n")
 		b.WriteString(fmt.Sprintf(l.statsKept, st.Kept))
+		if st.Fetched > 0 {
+			b.WriteString(fmt.Sprintf(" · %d lues", st.Fetched))
+		}
 		return b.String()
 	}
 
-	b.WriteString("\n⏳ …")
+	b.WriteString("\n⏳ Démarrage…")
 	return b.String()
 }
 

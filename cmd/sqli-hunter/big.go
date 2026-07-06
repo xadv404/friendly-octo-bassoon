@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -50,6 +51,9 @@ func runBigTier(tier discover.BigTier, args []string) {
 
 	n := notify.Default()
 	notify.BoardLaunch(n)
+	if n.Enabled() {
+		n.DiscoverProgress("discover", 0, len(discover.BuildBigDorks("ch", cfg.discoverSubs)), 0, 0, 0)
+	}
 	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{Phase: bigPhaseName(tier)})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -77,7 +81,11 @@ func runBigTier(tier discover.BigTier, args []string) {
 	scopePath, count, err := discoverURLs(ctx, cfg, printer)
 	if err != nil {
 		if n.Enabled() {
-			n.Error("Discover " + label + ": " + err.Error())
+			msg := err.Error()
+			if errors.Is(err, context.Canceled) {
+				msg = "discover interrompu (stop ou redémarrage)"
+			}
+			n.Error("Discover " + label + ": " + msg)
 		}
 		printer.Error(err.Error())
 		os.Exit(1)
