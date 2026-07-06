@@ -69,12 +69,28 @@ type Options struct {
 	SkipScanned bool
 	AllowEmpty  bool // pas d'erreur si 0 URL (mode daily)
 	PageBase    int  // curseur Bing persisté (discover_cursor.json)
-	DaySeed     int  // rotation dorks (0 = jour courant)
+	DaySeed     int  // rotation dorks (0 = jour/semaine courant)
 	PersistCursor bool
+	CursorKind  CursorKind
+	DorkSet     DorkSet
+	MaxPages    int  // 0 = défaut selon DorkSet
 	FreshPass   bool // page 0 des dorks à fort rendement avant le curseur
 	Fetcher     CDXFetcher
 	OnProgress  func(fetched, kept int, page int)
 	OnFreshProgress func(dorkIndex, dorkTotal, kept, fetched, skipped int)
+}
+
+func optsMaxPages(opts Options) int {
+	if opts.MaxPages > 0 {
+		return opts.MaxPages
+	}
+	return DefaultMaxPages(opts.DorkSet)
+}
+
+func saveRunCursor(opts Options, page int) {
+	if opts.PersistCursor {
+		_ = SaveCursorKind(opts.ResultsDir, opts.CursorKind, page)
+	}
 }
 
 // Result résumé d'une découverte.
@@ -97,7 +113,11 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	opts.Domain = NormalizeSwissDomain(opts.Domain)
 
 	if opts.Fetcher == nil {
-		opts.Fetcher = defaultFetcher(opts.Source, DaySeed(opts.DaySeed))
+		seed := DaySeed(opts.DaySeed)
+		if opts.DorkSet == DorkSetBig {
+			seed = WeekSeed(opts.DaySeed)
+		}
+		opts.Fetcher = defaultFetcher(opts.Source, seed, opts.DorkSet)
 	}
 
 	skipper, err := loadDumpSkipper(opts)
@@ -179,7 +199,7 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 		}
 		if len(batch) == 0 {
 			if IsSearchEngineSource(opts.Source) {
-				if page >= 400 {
+				if page >= optsMaxPages(opts) {
 					break
 				}
 				continue
@@ -217,7 +237,7 @@ func collectDomain(ctx context.Context, opts Options, client CDXFetcher, seen ma
 		if len(batch) < pageSize && !IsSearchEngineSource(opts.Source) {
 			break
 		}
-		if IsSearchEngineSource(opts.Source) && page >= 400 {
+		if IsSearchEngineSource(opts.Source) && page >= optsMaxPages(opts) {
 			break
 		}
 	}
@@ -267,9 +287,7 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 		skipped += fresh.skipped
 		if opts.Limit > 0 && kept >= opts.Limit {
 			res := Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath, PagesFetched: 0}
-			if opts.PersistCursor {
-				_ = SaveCursor(opts.ResultsDir, opts.PageBase)
-			}
+			saveRunCursor(opts, opts.PageBase)
 			return res, nil
 		}
 	}
@@ -283,9 +301,7 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 		batch, err := opts.Fetcher.FetchPage(ctx, opts.Domain, opts.Subs, absPage, pageSize)
 		pagesFetched++
 		if err != nil {
-			if opts.PersistCursor {
-				_ = SaveCursor(opts.ResultsDir, opts.PageBase+pagesFetched)
-			}
+			saveRunCursor(opts, opts.PageBase+pagesFetched)
 			if kept > 0 {
 				if err := w.Flush(); err != nil {
 					return Result{}, err
@@ -296,7 +312,7 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 		}
 		if len(batch) == 0 {
 			if IsSearchEngineSource(opts.Source) {
-				if page >= 400 {
+				if page >= optsMaxPages(opts) {
 					break
 				}
 				continue
@@ -329,9 +345,7 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 			if opts.Limit > 0 && kept >= opts.Limit {
 				collectWithProgress(fetched, kept, page)
 				res := Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched}
-				if opts.PersistCursor {
-					_ = SaveCursor(opts.ResultsDir, opts.PageBase+pagesFetched)
-				}
+				saveRunCursor(opts, opts.PageBase+pagesFetched)
 				return res, nil
 			}
 		}
@@ -341,13 +355,13 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 		if len(batch) < pageSize && !IsSearchEngineSource(opts.Source) {
 			break
 		}
-		if IsSearchEngineSource(opts.Source) && page >= 400 {
+		if IsSearchEngineSource(opts.Source) && page >= optsMaxPages(opts) {
 			break
 		}
 	}
 
 	if opts.PersistCursor && pagesFetched > 0 {
-		_ = SaveCursor(opts.ResultsDir, opts.PageBase+pagesFetched)
+		saveRunCursor(opts, opts.PageBase+pagesFetched)
 	}
 
 	if kept == 0 {

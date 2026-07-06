@@ -10,12 +10,14 @@ import (
 type googleClient struct {
 	delay   time.Duration
 	daySeed int
+	dorkSet DorkSet
 }
 
-func newGoogleClient(daySeed int) *googleClient {
+func newGoogleClient(daySeed int, dorkSet DorkSet) *googleClient {
 	return &googleClient{
 		delay:   1500 * time.Millisecond,
 		daySeed: daySeed,
+		dorkSet: dorkSet,
 	}
 }
 

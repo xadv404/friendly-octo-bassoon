@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.18.0"
+const version = "1.19.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -26,6 +26,9 @@ func main() {
 			return
 		case "daily":
 			runDaily(os.Args[2:])
+			return
+		case "big", "weekly":
+			runBig(os.Args[2:])
 			return
 		case "-h", "--help":
 			printUsage()
@@ -177,6 +180,7 @@ type config struct {
 	noColor            bool
 	showHelp           bool
 	showVersion        bool
+	bigScan            bool
 }
 
 func parseArgs(args []string) (config, error) {
@@ -494,6 +498,8 @@ func printUsage() {
 Usage:
   sqli-hunter                    Mode daily (nouveaux emails)
   sqli-hunter daily [options]    Idem — discover + scan automatique
+  sqli-hunter big [options]      Grosse passe hebdo/bi-mensuelle (DBMS dorks)
+  sqli-hunter weekly [options]   Alias de big
   sqli-hunter ch [options]       Discover + scan manuel
   sqli-hunter discover -d ch     Collecte URLs seulement
   sqli-hunter -l scope.txt       Scan une liste
@@ -501,6 +507,12 @@ Usage:
 Mode daily (cron quotidien) :
   sqli-hunter daily
   sqli-hunter daily --discover-limit 3000 --url-threads 64
+
+Mode big (cron hebdo / bi-mensuel) :
+  sqli-hunter big
+  sqli-hunter weekly --discover-limit 30000
+  # curseur séparé: results/discover_cursor_big.json
+  # dorks: vuln + MySQL/MSSQL/PostgreSQL/Oracle/Access/SQLite/HSQLdb/… + WAF
 
   → Google dorks .ch via OpenSerp API (OPENSERP_API_KEY)
   → Skip URLs/domaines déjà traités

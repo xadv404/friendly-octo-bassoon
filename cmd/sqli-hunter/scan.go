@@ -122,13 +122,34 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 
 	pageBase := 0
 	persistCursor := false
+	cursorKind := discover.CursorDaily
+	dorkSet := discover.DorkSetVuln
+	maxPages := 0
+	freshPass := false
+	daySeed := 0
 	if discover.IsSearchEngineSource(discover.ParseSource(cfg.discoverSource)) && discover.IsSwissWide(cfg.discoverDomain) {
-		if p, err := discover.LoadCursor(cfg.outputDir); err == nil {
+		cursorKind = discover.CursorDaily
+		if cfg.bigScan {
+			cursorKind = discover.CursorBig
+			dorkSet = discover.DorkSetBig
+			maxPages = discover.DefaultMaxPages(discover.DorkSetBig)
+			daySeed = discover.WeekSeed(0)
+			freshPass = false
+		} else {
+			daySeed = discover.DaySeed(0)
+			freshPass = true
+		}
+		if p, err := discover.LoadCursorKind(cfg.outputDir, cursorKind); err == nil {
 			pageBase = p
 		}
 		persistCursor = true
-		printer.KV("curseur", fmt.Sprintf("page %d (rotation daily)", pageBase))
-		printer.KV("fresh-pass", "page 0 des top dorks")
+		if cfg.bigScan {
+			printer.KV("curseur", fmt.Sprintf("page %d (rotation big/hebdo)", pageBase))
+			printer.KV("dorks", fmt.Sprintf("big — %d+ requêtes DBMS+vuln", len(discover.BuildBigDorks(cfg.discoverDomain, cfg.discoverSubs))))
+		} else {
+			printer.KV("curseur", fmt.Sprintf("page %d (rotation daily)", pageBase))
+			printer.KV("fresh-pass", "page 0 des top dorks")
+		}
 	}
 	if discover.IsSearchEngineSource(discover.ParseSource(cfg.discoverSource)) {
 		printer.KV("source", discover.DiscoverBackendLabel(discover.ParseSource(cfg.discoverSource)))
@@ -163,11 +184,15 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 		Source:        discover.ParseSource(cfg.discoverSource),
 		ResultsDir:    cfg.outputDir,
 		SkipDumped:    !cfg.rescan,
-		SkipScanned:   cfg.skipScanned || discover.IsSwissWide(cfg.discoverDomain),
+		SkipScanned:   cfg.skipScanned || (!cfg.bigScan && discover.IsSwissWide(cfg.discoverDomain)),
 		AllowEmpty:    cfg.allowEmptyDiscover,
 		PageBase:      pageBase,
 		PersistCursor: persistCursor,
-		FreshPass:     persistCursor,
+		CursorKind:    cursorKind,
+		DorkSet:       dorkSet,
+		MaxPages:      maxPages,
+		DaySeed:       daySeed,
+		FreshPass:     freshPass,
 		OnFreshProgress: func(idx, total, kept, fetched, skipped int) {
 			pushDiscover("fresh-pass", idx, total, kept, fetched, skipped)
 		},

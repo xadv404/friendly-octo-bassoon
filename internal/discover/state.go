@@ -12,16 +12,33 @@ type CursorState struct {
 	Page int `json:"page"`
 }
 
-func cursorPath(baseDir string) string {
+// CursorKind sélectionne le fichier curseur persisté.
+type CursorKind int
+
+const (
+	CursorDaily CursorKind = iota
+	CursorBig
+)
+
+func cursorPath(baseDir string, kind CursorKind) string {
 	if baseDir == "" {
 		baseDir = "results"
 	}
-	return filepath.Join(baseDir, "discover_cursor.json")
+	name := "discover_cursor.json"
+	if kind == CursorBig {
+		name = "discover_cursor_big.json"
+	}
+	return filepath.Join(baseDir, name)
 }
 
-// LoadCursor charge le curseur de pagination (0 si absent).
+// LoadCursor charge le curseur daily (0 si absent).
 func LoadCursor(baseDir string) (int, error) {
-	path := cursorPath(baseDir)
+	return LoadCursorKind(baseDir, CursorDaily)
+}
+
+// LoadCursorKind charge un curseur typé.
+func LoadCursorKind(baseDir string, kind CursorKind) (int, error) {
+	path := cursorPath(baseDir, kind)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -39,12 +56,17 @@ func LoadCursor(baseDir string) (int, error) {
 	return st.Page, nil
 }
 
-// SaveCursor enregistre la position pour le prochain run.
+// SaveCursor enregistre le curseur daily.
 func SaveCursor(baseDir string, page int) error {
+	return SaveCursorKind(baseDir, CursorDaily, page)
+}
+
+// SaveCursorKind enregistre un curseur typé.
+func SaveCursorKind(baseDir string, kind CursorKind, page int) error {
 	if page < 0 {
 		page = 0
 	}
-	path := cursorPath(baseDir)
+	path := cursorPath(baseDir, kind)
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
@@ -62,4 +84,22 @@ func DaySeed(custom int) int {
 	}
 	now := time.Now()
 	return now.YearDay() + now.Year()*400
+}
+
+// WeekSeed rotation hebdomadaire pour le mode big.
+func WeekSeed(custom int) int {
+	if custom != 0 {
+		return custom
+	}
+	now := time.Now()
+	_, week := now.ISOWeek()
+	return week + now.Year()*100
+}
+
+// DefaultMaxPages retourne la limite de pages discover pour un profil.
+func DefaultMaxPages(set DorkSet) int {
+	if set == DorkSetBig {
+		return 1200
+	}
+	return 400
 }

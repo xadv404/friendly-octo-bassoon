@@ -139,6 +139,25 @@ func (c *dorkCollector) add(d string) {
 	if isForbiddenDork(d) {
 		return
 	}
+	c.store(d)
+}
+
+// addLoose — dorks DBMS (intext + script) : règles assouplies, hors patterns dangereux.
+func (c *dorkCollector) addLoose(d string) {
+	d = strings.TrimSpace(d + " " + dorkNoiseExclude)
+	if isHardForbiddenDork(d) {
+		return
+	}
+	c.store(d)
+}
+
+func (c *dorkCollector) addLooseTemplates(templates ...string) {
+	for _, p := range templates {
+		c.addLoose(formatDork(c.site, p))
+	}
+}
+
+func (c *dorkCollector) store(d string) {
 	if _, ok := c.seen[d]; ok {
 		return
 	}
@@ -171,11 +190,22 @@ func formatDork(site, pattern string) string {
 }
 
 func isForbiddenDork(d string) bool {
-	lower := strings.ToLower(d)
-	positive := lower
-	if idx := strings.Index(lower, " -inurl:"); idx > 0 {
-		positive = lower[:idx]
+	if isHardForbiddenDork(d) {
+		return true
 	}
+	positive := dorkPositivePart(d)
+	hasScript := strings.Contains(positive, ".php") || strings.Contains(positive, ".asp") ||
+		strings.Contains(positive, ".jsp")
+	hasImmo := strings.Contains(positive, "pagenum_rs") || strings.Contains(positive, "totalrows_rs") ||
+		strings.Contains(positive, "gemeinde-") || strings.Contains(positive, "regionref")
+	if !hasScript && !hasImmo {
+		return true
+	}
+	return false
+}
+
+func isHardForbiddenDork(d string) bool {
+	positive := dorkPositivePart(d)
 	forbidden := []string{
 		"index.php?id=", "sql syntax", "inurl:login.php",
 		"ext:php inurl:?", "ext:asp inurl:?",
@@ -188,13 +218,15 @@ func isForbiddenDork(d string) bool {
 	if strings.HasSuffix(strings.TrimSpace(positive), "inurl:?") {
 		return true
 	}
-	hasScript := strings.Contains(positive, ".php") || strings.Contains(positive, ".asp")
-	hasImmo := strings.Contains(positive, "pagenum_rs") || strings.Contains(positive, "totalrows_rs") ||
-		strings.Contains(positive, "gemeinde-") || strings.Contains(positive, "regionref")
-	if !hasScript && !hasImmo {
-		return true
-	}
 	return false
+}
+
+func dorkPositivePart(d string) string {
+	lower := strings.ToLower(d)
+	if idx := strings.Index(lower, " -inurl:"); idx > 0 {
+		return lower[:idx]
+	}
+	return lower
 }
 
 // tightScriptTemplates — scripts PHP classiques avec param id explicite (GHDB).

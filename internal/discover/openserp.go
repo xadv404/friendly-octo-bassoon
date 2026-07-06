@@ -59,7 +59,7 @@ func openSerpJitter(base time.Duration) time.Duration {
 }
 
 func (g *googleClient) fetchOpenSerp(ctx context.Context, domain string, subs bool, absolutePage int) ([]string, error) {
-	dorks := DailyDorkOrder(BuildVulnDorks(domain, subs), g.daySeed)
+	dorks := OrderedDorks(g.dorkSet, domain, subs, g.daySeed)
 	if len(dorks) == 0 {
 		return nil, nil
 	}

@@ -7,8 +7,8 @@ type autoFetcher struct {
 	google *googleClient
 }
 
-func newAutoFetcher(daySeed int) *autoFetcher {
-	return &autoFetcher{google: newGoogleClient(daySeed)}
+func newAutoFetcher(daySeed int, dorkSet DorkSet) *autoFetcher {
+	return &autoFetcher{google: newGoogleClient(daySeed, dorkSet)}
 }
 
 func (a *autoFetcher) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {

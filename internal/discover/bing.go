@@ -28,13 +28,15 @@ type bingClient struct {
 	delay   time.Duration
 	baseURL string
 	daySeed int
+	dorkSet DorkSet
 }
 
-func newBingClient(daySeed int) *bingClient {
+func newBingClient(daySeed int, dorkSet DorkSet) *bingClient {
 	return &bingClient{
 		http:    newDiscoverHTTPClient(),
 		delay:   2 * time.Second,
 		daySeed: daySeed,
+		dorkSet: dorkSet,
 	}
 }
 
@@ -53,7 +55,7 @@ func (b *bingClient) FetchDork(ctx context.Context, dork string, start int) ([]s
 }
 
 func (b *bingClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
-	dorks := DailyDorkOrder(BuildVulnDorks(domain, subs), b.daySeed)
+	dorks := OrderedDorks(b.dorkSet, domain, subs, b.daySeed)
 	if len(dorks) == 0 {
 		return nil, nil
 	}
@@ -235,15 +237,15 @@ func decodeBingURL(enc string) (string, error) {
 	return string(b), nil
 }
 
-func defaultFetcher(source Source, daySeed int) CDXFetcher {
+func defaultFetcher(source Source, daySeed int, dorkSet DorkSet) CDXFetcher {
 	switch source {
 	case SourceWayback:
 		return newWaybackClient()
 	case SourceBing:
-		return newBingClient(daySeed)
+		return newBingClient(daySeed, dorkSet)
 	case SourceDDG:
-		return newDDGClient(daySeed)
+		return newDDGClient(daySeed, dorkSet)
 	default:
-		return newGoogleClient(daySeed)
+		return newGoogleClient(daySeed, dorkSet)
 	}
 }

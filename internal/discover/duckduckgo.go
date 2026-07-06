@@ -56,12 +56,14 @@ func vqdKey(query string) string {
 type ddgClient struct {
 	delay   time.Duration
 	daySeed int
+	dorkSet DorkSet
 }
 
-func newDDGClient(daySeed int) *ddgClient {
+func newDDGClient(daySeed int, dorkSet DorkSet) *ddgClient {
 	return &ddgClient{
 		delay:   2 * time.Second,
 		daySeed: daySeed,
+		dorkSet: dorkSet,
 	}
 }
 
@@ -80,7 +82,7 @@ func (d *ddgClient) FetchDork(ctx context.Context, dork string, start int) ([]st
 }
 
 func (d *ddgClient) FetchPage(ctx context.Context, domain string, subs bool, absolutePage, limit int) ([]string, error) {
-	dorks := DailyDorkOrder(BuildVulnDorks(domain, subs), d.daySeed)
+	dorks := OrderedDorks(d.dorkSet, domain, subs, d.daySeed)
 	if len(dorks) == 0 {
 		return nil, nil
 	}
