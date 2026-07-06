@@ -19,7 +19,7 @@ func TestRenderBoardDiscoverBig(t *testing.T) {
 }
 
 func TestRenderBoardDiscoverFreshPass(t *testing.T) {
-	text := RenderBoard("fr", BoardState{
+	text := RenderDiscoverBoard("fr", BoardState{
 		Phase:     "fresh-pass",
 		DorkStep:  9,
 		DorkTotal: 78,
@@ -31,10 +31,25 @@ func TestRenderBoardDiscoverFreshPass(t *testing.T) {
 		"⚡ Fresh pass",
 		"9/78 dorks",
 		"📌 0 URLs",
-		"🛡 SCAN",
-		"⏳ En attente…",
 	) {
 		t.Fatalf("unexpected board:\n%s", text)
+	}
+}
+
+func TestRenderScanBoardWaiting(t *testing.T) {
+	text := RenderScanBoard("fr", BoardState{
+		Phase:     "scan",
+		Kept:      42,
+		ScanTotal: 500,
+		Scanned:   0,
+	})
+	if !containsAll(text,
+		"🎯 SQLi Hunter",
+		"🛡 SCAN",
+		"📌 42 URLs",
+		"░░░░░░░░░░░░░░ 0/500 URLs",
+	) {
+		t.Fatalf("unexpected scan board:\n%s", text)
 	}
 }
 

@@ -79,6 +79,7 @@ func main() {
 	}()
 
 	if cfg.discoverDomain != "" {
+		cfg.scanAfterDiscover = true
 		scopeFile, count, err := discoverURLs(ctx, cfg, printer)
 		if err != nil {
 			printer.Error(err.Error())
@@ -183,6 +184,7 @@ type config struct {
 	showVersion        bool
 	bigScan            bool
 	bigTier            discover.BigTier
+	scanAfterDiscover  bool
 }
 
 func parseArgs(args []string) (config, error) {

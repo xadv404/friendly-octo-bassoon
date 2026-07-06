@@ -15,6 +15,7 @@ type liveBoard struct {
 	editor *telegram.LiveEditor
 	locale string
 	texts  i18nalert.Texts
+	mode   string // discover | scan
 
 	mu        sync.Mutex
 	state     i18nalert.BoardState
@@ -69,7 +70,12 @@ func (lb *liveBoard) flushLocked(_ bool) {
 	if !lb.dirty {
 		return
 	}
-	text := i18nalert.RenderBoard(lb.locale, lb.state)
+	var text string
+	if lb.mode == "scan" {
+		text = i18nalert.RenderScanBoard(lb.locale, lb.state)
+	} else {
+		text = i18nalert.RenderDiscoverBoard(lb.locale, lb.state)
+	}
 	lb.editor.Set(text)
 	lb.lastFlush = time.Now()
 	lb.dirty = false
@@ -78,6 +84,7 @@ func (lb *liveBoard) flushLocked(_ bool) {
 func (lb *liveBoard) setLaunch(_, _ string) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
+	lb.mode = "discover"
 	lb.state = i18nalert.BoardState{Phase: "discover"}
 	lb.markDirty(true)
 }
@@ -138,9 +145,16 @@ func (lb *liveBoard) discoverDone(kept, skipped, fetched int) {
 func (lb *liveBoard) scanStarted(urlCount int, _ string) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
-	lb.state.Phase = "scan"
-	lb.state.ScanTotal = urlCount
-	lb.state.DiscoverDone = true
+	kept := lb.state.Kept
+	if lb.editor != nil {
+		lb.editor.DeleteAll()
+	}
+	lb.mode = "scan"
+	lb.state = i18nalert.BoardState{
+		Phase:     "scan",
+		ScanTotal: urlCount,
+		Kept:      kept,
+	}
 	lb.markDirty(true)
 }
 

@@ -72,6 +72,7 @@ func runBigTier(tier discover.BigTier, args []string) {
 	cfg.allowEmptyDiscover = true
 	cfg.bigScan = true
 	cfg.bigTier = tier
+	cfg.scanAfterDiscover = true
 
 	scopePath, count, err := discoverURLs(ctx, cfg, printer)
 	if err != nil {

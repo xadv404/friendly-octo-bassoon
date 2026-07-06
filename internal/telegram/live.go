@@ -81,3 +81,26 @@ func (e *LiveEditor) sendNew(chatID int64, text string) {
 	e.msgID[chatID] = sent.MessageID
 	e.mu.Unlock()
 }
+
+// DeleteAll supprime les messages live et réinitialise les IDs (transition discover → scan).
+func (e *LiveEditor) DeleteAll() {
+	if e == nil {
+		return
+	}
+	e.mu.Lock()
+	ids := make(map[int64]int, len(e.msgID))
+	for chatID, mid := range e.msgID {
+		ids[chatID] = mid
+	}
+	e.msgID = make(map[int64]int)
+	e.mu.Unlock()
+
+	for chatID, mid := range ids {
+		if mid <= 0 {
+			continue
+		}
+		if _, err := e.bot.Send(tgbotapi.NewDeleteMessage(chatID, mid)); err != nil {
+			log.Printf("telegram: delete %d msg %d: %v", chatID, mid, err)
+		}
+	}
+}

@@ -42,8 +42,16 @@ type BoardState struct {
 	Error      string
 }
 
-// RenderBoard formate le message live (plain text, pas Markdown).
+// RenderBoard formate le message live complet (rétrocompat tests).
 func RenderBoard(loc string, st BoardState) string {
+	if st.Phase == "scan" || st.Phase == "done" || st.ScanDone {
+		return RenderScanBoard(loc, st)
+	}
+	return RenderDiscoverBoard(loc, st)
+}
+
+// RenderDiscoverBoard — message live pendant la découverte uniquement.
+func RenderDiscoverBoard(loc string, st BoardState) string {
 	l := labelsForBoard(loc)
 	var b strings.Builder
 
@@ -71,6 +79,22 @@ func RenderBoard(loc string, st BoardState) string {
 			b.WriteString(fmt.Sprintf("  "+l.urlsMore, st.Kept-len(st.URLsList)))
 			b.WriteString("\n")
 		}
+	}
+
+	return strings.TrimRight(b.String(), "\n")
+}
+
+// RenderScanBoard — message live pendant le scan (nouveau message après discover).
+func RenderScanBoard(loc string, st BoardState) string {
+	l := labelsForBoard(loc)
+	var b strings.Builder
+
+	b.WriteString("🎯 SQLi Hunter\n")
+	b.WriteString("━━━━━━━━━━━━━━━━━━━━")
+
+	if st.Error != "" {
+		b.WriteString("\n\n❌ ")
+		b.WriteString(st.Error)
 	}
 
 	b.WriteString("\n\n")
@@ -231,10 +255,15 @@ func renderScanSection(l boardL10n, st BoardState) string {
 	case st.Phase == "scan":
 		b.WriteString(l.scanHeader)
 	default:
-		b.WriteString(l.scanWait)
+		b.WriteString(l.scanHeader)
 	}
 
-	if st.ScanTotal <= 0 && st.Phase != "scan" && !st.ScanDone {
+	if st.Kept > 0 && (st.Phase == "scan" || st.ScanDone || st.Phase == "done") {
+		b.WriteString("\n")
+		b.WriteString(fmt.Sprintf(l.statsKept, st.Kept))
+	}
+
+	if st.ScanTotal <= 0 && st.Phase == "scan" && st.Scanned == 0 {
 		b.WriteString("\n")
 		b.WriteString(l.scanWaitLine)
 		return b.String()
@@ -243,7 +272,7 @@ func renderScanSection(l boardL10n, st BoardState) string {
 	b.WriteString("\n")
 	if st.ScanTotal > 0 {
 		b.WriteString(progressBar(st.Scanned, st.ScanTotal))
-		b.WriteString(fmt.Sprintf(" %d/%d", st.Scanned, st.ScanTotal))
+		b.WriteString(fmt.Sprintf(" %d/%d URLs", st.Scanned, st.ScanTotal))
 	} else if st.Scanned > 0 {
 		b.WriteString(fmt.Sprintf("📊 %d", st.Scanned))
 	}

@@ -249,7 +249,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 	if result.PagesFetched > 0 && opts.PersistCursor {
 		printer.KV("curseur", fmt.Sprintf("→ page %d demain", pageBase+result.PagesFetched))
 	}
-	if n.Enabled() {
+	if n.Enabled() && !(cfg.scanAfterDiscover && result.Kept > 0) {
 		n.DiscoverDone(result.Kept, result.Skipped, result.Fetched)
 	}
 	_ = results.WriteRunStatus(cfg.outputDir, results.RunStatus{
