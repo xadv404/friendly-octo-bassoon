@@ -78,7 +78,7 @@ func (lb *liveBoard) flushLocked(_ bool) {
 func (lb *liveBoard) setLaunch(_, _ string) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
-	lb.state = i18nalert.BoardState{Phase: "fresh-pass"}
+	lb.state = i18nalert.BoardState{Phase: "discover"}
 	lb.markDirty(true)
 }
 

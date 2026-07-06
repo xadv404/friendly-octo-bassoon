@@ -6,6 +6,18 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
 )
 
+func TestRenderBoardDiscoverBig(t *testing.T) {
+	text := RenderBoard("fr", BoardState{
+		Phase:     "discover",
+		DorkStep:  120,
+		DorkTotal: 6525,
+		Kept:      42,
+	})
+	if !containsAll(text, "6525 dorks", "🌐 Discover", "📌 42 URLs") {
+		t.Fatalf("unexpected board:\n%s", text)
+	}
+}
+
 func TestRenderBoardDiscoverFreshPass(t *testing.T) {
 	text := RenderBoard("fr", BoardState{
 		Phase:     "fresh-pass",

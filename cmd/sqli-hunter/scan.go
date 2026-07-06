@@ -145,7 +145,7 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 			} else {
 				daySeed = discover.WeekSeed(0)
 			}
-			freshPass = true
+			freshPass = false
 		} else {
 			daySeed = discover.DaySeed(0)
 			freshPass = true
@@ -161,7 +161,6 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 			}
 			printer.KV("curseur", fmt.Sprintf("page %d (rotation %s)", pageBase, tierLabel))
 			printer.KV("dorks", fmt.Sprintf("%d requêtes DBMS+vuln", len(discover.BuildBigDorks(cfg.discoverDomain, cfg.discoverSubs))))
-			printer.KV("fresh-pass", "top dorks page 0")
 			printer.KV("rescan", "domaines dumpés inclus")
 		} else {
 			printer.KV("curseur", fmt.Sprintf("page %d", pageBase))
@@ -189,6 +188,8 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 			n.DiscoverProgress(phase, step, total, kept, fetched, skipped)
 		}
 	}
+
+	dorkTotal := len(discover.BuildDorks(dorkSet, cfg.discoverDomain, cfg.discoverSubs))
 
 	opts := discover.Options{
 		Domain:        cfg.discoverDomain,
@@ -224,8 +225,13 @@ func discoverURLs(ctx context.Context, cfg config, printer *output.Printer) (str
 			if src == "" {
 				src = "google"
 			}
-			fmt.Fprintf(os.Stderr, "\r  %s page %d — %d urls lues, %d gardées", src, page+1, fetched, kept)
-			pushDiscover("discover", page+1, 0, kept, fetched, 0)
+			abs := pageBase + page
+			step := abs + 1
+			if dorkTotal > 0 {
+				step = (abs % dorkTotal) + 1
+			}
+			fmt.Fprintf(os.Stderr, "\r  %s dork %d/%d — %d urls lues, %d gardées", src, step, dorkTotal, fetched, kept)
+			pushDiscover("discover", step, dorkTotal, kept, fetched, 0)
 		},
 	}
 
