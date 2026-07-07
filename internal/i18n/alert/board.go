@@ -82,13 +82,13 @@ func RenderScanBoard(loc string, st BoardState) string {
 
 	switch st.Phase {
 	case "stopped":
-		body := l.prefixStopped + "\n" + formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.NewEmails, false)
+		body := l.prefixStopped + "\n" + formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.DumpFails, st.NewEmails, false)
 		if st.Paused {
 			return "⏸ en pause\n" + body
 		}
 		return body
 	case "done", "no-new":
-		body := "✅ " + l.done + "\n" + formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.NewEmails, true)
+		body := "✅ " + l.done + "\n" + formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.DumpFails, st.NewEmails, true)
 		if compact := compactStock(st.Stock); compact != "" {
 			body += "\n📦 " + l.stock + " : " + compact
 		}
@@ -106,7 +106,7 @@ func RenderScanBoard(loc string, st BoardState) string {
 		b.WriteString(progressBar(st.Scanned, st.ScanTotal))
 		b.WriteByte('\n')
 	}
-	b.WriteString(formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, 0, false))
+	b.WriteString(formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.DumpFails, 0, false))
 	return b.String()
 }
 
@@ -118,6 +118,7 @@ type scanBoardLabels struct {
 	vulnerable    string
 	findings      string
 	dumps         string
+	dumpFails     string
 	emails        string
 }
 
@@ -131,6 +132,7 @@ func labelsForScan(loc string) scanBoardLabels {
 			vulnerable:    "vulnerable",
 			findings:      "findings",
 			dumps:         "dumps",
+			dumpFails:     "échecs dump",
 			emails:        "new emails",
 		}
 	}
@@ -142,11 +144,12 @@ func labelsForScan(loc string) scanBoardLabels {
 		vulnerable:    "vulnérable",
 		findings:      "findings",
 		dumps:         "dumps",
+		dumpFails:     "dump fails",
 		emails:        "emails",
 	}
 }
 
-func formatScanStats(l scanBoardLabels, scanned, total, vulns, findings, dumps, newEmails int, showEmails bool) string {
+func formatScanStats(l scanBoardLabels, scanned, total, vulns, findings, dumps, dumpFails, newEmails int, showEmails bool) string {
 	var lines []string
 	if total > 0 {
 		lines = append(lines, fmt.Sprintf("📊 %s : %d/%d", l.scanned, scanned, total))
@@ -158,6 +161,9 @@ func formatScanStats(l scanBoardLabels, scanned, total, vulns, findings, dumps, 
 		fmt.Sprintf("🔎 %s : %d", l.findings, findings),
 		fmt.Sprintf("💾 %s : %d", l.dumps, dumps),
 	)
+	if dumpFails > 0 {
+		lines = append(lines, fmt.Sprintf("⚠️ %s : %d", l.dumpFails, dumpFails))
+	}
 	if showEmails && newEmails > 0 {
 		lines = append(lines, fmt.Sprintf("📬 %s : %d", l.emails, newEmails))
 	}
@@ -167,12 +173,12 @@ func formatScanStats(l scanBoardLabels, scanned, total, vulns, findings, dumps, 
 func scanStatsLine(scanned, total, vulns, findings, dumps int, prefix string) string {
 	_ = prefix
 	l := labelsForScan("fr")
-	return formatScanStats(l, scanned, total, vulns, findings, dumps, 0, false)
+	return formatScanStats(l, scanned, total, vulns, findings, dumps, 0, 0, false)
 }
 
 func scanStatsCore(scanned, total, vulns, findings, dumps int) string {
 	l := labelsForScan("fr")
-	return formatScanStats(l, scanned, total, vulns, findings, dumps, 0, false)
+	return formatScanStats(l, scanned, total, vulns, findings, dumps, 0, 0, false)
 }
 
 func compactStock(stock string) string {

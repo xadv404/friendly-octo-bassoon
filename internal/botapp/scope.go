@@ -2,6 +2,7 @@ package botapp
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,8 +76,14 @@ func (a *App) handleDocument(msg *tgbotapi.Message) {
 		return
 	}
 
-	if _, err := urllist.Load(tmpPath); err != nil {
+	urls, err := urllist.Load(tmpPath)
+	if err != nil {
 		a.tg.Reply(chatID, t.ScanScopeError(err.Error()))
+		return
+	}
+	kept, dropped := urllist.FilterCH(urls)
+	if len(kept) == 0 {
+		a.tg.Reply(chatID, t.ScanScopeError("aucune URL .ch dans le fichier"))
 		return
 	}
 
@@ -85,16 +92,19 @@ func (a *App) handleDocument(msg *tgbotapi.Message) {
 		a.tg.Reply(chatID, t.ScanScopeError(err.Error()))
 		return
 	}
-	data, err := os.ReadFile(tmpPath)
-	if err != nil {
-		a.tg.Reply(chatID, t.ScanScopeError(err.Error()))
-		return
+	var b strings.Builder
+	for _, u := range kept {
+		b.WriteString(u)
+		b.WriteByte('\n')
 	}
-	if err := os.WriteFile(dest, data, 0644); err != nil {
+	if err := os.WriteFile(dest, []byte(b.String()), 0644); err != nil {
 		a.tg.Reply(chatID, t.ScanScopeError(err.Error()))
 		return
 	}
 
 	a.pendingScope.Clear(userID)
+	if len(dropped) > 0 {
+		a.tg.Reply(chatID, fmt.Sprintf("🇨🇭 %d URLs .ch · %d hors .ch ignorées", len(kept), len(dropped)))
+	}
 	a.launchHunt(chatID)
 }
