@@ -88,7 +88,7 @@ func frInvalidQty(provider string) string {
 }
 
 func frHint() string {
-	return "👆 /start — export emails\n📊 /status — progression\n📋 /dorks — fichier dorks\n▶️ /scan hunt — scan URLs\n⏹ /stop — arrêter"
+	return "👆 /start — export emails\n📋 /dorks — fichier dorks\n▶️ /scan hunt — lancer scan\n⏹ /stop — arrêter"
 }
 
 func frDelivery(emoji, provider string, count int) string {
@@ -138,7 +138,7 @@ func frStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) str
 }
 
 func frScanUsage() string {
-	return "▶️ *Lancer hunt*\n\n`/scan hunt` — envoie ensuite le `.txt` des URLs\n\n📋 `/dorks` — exporter les dorks\n⏹ `/stop` — arrêter"
+	return "▶️ `/scan hunt` — lance le scan\n\n📋 `/dorks` — exporter les dorks\n⏹ `/stop` — arrêter"
 }
 
 func frScanStarted(tier, pid, log string) string {
@@ -170,7 +170,7 @@ func frScanError(msg string) string {
 }
 
 func frScanAskScope() string {
-	return "📎 Envoie le `.txt` des URLs (1 par ligne)"
+	return "📎 Pas de scope — envoie le `.txt` des URLs"
 }
 
 func frScanScopeBadFile() string {

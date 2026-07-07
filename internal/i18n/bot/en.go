@@ -88,7 +88,7 @@ func enInvalidQty(provider string) string {
 }
 
 func enHint() string {
-	return "👆 /start — export emails\n📊 /status — progress\n📋 /dorks — dorks file\n▶️ /scan hunt — scan URLs\n⏹ /stop — stop"
+	return "👆 /start — export emails\n📋 /dorks — dorks file\n▶️ /scan hunt — start scan\n⏹ /stop — stop"
 }
 
 func enDelivery(emoji, provider string, count int) string {
@@ -138,7 +138,7 @@ func enStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) str
 }
 
 func enScanUsage() string {
-	return "▶️ *Start hunt*\n\n`/scan hunt` — then send the URLs `.txt`\n\n📋 `/dorks` — export dorks\n⏹ `/stop` — stop"
+	return "▶️ `/scan hunt` — start scan\n\n📋 `/dorks` — export dorks\n⏹ `/stop` — stop"
 }
 
 func enScanStarted(tier, pid, log string) string {
@@ -170,7 +170,7 @@ func enScanError(msg string) string {
 }
 
 func enScanAskScope() string {
-	return "📎 Send the URLs `.txt` (1 per line)"
+	return "📎 No scope — send the URLs `.txt`"
 }
 
 func enScanScopeBadFile() string {

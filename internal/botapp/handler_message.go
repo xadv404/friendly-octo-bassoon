@@ -43,8 +43,6 @@ func (a *App) handleMessage(msg *tgbotapi.Message) {
 		a.pending.Clear(msg.From.ID)
 		a.pendingScope.Clear(msg.From.ID)
 		a.sendStart(msg.Chat.ID)
-	case "/status":
-		a.sendStatus(msg.Chat.ID)
 	case "/stop":
 		a.handleStopScan(msg.Chat.ID)
 	case "/dorks":

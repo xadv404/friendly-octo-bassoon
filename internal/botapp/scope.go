@@ -17,6 +17,40 @@ func (a *App) scopePath() string {
 	return filepath.Join(a.cfg.ResultsDir, huntScopeFile)
 }
 
+func (a *App) scopeURLCount() (int, error) {
+	return urllist.Count(a.scopePath())
+}
+
+func (a *App) tryLaunchHunt(chatID, userID int64) {
+	t := a.i18n.Bot
+	if running, _, err := scanctl.Running(a.cfg.ResultsDir); err == nil && running {
+		a.tg.Reply(chatID, t.ScanAlreadyRunning("hunt"))
+		return
+	}
+
+	count, err := a.scopeURLCount()
+	if err != nil || count == 0 {
+		a.pending.Clear(userID)
+		a.pendingScope.Set(userID)
+		a.tg.Reply(chatID, t.ScanAskScope())
+		return
+	}
+
+	a.pendingScope.Clear(userID)
+	a.launchHunt(chatID)
+}
+
+func (a *App) launchHunt(chatID int64) {
+	t := a.i18n.Bot
+	_, err := scanctl.Start(a.cfg.ResultsDir, "hunt")
+	switch {
+	case errors.Is(err, scanctl.ErrAlreadyRunning):
+		a.tg.Reply(chatID, t.ScanAlreadyRunning("hunt"))
+	case err != nil:
+		a.tg.Reply(chatID, t.ScanError(err.Error()))
+	}
+}
+
 func (a *App) handleDocument(msg *tgbotapi.Message) {
 	if msg.From == nil || msg.Document == nil {
 		return
@@ -24,11 +58,6 @@ func (a *App) handleDocument(msg *tgbotapi.Message) {
 	t := a.i18n.Bot
 	chatID := msg.Chat.ID
 	userID := msg.From.ID
-
-	if !a.pendingScope.Get(userID) {
-		a.tg.Reply(chatID, t.ScanScopeNoPending())
-		return
-	}
 
 	name := strings.ToLower(msg.Document.FileName)
 	if !strings.HasSuffix(name, ".txt") {
@@ -44,8 +73,7 @@ func (a *App) handleDocument(msg *tgbotapi.Message) {
 		return
 	}
 
-	urls, err := urllist.Load(tmpPath)
-	if err != nil {
+	if _, err := urllist.Load(tmpPath); err != nil {
 		a.tg.Reply(chatID, t.ScanScopeError(err.Error()))
 		return
 	}
@@ -66,21 +94,5 @@ func (a *App) handleDocument(msg *tgbotapi.Message) {
 	}
 
 	a.pendingScope.Clear(userID)
-	a.startScanWithScope(chatID, len(urls))
-}
-
-func (a *App) startScanWithScope(chatID int64, urlCount int) {
-	t := a.i18n.Bot
-	out, err := scanctl.Start(a.cfg.ResultsDir, "hunt")
-	switch {
-	case errors.Is(err, scanctl.ErrAlreadyRunning):
-		a.tg.Reply(chatID, t.ScanAlreadyRunning("hunt"))
-	case err != nil:
-		a.tg.Reply(chatID, t.ScanError(err.Error()))
-	default:
-		_, pid, log := scanctl.ParseStarted(out)
-		_ = pid
-		_ = log
-		a.tg.Reply(chatID, t.ScanScopeStarted(urlCount))
-	}
+	a.launchHunt(chatID)
 }
