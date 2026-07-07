@@ -28,4 +28,7 @@ func TestExportDorksFile(t *testing.T) {
 	if !strings.Contains(lines[0], "site:") && !strings.Contains(lines[0], "inurl:") {
 		t.Fatalf("unexpected first dork: %q", lines[0])
 	}
+	if strings.Contains(lines[0], "-inurl:wp-content") {
+		t.Fatalf("export must not include auto exclusions: %q", lines[0])
+	}
 }
