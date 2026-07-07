@@ -107,10 +107,11 @@ func printEmailStock(printer *output.Printer, outputDir string) {
 func parseHuntArgs(args []string) (config, error) {
 	scanArgs := append([]string{
 		"--mass", "--full", "--waf", "--rescan",
-		"-t", "sqli,error,union,boolean,time",
-		"--url-threads", "96",
-		"--threads", "12",
-		"--extract-threads", "6",
+		"-t", "sqli,error,union,boolean",
+		"--url-threads", "24",
+		"--threads", "8",
+		"--extract-threads", "4",
+		"--timeout", "12",
 		"--progress-every", "200",
 	}, args...)
 	return parseArgs(scanArgs)

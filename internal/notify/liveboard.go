@@ -21,10 +21,11 @@ type liveBoard struct {
 	resultsDir string
 	mode       string // discover | scan
 
-	mu        sync.Mutex
-	state     i18nalert.BoardState
-	lastFlush time.Time
-	dirty     bool
+	mu            sync.Mutex
+	state         i18nalert.BoardState
+	lastFlush     time.Time
+	lastProgress  time.Time
+	dirty         bool
 	stopCh    chan struct{}
 	once      sync.Once
 }
@@ -75,6 +76,9 @@ func (lb *liveBoard) flushLocked(_ bool) {
 	if !lb.dirty {
 		return
 	}
+	lb.state.Paused = scanctl.IsPaused(lb.resultsDir)
+	lb.state.Slow = lb.state.Phase == "scan" && !lb.state.Paused &&
+		!lb.lastProgress.IsZero() && time.Since(lb.lastProgress) > 45*time.Second
 	var text string
 	if lb.mode == "scan" {
 		text = i18nalert.RenderScanBoard(lb.locale, lb.state)
@@ -151,6 +155,7 @@ func (lb *liveBoard) scanStarted(urlCount int, _ string) {
 		Phase:     "scan",
 		ScanTotal: urlCount,
 	}
+	lb.lastProgress = time.Now()
 	lb.markDirty(true)
 }
 
@@ -164,6 +169,7 @@ func (lb *liveBoard) updateScan(scanned, total, vulns, findings int) {
 	}
 	lb.state.Vulns = vulns
 	lb.state.Findings = findings
+	lb.lastProgress = time.Now()
 	lb.markDirty(false)
 }
 

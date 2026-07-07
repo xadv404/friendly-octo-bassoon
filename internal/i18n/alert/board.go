@@ -39,7 +39,9 @@ type BoardState struct {
 	URLsList   []string
 	VulnsList  []models.Finding
 	EmailsList []string
-	Error      string
+		Error      string
+	Paused     bool
+	Slow       bool
 }
 
 // RenderBoard formate le message live complet (rétrocompat tests).
@@ -80,7 +82,11 @@ func RenderScanBoard(loc string, st BoardState) string {
 
 	switch st.Phase {
 	case "stopped":
-		return l.prefixStopped + "\n" + formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.NewEmails, false)
+		body := l.prefixStopped + "\n" + formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.NewEmails, false)
+		if st.Paused {
+			return "⏸ en pause\n" + body
+		}
+		return body
 	case "done", "no-new":
 		body := "✅ " + l.done + "\n" + formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.NewEmails, true)
 		if compact := compactStock(st.Stock); compact != "" {
@@ -91,6 +97,11 @@ func RenderScanBoard(loc string, st BoardState) string {
 
 	var b strings.Builder
 	b.WriteString("🛡 ")
+	if st.Paused {
+		b.WriteString("⏸ en pause\n")
+	} else if st.Slow {
+		b.WriteString("⏳ URL lente…\n")
+	}
 	if st.ScanTotal > 0 {
 		b.WriteString(progressBar(st.Scanned, st.ScanTotal))
 		b.WriteByte('\n')
