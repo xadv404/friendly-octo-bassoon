@@ -17,7 +17,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/urllist"
 )
 
-const urlScanTimeout = 90 * time.Second
+const urlScanTimeout = 45 * time.Second
 
 // runMass scanne un fichier d'URLs en streaming (1k–100k+).
 func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {

@@ -53,7 +53,7 @@ func runHunt(args []string) {
 	printer.KV("mode", "hunt — scan seulement (.ch)")
 	printer.KV("scope", fmt.Sprintf("%d URLs · %s", count, scopePath))
 	printer.KV("threads", fmt.Sprintf("scan %d · urls %d · extract %d", cfg.threads, cfg.urlConcurrency, cfg.extractThreads))
-	printer.KV("scan", "full + waf + rescan")
+	printer.KV("scan", "fast (error/union/boolean) + waf + rescan")
 	printer.KV("output", cfg.outputDir+"/emails/")
 	printer.Rule()
 	fmt.Println()
@@ -105,14 +105,15 @@ func printEmailStock(printer *output.Printer, outputDir string) {
 }
 
 func parseHuntArgs(args []string) (config, error) {
+	// Pas de --full : payloads réduits, pas de time-based (sinon freeze sur URLs lentes).
 	scanArgs := append([]string{
-		"--mass", "--full", "--waf", "--rescan",
+		"--mass", "--waf", "--rescan",
 		"-t", "sqli,error,union,boolean",
-		"--url-threads", "24",
-		"--threads", "8",
-		"--extract-threads", "4",
-		"--timeout", "12",
-		"--progress-every", "200",
+		"--url-threads", "12",
+		"--threads", "4",
+		"--extract-threads", "2",
+		"--timeout", "10",
+		"--progress-every", "50",
 	}, args...)
 	return parseArgs(scanArgs)
 }

@@ -78,7 +78,7 @@ func (lb *liveBoard) flushLocked(_ bool) {
 	}
 	lb.state.Paused = scanctl.IsPaused(lb.resultsDir)
 	lb.state.Slow = lb.state.Phase == "scan" && !lb.state.Paused &&
-		!lb.lastProgress.IsZero() && time.Since(lb.lastProgress) > 45*time.Second
+		!lb.lastProgress.IsZero() && time.Since(lb.lastProgress) > 25*time.Second
 	var text string
 	if lb.mode == "scan" {
 		text = i18nalert.RenderScanBoard(lb.locale, lb.state)
