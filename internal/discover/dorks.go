@@ -132,10 +132,8 @@ func newDorkCollector(site string, cap int) *dorkCollector {
 	}
 }
 
-const dorkNoiseExclude = "-inurl:wp-content -inurl:wp-includes -inurl:wordpress -inurl:joomla -inurl:typo3 -inurl:moodle -inurl:concrete -inurl:plugins -inurl:viewtopic -inurl:wGlobal -inurl:component/ -inurl:mod/url"
-
 func (c *dorkCollector) add(d string) {
-	d = strings.TrimSpace(d + " " + dorkNoiseExclude)
+	d = strings.TrimSpace(d)
 	if isForbiddenDork(d) {
 		return
 	}
@@ -144,7 +142,7 @@ func (c *dorkCollector) add(d string) {
 
 // addLoose — dorks DBMS (intext + script) : règles assouplies, hors patterns dangereux.
 func (c *dorkCollector) addLoose(d string) {
-	d = strings.TrimSpace(d + " " + dorkNoiseExclude)
+	d = strings.TrimSpace(d)
 	if isHardForbiddenDork(d) {
 		return
 	}

@@ -134,9 +134,9 @@ func TestFilterDiscoveryURLs_CountryWide(t *testing.T) {
 	}
 }
 
-func TestDorkNoiseExcludePresent(t *testing.T) {
-	d := BuildVulnDorks("ch", false)[0]
-	if !strings.Contains(d, "-inurl:wp-content") {
-		t.Fatalf("dork should exclude wp noise: %s", d)
+func TestDorkNoAutoExclusions(t *testing.T) {
+	d := BuildTopDorks("ch", false)[0]
+	if strings.Contains(d, "-inurl:") {
+		t.Fatalf("dork must not include -inurl exclusions: %s", d)
 	}
 }
