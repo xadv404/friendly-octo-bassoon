@@ -3,6 +3,7 @@ package telegram
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -77,6 +78,14 @@ func (c *Client) EditMenu(chatID int64, messageID int, text string, kb tgbotapi.
 	if _, err := c.api.Send(edit); err != nil {
 		edit.ParseMode = ""
 		_, _ = c.api.Send(edit)
+	}
+}
+
+// EditReplyMarkup met à jour les boutons inline d'un message.
+func (c *Client) EditReplyMarkup(chatID int64, messageID int, kb tgbotapi.InlineKeyboardMarkup) {
+	edit := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, kb)
+	if _, err := c.api.Send(edit); err != nil {
+		log.Printf("telegram: edit markup %d msg %d: %v", chatID, messageID, err)
 	}
 }
 

@@ -6,16 +6,20 @@ import (
 
 	i18nalert "github.com/sqli-hunter/sqli-hunter/internal/i18n/alert"
 	"github.com/sqli-hunter/sqli-hunter/internal/models"
+	"github.com/sqli-hunter/sqli-hunter/internal/scanctl"
 	"github.com/sqli-hunter/sqli-hunter/internal/telegram"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 const liveFlushInterval = 6 * time.Second
 
 type liveBoard struct {
-	editor *telegram.LiveEditor
-	locale string
-	texts  i18nalert.Texts
-	mode   string // discover | scan
+	editor     *telegram.LiveEditor
+	locale     string
+	texts      i18nalert.Texts
+	resultsDir string
+	mode       string // discover | scan
 
 	mu        sync.Mutex
 	state     i18nalert.BoardState
@@ -25,16 +29,17 @@ type liveBoard struct {
 	once      sync.Once
 }
 
-func newLiveBoard(bc *telegram.Broadcaster, locale string, texts i18nalert.Texts) *liveBoard {
+func newLiveBoard(bc *telegram.Broadcaster, locale, resultsDir string, texts i18nalert.Texts) *liveBoard {
 	ed := telegram.NewLiveEditor(bc)
 	if ed == nil {
 		return nil
 	}
 	lb := &liveBoard{
-		editor: ed,
-		locale: locale,
-		texts:  texts,
-		stopCh: make(chan struct{}),
+		editor:     ed,
+		locale:     locale,
+		texts:      texts,
+		resultsDir: resultsDir,
+		stopCh:     make(chan struct{}),
 	}
 	lb.once.Do(func() {
 		go lb.flusher()
@@ -76,7 +81,18 @@ func (lb *liveBoard) flushLocked(_ bool) {
 	} else {
 		text = i18nalert.RenderDiscoverBoard(lb.locale, lb.state)
 	}
-	lb.editor.Set(text)
+	var kb *tgbotapi.InlineKeyboardMarkup
+	clearKB := false
+	if lb.mode == "scan" {
+		switch lb.state.Phase {
+		case "scan":
+			k := telegram.ScanControlKeyboard(scanctl.IsPaused(lb.resultsDir), lb.locale)
+			kb = &k
+		case "done", "stopped", "no-new":
+			clearKB = true
+		}
+	}
+	lb.editor.Set(text, kb, clearKB)
 	lb.lastFlush = time.Now()
 	lb.dirty = false
 }

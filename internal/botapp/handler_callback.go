@@ -6,6 +6,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sqli-hunter/sqli-hunter/internal/i18n/bot"
 	"github.com/sqli-hunter/sqli-hunter/internal/results"
+	"github.com/sqli-hunter/sqli-hunter/internal/scanctl"
+	"github.com/sqli-hunter/sqli-hunter/internal/telegram"
 )
 
 func (a *App) handleCallback(cq *tgbotapi.CallbackQuery) {
@@ -37,14 +39,26 @@ func (a *App) handleCallback(cq *tgbotapi.CallbackQuery) {
 	case strings.HasPrefix(data, "scan:"):
 		action := strings.TrimPrefix(data, "scan:")
 		switch action {
-		case "hunt", "weekly", "monthly", "stop":
-			if action == "stop" {
-				a.stopScan(chatID)
-			} else {
-				a.startScan(chatID, cq.From.ID)
+		case "hunt", "weekly", "monthly":
+			a.startScan(chatID, cq.From.ID)
+			a.tg.AnswerCallback(cq.ID, "")
+		case "pause":
+			paused, err := scanctl.TogglePause(a.cfg.ResultsDir)
+			if err != nil {
+				a.tg.AnswerCallback(cq.ID, t.ScanError(err.Error()))
+				return
 			}
+			if paused {
+				a.tg.AnswerCallback(cq.ID, "⏸")
+			} else {
+				a.tg.AnswerCallback(cq.ID, "▶️")
+			}
+			kb := telegram.ScanControlKeyboard(paused, a.cfg.Locale)
+			a.tg.EditReplyMarkup(chatID, cq.Message.MessageID, kb)
+		case "stop":
+			a.stopScan(chatID)
+			a.tg.AnswerCallback(cq.ID, "")
 		}
-		a.tg.AnswerCallback(cq.ID, "")
 	case strings.HasPrefix(data, "prov:"):
 		provider := strings.TrimPrefix(data, "prov:")
 		a.pending.Set(cq.From.ID, provider)

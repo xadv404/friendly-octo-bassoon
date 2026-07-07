@@ -39,7 +39,7 @@ func newFromEnv() Sender {
 		bc:     bc,
 		texts:  bundle.Alert,
 		locale: cfg.Locale,
-		live:   newLiveBoard(bc, cfg.Locale, bundle.Alert),
+		live:   newLiveBoard(bc, cfg.Locale, cfg.ResultsDir, bundle.Alert),
 	}
 }
 

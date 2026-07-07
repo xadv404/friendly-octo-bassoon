@@ -15,9 +15,6 @@ func (a *App) startKeyboard() tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanStart(), "scan:hunt"),
 		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanStop(), "scan:stop"),
-		),
 	)
 }
 

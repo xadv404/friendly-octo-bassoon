@@ -30,34 +30,40 @@ func NewLiveEditor(bc *Broadcaster) *LiveEditor {
 }
 
 // Set met à jour le message live pour tous les chats whitelistés.
-func (e *LiveEditor) Set(text string) {
+func (e *LiveEditor) Set(text string, kb *tgbotapi.InlineKeyboardMarkup, clearKeyboard bool) {
 	if e == nil || strings.TrimSpace(text) == "" {
 		return
 	}
 	for _, chatID := range e.chatIDs {
-		e.setOne(chatID, text)
+		e.setOne(chatID, text, kb, clearKeyboard)
 	}
 }
 
-func (e *LiveEditor) setOne(chatID int64, text string) {
+func (e *LiveEditor) setOne(chatID int64, text string, kb *tgbotapi.InlineKeyboardMarkup, clearKeyboard bool) {
 	e.mu.Lock()
 	mid := e.msgID[chatID]
 	e.mu.Unlock()
 
 	if mid == 0 {
-		e.sendNew(chatID, text)
+		e.sendNew(chatID, text, kb)
 		return
 	}
 
 	edit := tgbotapi.NewEditMessageText(chatID, mid, text)
 	edit.DisableWebPagePreview = true
+	if kb != nil {
+		edit.ReplyMarkup = kb
+	} else if clearKeyboard {
+		empty := tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}}
+		edit.ReplyMarkup = &empty
+	}
 	if _, err := e.bot.Send(edit); err != nil {
 		if isEditUnchanged(err) {
 			return
 		}
 		if isEditNotFound(err) {
 			log.Printf("telegram: edit %d msg %d: %v — nouveau message", chatID, mid, err)
-			e.sendNew(chatID, text)
+			e.sendNew(chatID, text, kb)
 		} else {
 			log.Printf("telegram: edit %d msg %d ignoré: %v", chatID, mid, err)
 		}
@@ -83,9 +89,12 @@ func isEditNotFound(err error) bool {
 		strings.Contains(msg, "message can't be edited")
 }
 
-func (e *LiveEditor) sendNew(chatID int64, text string) {
+func (e *LiveEditor) sendNew(chatID int64, text string, kb *tgbotapi.InlineKeyboardMarkup) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.DisableWebPagePreview = true
+	if kb != nil {
+		msg.ReplyMarkup = kb
+	}
 	sent, err := e.bot.Send(msg)
 	if err != nil {
 		log.Printf("telegram: send %d: %v", chatID, err)
