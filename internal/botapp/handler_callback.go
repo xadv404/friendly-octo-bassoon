@@ -36,6 +36,9 @@ func (a *App) handleCallback(cq *tgbotapi.CallbackQuery) {
 		}
 		a.tg.AnswerCallback(cq.ID, "")
 		a.tg.EditMenu(chatID, cq.Message.MessageID, t.ExtractMenu(), a.providerKeyboard(list), isPhotoMessage(cq.Message))
+	case data == "menu:dorks":
+		a.tg.AnswerCallback(cq.ID, "")
+		a.sendDorks(chatID)
 	case strings.HasPrefix(data, "scan:"):
 		action := strings.TrimPrefix(data, "scan:")
 		switch action {

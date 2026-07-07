@@ -50,6 +50,7 @@ var fr = Texts{
 
 	BtnScanStart: frBtnScanStart,
 	BtnScanStop:    frBtnScanStop,
+	BtnDorks:       frBtnDorks,
 
 	DorksSent:  frDorksSent,
 	DorksError: frDorksError,
@@ -191,6 +192,7 @@ func frScanScopeStarted(urlCount int) string {
 
 func frBtnScanStart() string { return "▶️ Lancer hunt" }
 func frBtnScanStop() string    { return "⏹ Stop" }
+func frBtnDorks() string       { return "📋 Générer dorks" }
 
 func frDorksSent(count int) string {
 	return fmt.Sprintf("📋 %d dorks top · 1/ligne · 1ère page Google", count)

@@ -13,6 +13,9 @@ func (a *App) startKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData(t.BtnExtract(), "menu:extract"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(t.BtnDorks(), "menu:dorks"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(t.BtnScanStart(), "scan:hunt"),
 		),
 	)

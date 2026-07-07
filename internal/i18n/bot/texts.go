@@ -48,6 +48,7 @@ type Texts struct {
 
 	BtnScanStart func() string
 	BtnScanStop    func() string
+	BtnDorks       func() string
 
 	DorksSent  func(count int) string
 	DorksError func(err string) string
