@@ -124,9 +124,12 @@ func enCallbackEmpty() string  { return "📭 Empty stock" }
 func enStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) string {
 	var b strings.Builder
 	if st.ScanTotal > 0 || st.Scanned > 0 {
-		b.WriteString(fmt.Sprintf("🛡 %d/%d · 🔴 %d · 🔎 %d", st.Scanned, st.ScanTotal, st.Vulns, st.Findings))
+		b.WriteString(fmt.Sprintf("📊 scanned : %d/%d\n", st.Scanned, st.ScanTotal))
+		b.WriteString(fmt.Sprintf("🔴 vulnerable : %d\n", st.Vulns))
+		b.WriteString(fmt.Sprintf("🔎 findings : %d", st.Findings))
 	} else {
-		b.WriteString(fmt.Sprintf("📌 %d URLs · ✅ %d scanned", scopeN, scannedN))
+		b.WriteString(fmt.Sprintf("📌 URLs : %d\n", scopeN))
+		b.WriteString(fmt.Sprintf("✅ scanned : %d", scannedN))
 	}
 	if updatedAgo != "" {
 		b.WriteString(fmt.Sprintf("\n_%s_", updatedAgo))

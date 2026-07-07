@@ -36,7 +36,7 @@ func TestRenderScanBoardWaiting(t *testing.T) {
 		ScanTotal: 500,
 		Scanned:   0,
 	})
-	if !containsAll(text, "🛡", "0/500") {
+	if !containsAll(text, "🛡", "scanné : 0/500", "vulnérable :") {
 		t.Fatalf("unexpected scan board:\n%s", text)
 	}
 }
@@ -65,7 +65,7 @@ func TestRenderBoardScanWithVulns(t *testing.T) {
 			{URL: "https://example.ch/page.php?id=1", Parameter: "id", VulnType: models.SQLiError},
 		},
 	})
-	if !containsAll(text, "120/500", "🔴 3", "🔎 5") {
+	if !containsAll(text, "vulnérable : 3", "findings : 5", "scanné : 120/500") {
 		t.Fatalf("unexpected board:\n%s", text)
 	}
 }
@@ -78,7 +78,7 @@ func TestRenderScanBoardStopped(t *testing.T) {
 		Vulns:     2,
 		Findings:  3,
 	})
-	if !containsAll(text, "⏹", "42/500", "🔴 2") {
+	if !containsAll(text, "⏹", "vulnérable : 2", "scanné : 42/500") {
 		t.Fatalf("unexpected board:\n%s", text)
 	}
 }

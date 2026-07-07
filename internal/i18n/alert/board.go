@@ -76,39 +76,92 @@ func RenderScanBoard(loc string, st BoardState) string {
 	if st.Error != "" {
 		return "❌ " + st.Error
 	}
+	l := labelsForScan(loc)
 
 	switch st.Phase {
 	case "stopped":
-		return scanStatsLine(st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, "⏹")
+		return l.prefixStopped + "\n" + formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.NewEmails, false)
 	case "done", "no-new":
-		var b strings.Builder
-		b.WriteString("✅ ")
-		b.WriteString(scanStatsCore(st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK))
-		if st.NewEmails > 0 {
-			b.WriteString(fmt.Sprintf(" · 📬 +%d", st.NewEmails))
-		}
+		body := "✅ " + l.done + "\n" + formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, st.NewEmails, true)
 		if compact := compactStock(st.Stock); compact != "" {
-			b.WriteString("\n📦 ")
-			b.WriteString(compact)
+			body += "\n📦 " + l.stock + " : " + compact
 		}
-		return b.String()
+		return body
 	}
 
+	var b strings.Builder
+	b.WriteString("🛡 ")
 	if st.ScanTotal > 0 {
-		return fmt.Sprintf("🛡 %s %s", progressBar(st.Scanned, st.ScanTotal), scanStatsCore(st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK))
+		b.WriteString(progressBar(st.Scanned, st.ScanTotal))
+		b.WriteByte('\n')
 	}
-	return fmt.Sprintf("🛡 %s", scanStatsCore(st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK))
+	b.WriteString(formatScanStats(l, st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, 0, false))
+	return b.String()
+}
+
+type scanBoardLabels struct {
+	prefixStopped string
+	done          string
+	stock         string
+	scanned       string
+	vulnerable    string
+	findings      string
+	dumps         string
+	emails        string
+}
+
+func labelsForScan(loc string) scanBoardLabels {
+	if loc == "en" {
+		return scanBoardLabels{
+			prefixStopped: "⏹ Stopped",
+			done:          "Done",
+			stock:         "stock",
+			scanned:       "scanned",
+			vulnerable:    "vulnerable",
+			findings:      "findings",
+			dumps:         "dumps",
+			emails:        "new emails",
+		}
+	}
+	return scanBoardLabels{
+		prefixStopped: "⏹ Arrêté",
+		done:          "Terminé",
+		stock:         "stock",
+		scanned:       "scanné",
+		vulnerable:    "vulnérable",
+		findings:      "findings",
+		dumps:         "dumps",
+		emails:        "emails",
+	}
+}
+
+func formatScanStats(l scanBoardLabels, scanned, total, vulns, findings, dumps, newEmails int, showEmails bool) string {
+	var lines []string
+	if total > 0 {
+		lines = append(lines, fmt.Sprintf("📊 %s : %d/%d", l.scanned, scanned, total))
+	} else if scanned > 0 {
+		lines = append(lines, fmt.Sprintf("📊 %s : %d", l.scanned, scanned))
+	}
+	lines = append(lines,
+		fmt.Sprintf("🔴 %s : %d", l.vulnerable, vulns),
+		fmt.Sprintf("🔎 %s : %d", l.findings, findings),
+		fmt.Sprintf("💾 %s : %d", l.dumps, dumps),
+	)
+	if showEmails && newEmails > 0 {
+		lines = append(lines, fmt.Sprintf("📬 %s : %d", l.emails, newEmails))
+	}
+	return strings.Join(lines, "\n")
 }
 
 func scanStatsLine(scanned, total, vulns, findings, dumps int, prefix string) string {
-	return prefix + " " + scanStatsCore(scanned, total, vulns, findings, dumps)
+	_ = prefix
+	l := labelsForScan("fr")
+	return formatScanStats(l, scanned, total, vulns, findings, dumps, 0, false)
 }
 
 func scanStatsCore(scanned, total, vulns, findings, dumps int) string {
-	if total > 0 {
-		return fmt.Sprintf("%d/%d · 🔴 %d · 🔎 %d · 💾 %d", scanned, total, vulns, findings, dumps)
-	}
-	return fmt.Sprintf("🔴 %d · 🔎 %d · 💾 %d", vulns, findings, dumps)
+	l := labelsForScan("fr")
+	return formatScanStats(l, scanned, total, vulns, findings, dumps, 0, false)
 }
 
 func compactStock(stock string) string {
