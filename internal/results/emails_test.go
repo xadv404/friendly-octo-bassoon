@@ -157,3 +157,16 @@ func TestEmailFromExtraction(t *testing.T) {
 		t.Fatalf("plain got %q", got)
 	}
 }
+
+func TestEmailForDumpNotify_AnyValidProvider(t *testing.T) {
+	d := models.ExtractedData{
+		DataType: models.DataPII,
+		PII:      &models.PIIUser{Email: "user@phzh.ch"},
+	}
+	if got := EmailFromExtraction(d); got != "" {
+		t.Fatalf("stock should reject org domain, got %q", got)
+	}
+	if got := EmailForDumpNotify(d); got != "user@phzh.ch" {
+		t.Fatalf("notify got %q", got)
+	}
+}

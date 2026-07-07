@@ -149,8 +149,24 @@ func EmailProvider(email string) string {
 	return sanitizeDomain(provider)
 }
 
-// EmailFromExtraction lit l'email depuis une extraction PII (adresse seule, sans préfixe).
+// EmailFromExtraction lit l'email depuis une extraction PII (fournisseur connu uniquement).
 func EmailFromExtraction(d models.ExtractedData) string {
+	email := rawEmailFromExtraction(d)
+	if email == "" {
+		return ""
+	}
+	if !IsKnownProvider(EmailProvider(email)) {
+		return ""
+	}
+	return email
+}
+
+// EmailForDumpNotify retourne un email valide pour alerte Telegram (tout domaine).
+func EmailForDumpNotify(d models.ExtractedData) string {
+	return rawEmailFromExtraction(d)
+}
+
+func rawEmailFromExtraction(d models.ExtractedData) string {
 	var email string
 	if d.PII != nil && d.PII.Email != "" {
 		email = strings.ToLower(strings.TrimSpace(d.PII.Email))
@@ -170,9 +186,6 @@ func EmailFromExtraction(d models.ExtractedData) string {
 		}
 	}
 	if email == "" || !extractor.ValidEmail(email) {
-		return ""
-	}
-	if !IsKnownProvider(EmailProvider(email)) {
 		return ""
 	}
 	return email

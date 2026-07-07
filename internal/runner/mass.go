@@ -59,8 +59,8 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 	ext := extractor.New(extractClient,
 		func(d models.ExtractedData) {
 			store.AppendExtraction(d.FindingURL, d)
-			if em := results.EmailFromExtraction(d); em != "" && cfg.Notify != nil && cfg.Notify.Enabled() {
-				cfg.Notify.DumpOK(d, em)
+			if cfg.Notify != nil && cfg.Notify.Enabled() && d.DataType == models.DataPII {
+				cfg.Notify.DumpOK(d, results.EmailForDumpNotify(d))
 			}
 			if cfg.Opts.Verbose {
 				r.Printer.Extraction(d)

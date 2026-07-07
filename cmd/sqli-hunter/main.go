@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.26.0"
+const version = "1.26.1"
 
 func main() {
 	if len(os.Args) >= 2 {

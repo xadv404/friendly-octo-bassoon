@@ -26,6 +26,8 @@ case "$cmd" in
     fi
     mkdir -p results
     log="results/hunt.log"
+    export TG_BOT_ENV="${ROOT}/tg-bot.env"
+    export SQLI_HUNTER_ENV="${ROOT}/sqli-hunter.env"
     nohup ./sqli-hunter hunt "$@" >>"$log" 2>&1 &
     echo "STARTED hunt pid=$! log=${log}"
     ;;
