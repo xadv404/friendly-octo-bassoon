@@ -40,9 +40,18 @@ type Texts struct {
 	ScanStopped        func(detail string) string
 	ScanStopIdle       func() string
 	ScanError          func(msg string) string
+	ScanAskScope       func() string
+	ScanScopeBadFile   func() string
+	ScanScopeError     func(err string) string
+	ScanScopeNoPending func() string
+	ScanScopeStarted   func(urlCount int, pid, log string) string
 
 	BtnScanStart func() string
 	BtnScanStop    func() string
+
+	DorksSent     func(count int, filename string) string
+	DorksError    func(err string) string
+	DorksFollowUp func() string
 }
 
 // For retourne les textes bot pour une locale (fr, en).

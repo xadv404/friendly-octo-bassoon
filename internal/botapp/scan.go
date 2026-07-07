@@ -1,13 +1,12 @@
 package botapp
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/sqli-hunter/sqli-hunter/internal/scanctl"
 )
 
-func (a *App) handleScanCommand(chatID int64, text string) {
+func (a *App) handleScanCommand(chatID, userID int64, text string) {
 	t := a.i18n.Bot
 	parts := strings.Fields(text)
 	if len(parts) == 1 {
@@ -15,25 +14,14 @@ func (a *App) handleScanCommand(chatID int64, text string) {
 		return
 	}
 
-	var extra []string
-	for i := 1; i < len(parts); i++ {
-		if parts[i] == "--cycle-weeks" && i+1 < len(parts) {
-			extra = append(extra, "--cycle-weeks", parts[i+1])
-			i++
-			continue
-		}
+	if running, _, err := scanctl.Running(a.cfg.ResultsDir); err == nil && running {
+		a.tg.Reply(chatID, t.ScanAlreadyRunning("hunt"))
+		return
 	}
 
-	out, err := scanctl.Start(a.cfg.ResultsDir, "hunt", extra...)
-	switch {
-	case errors.Is(err, scanctl.ErrAlreadyRunning):
-		a.tg.Reply(chatID, t.ScanAlreadyRunning("hunt"))
-	case err != nil:
-		a.tg.Reply(chatID, t.ScanError(err.Error()))
-	default:
-		_, pid, log := scanctl.ParseStarted(out)
-		a.tg.Reply(chatID, t.ScanStarted("hunt", pid, log))
-	}
+	a.pending.Clear(userID)
+	a.pendingScope.Set(userID)
+	a.tg.Reply(chatID, t.ScanAskScope())
 }
 
 func (a *App) handleStopScan(chatID int64) {
@@ -50,8 +38,8 @@ func (a *App) handleStopScan(chatID int64) {
 	a.tg.Reply(chatID, t.ScanStopped(scanctl.FormatLines(out)))
 }
 
-func (a *App) startScan(chatID int64) {
-	a.handleScanCommand(chatID, "/scan hunt")
+func (a *App) startScan(chatID, userID int64) {
+	a.handleScanCommand(chatID, userID, "/scan hunt")
 }
 
 func (a *App) stopScan(chatID int64) {

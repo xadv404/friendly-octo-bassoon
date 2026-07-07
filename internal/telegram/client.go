@@ -1,6 +1,12 @@
 package telegram
 
 import (
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -80,5 +86,31 @@ func (c *Client) SendDocument(chatID int64, path, caption string) error {
 	doc.Caption = caption
 	doc.ParseMode = "Markdown"
 	_, err := c.api.Send(doc)
+	return err
+}
+
+// DownloadDocument télécharge un document Telegram vers dest.
+func (c *Client) DownloadDocument(fileID, dest string) error {
+	file, err := c.api.GetFile(tgbotapi.FileConfig{FileID: fileID})
+	if err != nil {
+		return err
+	}
+	resp, err := http.Get(file.Link(c.api.Token))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("téléchargement HTTP %d", resp.StatusCode)
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+		return err
+	}
+	f, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = io.Copy(f, resp.Body)
 	return err
 }

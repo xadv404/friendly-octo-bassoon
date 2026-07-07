@@ -15,7 +15,8 @@ type App struct {
 	cfg     telegram.Config
 	i18n    *i18n.Bundle
 	tg      *telegram.Client
-	pending *pendingQty
+	pending      *pendingQty
+	pendingScope *pendingScope
 }
 
 // Run démarre le bot (bloquant).
@@ -54,7 +55,8 @@ func Run() error {
 		cfg:     cfg,
 		i18n:    i18n.ForLocale(i18n.Locale(cfg.Locale)),
 		tg:      telegram.NewClient(api),
-		pending: newPendingQty(),
+		pending:      newPendingQty(),
+		pendingScope: newPendingScope(),
 	}
 
 	u := tgbotapi.NewUpdate(0)

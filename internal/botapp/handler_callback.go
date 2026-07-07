@@ -41,7 +41,7 @@ func (a *App) handleCallback(cq *tgbotapi.CallbackQuery) {
 			if action == "stop" {
 				a.stopScan(chatID)
 			} else {
-				a.startScan(chatID)
+				a.startScan(chatID, cq.From.ID)
 			}
 		}
 		a.tg.AnswerCallback(cq.ID, "")

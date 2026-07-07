@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// Tier passe discover+scan (mode hunt).
+// Tier passe scan hunt (scope_hunt.txt).
 type Tier string
 
 const TierHunt Tier = "hunt"

@@ -3,7 +3,6 @@
 #
 # Usage:
 #   ./scan.sh [hunt]           démarre hunt en arrière-plan (défaut)
-#   ./scan.sh hunt --cycle-weeks 3
 #   ./scan.sh stop
 #   ./scan.sh status
 #
@@ -33,7 +32,7 @@ case "$cmd" in
     pgrep -af './sqli-hunter' || echo "IDLE"
     ;;
   *)
-    echo "usage: $0 [hunt] [--cycle-weeks N] | stop | status" >&2
+    echo "usage: $0 [hunt] | stop | status" >&2
     exit 1
     ;;
 esac

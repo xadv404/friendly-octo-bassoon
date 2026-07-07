@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.23.1"
+const version = "1.24.0"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -26,6 +26,9 @@ func main() {
 			return
 		case "hunt":
 			runHunt(os.Args[2:])
+			return
+		case "dorks":
+			runDorks(os.Args[2:])
 			return
 		case "-h", "--help":
 			printUsage()
@@ -178,8 +181,8 @@ type config struct {
 	noColor            bool
 	showHelp           bool
 	showVersion        bool
-	huntScan           bool
-	cycleWeeks         int
+	huntScan           bool // legacy, non utilisé
+	cycleWeeks         int  // legacy
 	scanAfterDiscover  bool
 }
 
@@ -499,28 +502,26 @@ Usage:
   sqli-hunter <commande> [options]
 
 Commandes:
-  sqli-hunter hunt [options]     Discover + scan (.ch) — lancement manuel
-  sqli-hunter ch [options]       Alias discover + scan manuel
-  sqli-hunter discover -d ch     Collecte URLs seulement
+  sqli-hunter dorks [-o file]    Exporte les dorks Google (.ch) — recherche manuelle
+  sqli-hunter hunt [options]     Scan scope_hunt.txt (pas de discover auto)
+  sqli-hunter discover -d ch     Collecte URLs seulement (legacy)
   sqli-hunter -l scope.txt       Scan une liste
 
   sqli-hunter -h                 Aide complète
   sqli-hunter --version
 
-Mode hunt (lancement manuel, relançable quand tu veux) :
-  sqli-hunter hunt
-  sqli-hunter hunt --cycle-weeks 4
+Workflow hunt (dorks manuels) :
+  1. sqli-hunter dorks -o results/dorks_ch.txt
+  2. Lance les dorks sur Google, colle les URLs dans results/scope_hunt.txt
+  3. sqli-hunter hunt
 
-  --cycle-weeks 1|2|3|4   Cycle pour parcourir tous les dorks [défaut: 2]
-                          1 passe ≈ 1/N du catalogue (1 lancement/semaine → N semaines)
-  HUNT_CYCLE_WEEKS        Même réglage via sqli-hunter.env
+  Telegram : /dorks → fichier · /scan hunt → envoie le .txt · /stop
 
-  → Google dorks .ch via OpenSerp API (OPENSERP_API_KEY)
-  → Skip URLs/domaines déjà traités
+  → Scan full + waf + rescan sur les URLs fournies
   → Seulement nouveaux emails dans results/emails/
 
-Découverte manuelle :
-  sqli-hunter ch --discover-limit 1000 --url-threads 64
+Découverte auto (legacy, -D) :
+  sqli-hunter discover -d ch --source google
 
 Cible:
   -D, --domain <ch>           ch = chasse URLs vuln .ch [défaut recommandé]
@@ -571,10 +572,9 @@ Affichage:
       --version
 
 Exemples:
-  sqli-hunter ch --discover-limit 500 --url-threads 64
+  sqli-hunter dorks -o results/dorks_ch.txt
+  sqli-hunter hunt
   sqli-hunter -u "https://target.ch/page?id=1"
   sqli-hunter -l urls.txt --url-threads 64
-  sqli-hunter -l scope_50k.txt --mass --progress-every 500
-
 `)
 }

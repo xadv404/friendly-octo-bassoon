@@ -8,12 +8,25 @@ import (
 )
 
 func (a *App) handleMessage(msg *tgbotapi.Message) {
-	text := strings.TrimSpace(msg.Text)
-	if text == "" {
+	if msg.From == nil {
 		return
 	}
 
 	t := a.i18n.Bot
+
+	if msg.Document != nil {
+		if !a.cfg.Authorized(msg.From.ID) {
+			a.tg.Reply(msg.Chat.ID, t.AccessDenied(msg.From.ID))
+			return
+		}
+		a.handleDocument(msg)
+		return
+	}
+
+	text := strings.TrimSpace(msg.Text)
+	if text == "" {
+		return
+	}
 
 	if text == "/myid" {
 		a.tg.Reply(msg.Chat.ID, t.MyID(msg.From.ID))
@@ -28,14 +41,17 @@ func (a *App) handleMessage(msg *tgbotapi.Message) {
 	switch text {
 	case "/start":
 		a.pending.Clear(msg.From.ID)
+		a.pendingScope.Clear(msg.From.ID)
 		a.sendStart(msg.Chat.ID)
 	case "/status":
 		a.sendStatus(msg.Chat.ID)
 	case "/stop":
 		a.handleStopScan(msg.Chat.ID)
+	case "/dorks":
+		a.sendDorks(msg.Chat.ID)
 	default:
 		if strings.HasPrefix(text, "/scan") {
-			a.handleScanCommand(msg.Chat.ID, text)
+			a.handleScanCommand(msg.Chat.ID, msg.From.ID, text)
 			return
 		}
 		if provider, ok := a.pending.Get(msg.From.ID); ok {

@@ -42,8 +42,18 @@ var fr = Texts{
 	ScanStopIdle:       frScanStopIdle,
 	ScanError:          frScanError,
 
+	ScanAskScope:       frScanAskScope,
+	ScanScopeBadFile:   frScanScopeBadFile,
+	ScanScopeError:     frScanScopeError,
+	ScanScopeNoPending: frScanScopeNoPending,
+	ScanScopeStarted:   frScanScopeStarted,
+
 	BtnScanStart: frBtnScanStart,
 	BtnScanStop:    frBtnScanStop,
+
+	DorksSent:     frDorksSent,
+	DorksError:    frDorksError,
+	DorksFollowUp: frDorksFollowUp,
 }
 
 func frWelcome(stock string) string {
@@ -79,7 +89,7 @@ func frInvalidQty(provider string) string {
 }
 
 func frHint() string {
-	return "👆 /start — export emails\n📊 /status — progression\n▶️ /scan hunt — lancer\n⏹ /stop — arrêter"
+	return "👆 /start — export emails\n📊 /status — progression\n📋 /dorks — fichier dorks\n▶️ /scan hunt — scan URLs\n⏹ /stop — arrêter"
 }
 
 func frDelivery(emoji, provider string, count int) string {
@@ -141,7 +151,7 @@ func frStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) str
 }
 
 func frScanUsage() string {
-	return "▶️ *Lancer hunt*\n\n`/scan hunt` — discover + scan .ch\n`/scan hunt --cycle-weeks 3` — cycle 3 sem.\n\n⏹ `/stop` — arrêter"
+	return "▶️ *Lancer hunt*\n\n`/scan hunt` — envoie ensuite le `.txt` des URLs\n\n📋 `/dorks` — exporter les dorks\n⏹ `/stop` — arrêter"
 }
 
 func frScanStarted(tier, pid, log string) string {
@@ -175,5 +185,45 @@ func frScanError(msg string) string {
 	return "❌ " + msg
 }
 
+func frScanAskScope() string {
+	return "📎 *Envoie le fichier .txt* avec les URLs\n\nUne URL par ligne · `#` pour commenter\n\nLe scan démarre dès réception."
+}
+
+func frScanScopeBadFile() string {
+	return "⚠️ Fichier invalide — envoie un `.txt` avec les URLs."
+}
+
+func frScanScopeError(err string) string {
+	return "❌ Fichier scope: " + err
+}
+
+func frScanScopeNoPending() string {
+	return "ℹ️ Lance d'abord `/scan hunt`, puis envoie le `.txt`."
+}
+
+func frScanScopeStarted(urlCount int, pid, log string) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("✅ *%d URLs* enregistrées · scan lancé", urlCount))
+	if pid != "" {
+		b.WriteString(fmt.Sprintf("\nPID `%s`", pid))
+	}
+	if log != "" {
+		b.WriteString(fmt.Sprintf("\nlog `%s`", log))
+	}
+	return b.String()
+}
+
 func frBtnScanStart() string { return "▶️ Lancer hunt" }
 func frBtnScanStop() string    { return "⏹ Stop" }
+
+func frDorksSent(count int, filename string) string {
+	return fmt.Sprintf("📋 *%d dorks* → `%s`", count, filename)
+}
+
+func frDorksError(err string) string {
+	return "❌ Dorks: " + err
+}
+
+func frDorksFollowUp() string {
+	return "Lance les dorks sur Google, colle les URLs dans `results/scope_hunt.txt`, puis `/scan hunt`."
+}
