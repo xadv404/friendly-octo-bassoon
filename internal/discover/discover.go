@@ -320,6 +320,19 @@ func runSingleDomain(ctx context.Context, opts Options, skipper *results.DumpReg
 		pagesFetched++
 		if err != nil {
 			saveRunCursor(opts, opts.PageBase+pagesFetched)
+			if ctx.Err() != nil {
+				if kept > 0 {
+					if err := w.Flush(); err != nil {
+						return Result{}, err
+					}
+					return Result{Fetched: fetched, Kept: kept, Skipped: skipped, Output: outPath, PagesFetched: pagesFetched}, nil
+				}
+				return Result{}, ctx.Err()
+			}
+			if IsSearchEngineSource(opts.Source) && page+1 < optsMaxPages(opts) {
+				fmt.Fprintf(os.Stderr, "\n  %s page %d — %v (suite…)", opts.Source, absPage+1, err)
+				continue
+			}
 			if kept > 0 {
 				if err := w.Flush(); err != nil {
 					return Result{}, err

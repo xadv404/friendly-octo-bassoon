@@ -99,7 +99,7 @@ func (e *LiveEditor) DeleteAll() {
 		if mid <= 0 {
 			continue
 		}
-		if _, err := e.bot.Send(tgbotapi.NewDeleteMessage(chatID, mid)); err != nil {
+		if _, err := e.bot.Request(tgbotapi.NewDeleteMessage(chatID, mid)); err != nil {
 			log.Printf("telegram: delete %d msg %d: %v", chatID, mid, err)
 		}
 	}

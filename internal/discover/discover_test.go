@@ -2,6 +2,7 @@ package discover
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,6 +155,50 @@ func TestRun_FreshPass(t *testing.T) {
 	if result.Kept != 2 {
 		t.Fatalf("kept %d want 2", result.Kept)
 	}
+}
+
+func TestRun_ContinuesAfterFetchErrorWhenHunt(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "scope.txt")
+
+	result, err := Run(context.Background(), Options{
+		Domain:     "ch",
+		Output:     out,
+		Source:     SourceGoogle,
+		DorkSet:    DorkSetBig,
+		CycleWeeks: 4,
+		MaxPages:   3,
+		Fetcher: &flakyFetcher{
+			responses: []flakyResp{
+				{urls: []string{"https://shop.ch/p.php?id=1"}},
+				{err: fmt.Errorf("openserp HTTP 502")},
+				{urls: []string{"https://shop.ch/item.php?x=1"}},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Kept < 2 {
+		t.Fatalf("kept %d want >=2", result.Kept)
+	}
+}
+
+type flakyResp struct {
+	urls []string
+	err  error
+}
+
+type flakyFetcher struct {
+	responses []flakyResp
+}
+
+func (f *flakyFetcher) FetchPage(_ context.Context, _ string, _ bool, absolutePage, _ int) ([]string, error) {
+	if absolutePage >= len(f.responses) {
+		return nil, nil
+	}
+	r := f.responses[absolutePage]
+	return r.urls, r.err
 }
 
 func TestIsScannable_RejectsJunk(t *testing.T) {
