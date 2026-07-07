@@ -190,7 +190,7 @@ func enBtnScanStart() string { return "▶️ Start hunt" }
 func enBtnScanStop() string    { return "⏹ Stop" }
 
 func enDorksSent(count int) string {
-	return fmt.Sprintf("📋 %d dorks · 1 per line", count)
+	return fmt.Sprintf("📋 %d top dorks · 1/line · page 1 Google", count)
 }
 
 func enDorksError(err string) string {

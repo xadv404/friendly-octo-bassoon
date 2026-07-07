@@ -16,7 +16,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/runner"
 )
 
-const version = "1.24.1"
+const version = "1.24.2"
 
 func main() {
 	if len(os.Args) >= 2 {
@@ -502,7 +502,7 @@ Usage:
   sqli-hunter <commande> [options]
 
 Commandes:
-  sqli-hunter dorks [-o file]    Exporte les dorks Google (.ch) — recherche manuelle
+  sqli-hunter dorks [-o file]    Exporte ~130 dorks top (.ch) — 1ère page Google
   sqli-hunter hunt [options]     Scan scope_hunt.txt (pas de discover auto)
   sqli-hunter discover -d ch     Collecte URLs seulement (legacy)
   sqli-hunter -l scope.txt       Scan une liste
@@ -511,9 +511,11 @@ Commandes:
   sqli-hunter --version
 
 Workflow hunt (dorks manuels) :
-  1. sqli-hunter dorks -o results/dorks_ch.txt
-  2. Lance les dorks sur Google, colle les URLs dans results/scope_hunt.txt
+  1. sqli-hunter dorks -o results/dorks_ch.txt   (~130 dorks top)
+  2. Lance les dorks sur Google (1ère page), colle les URLs dans scope_hunt.txt
   3. sqli-hunter hunt
+
+  sqli-hunter dorks --big   catalogue complet (~6500, legacy)
 
   Telegram : /dorks → fichier · /scan hunt → envoie le .txt · /stop
 

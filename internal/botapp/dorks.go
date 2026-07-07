@@ -7,7 +7,7 @@ import (
 func (a *App) sendDorks(chatID int64) {
 	t := a.i18n.Bot
 	path := discover.DefaultDorksPath(a.cfg.ResultsDir)
-	n, err := discover.ExportDorksFile(path, "ch", true, discover.DorkSetBig)
+	n, err := discover.ExportDorksFile(path, "ch", true, discover.DorkSetTop)
 	if err != nil {
 		a.tg.Reply(chatID, t.DorksError(err.Error()))
 		return

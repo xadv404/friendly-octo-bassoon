@@ -10,12 +10,12 @@ import (
 func TestExportDorksFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "dorks.txt")
-	n, err := ExportDorksFile(path, "ch", false, DorkSetBig)
+	n, err := ExportDorksFile(path, "ch", false, DorkSetTop)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n < 3500 {
-		t.Fatalf("expected 3500+ dorks, got %d", n)
+	if n < 80 || n > 250 {
+		t.Fatalf("expected 80-250 top dorks, got %d", n)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {

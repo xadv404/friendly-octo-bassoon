@@ -12,7 +12,7 @@ func runDorks(args []string) {
 	out := discover.DefaultDorksPath("results")
 	domain := "ch"
 	subs := true
-	set := discover.DorkSetBig
+	set := discover.DorkSetTop
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -32,6 +32,8 @@ func runDorks(args []string) {
 			domain = args[i]
 		case "--no-subs":
 			subs = false
+		case "--big":
+			set = discover.DorkSetBig
 		case "--vuln":
 			set = discover.DorkSetVuln
 		default:
