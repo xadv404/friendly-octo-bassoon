@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -76,6 +77,11 @@ func LoadConfig() (Config, error) {
 	}
 	if cfg.ResultsDir == "" {
 		cfg.ResultsDir = "results"
+	}
+	if !filepath.IsAbs(cfg.ResultsDir) {
+		if wd, err := os.Getwd(); err == nil {
+			cfg.ResultsDir = filepath.Join(wd, cfg.ResultsDir)
+		}
 	}
 	if v := strings.TrimSpace(os.Getenv("TELEGRAM_MAX_EMAILS")); v != "" {
 		n, err := strconv.Atoi(v)

@@ -10,13 +10,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
+hunt_running() {
+  pgrep -f 'sqli-hunter hunt' >/dev/null 2>&1
+}
+
 cmd="${1:-hunt}"
 shift || true
 
 case "$cmd" in
   hunt|weekly|monthly|big)
     [[ "$cmd" == "weekly" || "$cmd" == "monthly" || "$cmd" == "big" ]] && cmd=hunt
-    if pgrep -f "./sqli-hunter hunt" >/dev/null 2>&1; then
+    if hunt_running; then
       echo "ALREADY_RUNNING hunt"
       exit 2
     fi
@@ -29,7 +33,7 @@ case "$cmd" in
     exec ./stop-scans.sh
     ;;
   status)
-    pgrep -af './sqli-hunter' || echo "IDLE"
+    pgrep -af 'sqli-hunter hunt' || echo "IDLE"
     ;;
   *)
     echo "usage: $0 [hunt] | stop | status" >&2

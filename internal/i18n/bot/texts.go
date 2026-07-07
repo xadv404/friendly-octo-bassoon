@@ -45,6 +45,7 @@ type Texts struct {
 	ScanScopeError     func(err string) string
 	ScanScopeNoPending func() string
 	ScanScopeStarted   func(urlCount int) string
+	ScanLaunched       func() string
 
 	BtnScanStart func() string
 	BtnScanStop    func() string

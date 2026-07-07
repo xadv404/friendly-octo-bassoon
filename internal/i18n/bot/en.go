@@ -47,6 +47,7 @@ var en = Texts{
 	ScanScopeError:     enScanScopeError,
 	ScanScopeNoPending: enScanScopeNoPending,
 	ScanScopeStarted:   enScanScopeStarted,
+	ScanLaunched:       enScanLaunched,
 
 	BtnScanStart: enBtnScanStart,
 	BtnScanStop:    enBtnScanStop,
@@ -188,6 +189,10 @@ func enScanScopeNoPending() string {
 
 func enScanScopeStarted(urlCount int) string {
 	return fmt.Sprintf("▶️ %d URLs · scan started", urlCount)
+}
+
+func enScanLaunched() string {
+	return "▶️ Scan started"
 }
 
 func enBtnScanStart() string { return "▶️ Start hunt" }

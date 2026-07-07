@@ -48,6 +48,8 @@ func (a *App) launchHunt(chatID int64) {
 		a.tg.Reply(chatID, t.ScanAlreadyRunning("hunt"))
 	case err != nil:
 		a.tg.Reply(chatID, t.ScanError(err.Error()))
+	default:
+		a.tg.Reply(chatID, t.ScanLaunched())
 	}
 }
 

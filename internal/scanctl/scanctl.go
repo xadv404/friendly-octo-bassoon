@@ -58,6 +58,10 @@ func Start(resultsDir string, tier string, extraArgs ...string) (string, error) 
 	args := append([]string{"hunt"}, extraArgs...)
 	cmd := exec.Command(script, args...)
 	cmd.Dir = root
+	cmd.Env = append(os.Environ(),
+		"SQLI_HUNTER_ROOT="+root,
+		"SQLI_HUNTER_ENV="+filepath.Join(root, "sqli-hunter.env"),
+	)
 	out, err := cmd.CombinedOutput()
 	text := strings.TrimSpace(string(out))
 	if err != nil {
@@ -126,12 +130,11 @@ func Running(resultsDir string) (bool, string, error) {
 		return false, text, nil
 	}
 	for _, line := range strings.Split(text, "\n") {
-		if strings.Contains(line, "sqli-hunter") &&
-			(strings.Contains(line, " hunt") || strings.Contains(line, " weekly") || strings.Contains(line, " monthly")) {
+		if strings.Contains(line, "sqli-hunter hunt") {
 			return true, line, nil
 		}
 	}
-	return strings.Contains(text, "sqli-hunter"), text, nil
+	return false, text, nil
 }
 
 // ParseStarted extrait pid/log depuis la sortie de scan.sh.
