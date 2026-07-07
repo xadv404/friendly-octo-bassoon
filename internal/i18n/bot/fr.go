@@ -51,9 +51,8 @@ var fr = Texts{
 	BtnScanStart: frBtnScanStart,
 	BtnScanStop:    frBtnScanStop,
 
-	DorksSent:     frDorksSent,
-	DorksError:    frDorksError,
-	DorksFollowUp: frDorksFollowUp,
+	DorksSent:  frDorksSent,
+	DorksError: frDorksError,
 }
 
 func frWelcome(stock string) string {
@@ -124,29 +123,14 @@ func frCallbackEmpty() string  { return "📭 Stock vide" }
 
 func frStatus(scopeN, scannedN int, st results.RunStatus, updatedAgo string) string {
 	var b strings.Builder
-	b.WriteString("📊 *Progression sqli-hunter*\n")
-	if updatedAgo != "" {
-		b.WriteString(fmt.Sprintf("_MAJ il y a %s_\n", updatedAgo))
-	}
-	b.WriteString(fmt.Sprintf("phase: *%s*\n", st.Phase))
-	if st.DorkTotal > 0 {
-		b.WriteString(fmt.Sprintf("dorks: %d/%d\n", st.DorkIndex, st.DorkTotal))
-	} else if st.DiscoverPage > 0 {
-		b.WriteString(fmt.Sprintf("page discover: %d\n", st.DiscoverPage))
-	}
-	if st.URLsKept > 0 || st.URLsFetched > 0 {
-		b.WriteString(fmt.Sprintf("discover: %d gardées · %d lues", st.URLsKept, st.URLsFetched))
-		if st.URLsSkipped > 0 {
-			b.WriteString(fmt.Sprintf(" · %d ignorées", st.URLsSkipped))
-		}
-		b.WriteString("\n")
-	}
 	if st.ScanTotal > 0 || st.Scanned > 0 {
-		b.WriteString(fmt.Sprintf("scan: %d/%d · %d vuln · %d findings\n",
-			st.Scanned, st.ScanTotal, st.Vulns, st.Findings))
+		b.WriteString(fmt.Sprintf("🛡 %d/%d · 🔴 %d · 🔎 %d", st.Scanned, st.ScanTotal, st.Vulns, st.Findings))
+	} else {
+		b.WriteString(fmt.Sprintf("📌 %d URLs · ✅ %d scannées", scopeN, scannedN))
 	}
-	b.WriteString(fmt.Sprintf("scope: *%d* URLs\n", scopeN))
-	b.WriteString(fmt.Sprintf("déjà scannées: *%d*", scannedN))
+	if updatedAgo != "" {
+		b.WriteString(fmt.Sprintf("\n_%s_", updatedAgo))
+	}
 	return b.String()
 }
 
@@ -170,11 +154,8 @@ func frScanAlreadyRunning(tier string) string {
 	return fmt.Sprintf("⚠️ Un scan *%s* tourne déjà.\n\n⏹ `/stop` pour arrêter.", tier)
 }
 
-func frScanStopped(detail string) string {
-	if detail == "" {
-		return "⏹ *Scan arrêté*"
-	}
-	return fmt.Sprintf("⏹ *Scan arrêté*\n\n```\n%s\n```", detail)
+func frScanStopped(_ string) string {
+	return "⏹ Scan arrêté"
 }
 
 func frScanStopIdle() string {
@@ -186,7 +167,7 @@ func frScanError(msg string) string {
 }
 
 func frScanAskScope() string {
-	return "📎 *Envoie le fichier .txt* avec les URLs\n\nUne URL par ligne · `#` pour commenter\n\nLe scan démarre dès réception."
+	return "📎 Envoie le `.txt` des URLs (1 par ligne)"
 }
 
 func frScanScopeBadFile() string {
@@ -201,29 +182,17 @@ func frScanScopeNoPending() string {
 	return "ℹ️ Lance d'abord `/scan hunt`, puis envoie le `.txt`."
 }
 
-func frScanScopeStarted(urlCount int, pid, log string) string {
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("✅ *%d URLs* enregistrées · scan lancé", urlCount))
-	if pid != "" {
-		b.WriteString(fmt.Sprintf("\nPID `%s`", pid))
-	}
-	if log != "" {
-		b.WriteString(fmt.Sprintf("\nlog `%s`", log))
-	}
-	return b.String()
+func frScanScopeStarted(urlCount int) string {
+	return fmt.Sprintf("▶️ %d URLs · scan lancé", urlCount)
 }
 
 func frBtnScanStart() string { return "▶️ Lancer hunt" }
 func frBtnScanStop() string    { return "⏹ Stop" }
 
-func frDorksSent(count int, filename string) string {
-	return fmt.Sprintf("📋 *%d dorks* → `%s`", count, filename)
+func frDorksSent(count int) string {
+	return fmt.Sprintf("📋 %d dorks · 1 par ligne", count)
 }
 
 func frDorksError(err string) string {
 	return "❌ Dorks: " + err
-}
-
-func frDorksFollowUp() string {
-	return "Lance les dorks sur Google, colle les URLs dans `results/scope_hunt.txt`, puis `/scan hunt`."
 }

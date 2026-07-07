@@ -9,7 +9,7 @@ import (
 	"github.com/sqli-hunter/sqli-hunter/internal/telegram"
 )
 
-const liveFlushInterval = 4 * time.Second
+const liveFlushInterval = 6 * time.Second
 
 type liveBoard struct {
 	editor *telegram.LiveEditor
@@ -111,22 +111,7 @@ func (lb *liveBoard) updateDiscover(phase string, step, total, kept, fetched, sk
 }
 
 func (lb *liveBoard) addURL(url string) {
-	if url == "" {
-		return
-	}
-	lb.mu.Lock()
-	defer lb.mu.Unlock()
-	for _, u := range lb.state.URLsList {
-		if u == url {
-			return
-		}
-	}
-	if len(lb.state.URLsList) >= i18nalert.MaxBoardURLs {
-		lb.state.URLsList = append(lb.state.URLsList[1:], url)
-	} else {
-		lb.state.URLsList = append(lb.state.URLsList, url)
-	}
-	lb.markDirty(false)
+	_ = url
 }
 
 func (lb *liveBoard) discoverDone(kept, skipped, fetched int) {
@@ -145,15 +130,10 @@ func (lb *liveBoard) discoverDone(kept, skipped, fetched int) {
 func (lb *liveBoard) scanStarted(urlCount int, _ string) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
-	kept := lb.state.Kept
-	if lb.editor != nil {
-		lb.editor.DeleteAll()
-	}
 	lb.mode = "scan"
 	lb.state = i18nalert.BoardState{
 		Phase:     "scan",
 		ScanTotal: urlCount,
-		Kept:      kept,
 	}
 	lb.markDirty(true)
 }
@@ -171,14 +151,7 @@ func (lb *liveBoard) updateScan(scanned, total, vulns, findings int) {
 	lb.markDirty(false)
 }
 
-func (lb *liveBoard) addVuln(f models.Finding) {
-	lb.mu.Lock()
-	defer lb.mu.Unlock()
-	if len(lb.state.VulnsList) < i18nalert.MaxBoardVulns {
-		lb.state.VulnsList = append(lb.state.VulnsList, f)
-	}
-	lb.markDirty(true)
-}
+func (lb *liveBoard) addVuln(_ models.Finding) {}
 
 func (lb *liveBoard) addDumpFail(_ models.Finding, _ string) {
 	lb.mu.Lock()
@@ -194,32 +167,15 @@ func (lb *liveBoard) addDumpOK(_ models.ExtractedData, email string) {
 	if email != "" {
 		for _, e := range lb.state.EmailsList {
 			if e == email {
-				lb.markDirty(true)
 				return
 			}
 		}
-		if len(lb.state.EmailsList) < i18nalert.MaxBoardEmails {
-			lb.state.EmailsList = append(lb.state.EmailsList, email)
-		}
 	}
-	lb.markDirty(true)
+	lb.markDirty(false)
 }
 
 func (lb *liveBoard) addEmail(email string) {
-	if email == "" {
-		return
-	}
-	lb.mu.Lock()
-	defer lb.mu.Unlock()
-	for _, e := range lb.state.EmailsList {
-		if e == email {
-			return
-		}
-	}
-	if len(lb.state.EmailsList) < i18nalert.MaxBoardEmails {
-		lb.state.EmailsList = append(lb.state.EmailsList, email)
-	}
-	lb.markDirty(true)
+	_ = email
 }
 
 func (lb *liveBoard) complete(title, detail, stock string, scanned, total, vulns, findings, newEmails int, done bool) {
@@ -248,5 +204,16 @@ func (lb *liveBoard) setError(msg string) {
 	if lb.state.Phase == "" {
 		lb.state.Phase = "error"
 	}
+	lb.markDirty(true)
+}
+
+func (lb *liveBoard) aborted(scanned, total, vulns, findings int) {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+	lb.state.Phase = "stopped"
+	lb.state.Scanned = scanned
+	lb.state.ScanTotal = total
+	lb.state.Vulns = vulns
+	lb.state.Findings = findings
 	lb.markDirty(true)
 }

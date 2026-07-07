@@ -48,7 +48,4 @@ func runDorks(args []string) {
 
 	printer := output.New(false, false)
 	printer.Success(fmt.Sprintf("%d dorks → %s", n, out))
-	fmt.Println()
-	fmt.Println("Colle tes URLs trouvées dans results/scope_hunt.txt puis :")
-	fmt.Println("  sqli-hunter hunt")
 }

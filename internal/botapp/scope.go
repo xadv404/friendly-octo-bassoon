@@ -79,6 +79,8 @@ func (a *App) startScanWithScope(chatID int64, urlCount int) {
 		a.tg.Reply(chatID, t.ScanError(err.Error()))
 	default:
 		_, pid, log := scanctl.ParseStarted(out)
-		a.tg.Reply(chatID, t.ScanScopeStarted(urlCount, pid, log))
+		_ = pid
+		_ = log
+		a.tg.Reply(chatID, t.ScanScopeStarted(urlCount))
 	}
 }

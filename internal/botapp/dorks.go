@@ -1,8 +1,6 @@
 package botapp
 
 import (
-	"path/filepath"
-
 	"github.com/sqli-hunter/sqli-hunter/internal/discover"
 )
 
@@ -14,10 +12,8 @@ func (a *App) sendDorks(chatID int64) {
 		a.tg.Reply(chatID, t.DorksError(err.Error()))
 		return
 	}
-	caption := t.DorksSent(n, filepath.Base(path))
+	caption := t.DorksSent(n)
 	if err := a.tg.SendDocument(chatID, path, caption); err != nil {
 		a.tg.Reply(chatID, t.DorksError(err.Error()))
-		return
 	}
-	a.tg.Reply(chatID, t.DorksFollowUp())
 }

@@ -35,7 +35,7 @@ func (a *App) handleStopScan(chatID int64) {
 		a.tg.Reply(chatID, t.ScanStopIdle())
 		return
 	}
-	a.tg.Reply(chatID, t.ScanStopped(scanctl.FormatLines(out)))
+	a.tg.Reply(chatID, t.ScanStopped(""))
 }
 
 func (a *App) startScan(chatID, userID int64) {

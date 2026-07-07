@@ -52,6 +52,15 @@ func Default() Sender {
 	return defaultSend
 }
 
+// ScanAborted met à jour le live board sans alerte de fin (arrêt manuel).
+func ScanAborted(n Sender, scanned, total, vulns, findings int) {
+	ts, ok := n.(*telegramSender)
+	if !ok || !ts.Enabled() || ts.live == nil {
+		return
+	}
+	ts.live.aborted(scanned, total, vulns, findings)
+}
+
 // StockSummary formate le stock emails (i18n).
 func StockSummary(baseDir string) string {
 	return i18n.Load().Alert.StockSummary(baseDir)

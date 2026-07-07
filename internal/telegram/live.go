@@ -55,8 +55,12 @@ func (e *LiveEditor) setOne(chatID int64, text string) {
 		if isEditUnchanged(err) {
 			return
 		}
-		log.Printf("telegram: edit %d msg %d: %v", chatID, mid, err)
-		e.sendNew(chatID, text)
+		if isEditNotFound(err) {
+			log.Printf("telegram: edit %d msg %d: %v — nouveau message", chatID, mid, err)
+			e.sendNew(chatID, text)
+		} else {
+			log.Printf("telegram: edit %d msg %d ignoré: %v", chatID, mid, err)
+		}
 	}
 }
 
@@ -67,6 +71,16 @@ func isEditUnchanged(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "message is not modified") ||
 		strings.Contains(msg, "MESSAGE_NOT_MODIFIED")
+}
+
+func isEditNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "message to edit not found") ||
+		strings.Contains(msg, "MESSAGE_ID_INVALID") ||
+		strings.Contains(msg, "message can't be edited")
 }
 
 func (e *LiveEditor) sendNew(chatID int64, text string) {

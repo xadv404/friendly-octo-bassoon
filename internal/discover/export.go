@@ -19,6 +19,8 @@ func ExportDorksFile(path, domain string, subs bool, set DorkSet) (int, error) {
 	var b strings.Builder
 	for _, d := range dorks {
 		d = strings.TrimSpace(d)
+		d = strings.ReplaceAll(d, "\r", "")
+		d = strings.ReplaceAll(d, "\n", " ")
 		if d == "" {
 			continue
 		}

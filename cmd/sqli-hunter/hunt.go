@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -80,7 +81,7 @@ func runHunt(args []string) {
 	}
 
 	if err := executeScan(ctx, cfg, printer); err != nil {
-		if n.Enabled() {
+		if n.Enabled() && !errors.Is(err, context.Canceled) {
 			n.Error("Scan hunt: " + err.Error())
 		}
 		printer.Error(err.Error())

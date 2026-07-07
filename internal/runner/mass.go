@@ -198,10 +198,18 @@ func (r *Runner) runMass(ctx context.Context, cfg Config) (Report, error) {
 		r.Printer.Success(fmt.Sprintf("%d nouveaux emails → %s/emails/", newEmails, cfg.OutputDir))
 	}
 	if cfg.Notify != nil && cfg.Notify.Enabled() {
-		notify.ScanComplete(cfg.Notify, report.Scanned, total, report.Vulnerable, report.Findings, newEmails, notify.StockSummary(cfg.OutputDir))
+		if ctx.Err() != nil {
+			notify.ScanAborted(cfg.Notify, report.Scanned, total, report.Vulnerable, report.Findings)
+		} else {
+			notify.ScanComplete(cfg.Notify, report.Scanned, total, report.Vulnerable, report.Findings, newEmails, notify.StockSummary(cfg.OutputDir))
+		}
+	}
+	phase := "done"
+	if ctx.Err() != nil {
+		phase = "stopped"
 	}
 	_ = results.WriteRunStatus(cfg.OutputDir, results.RunStatus{
-		Phase:     "done",
+		Phase:     phase,
 		Scanned:   report.Scanned,
 		ScanTotal: total,
 		Vulns:     report.Vulnerable,
